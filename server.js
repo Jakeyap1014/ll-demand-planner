@@ -213,42 +213,29 @@ function buildDataContext() {
   const velocity = dataCache.velocity;
   const pos = dataCache.pos;
   
-  const names = {"LLAU-CB-S-MSM":"Bed Single Marshmallow","LLAU-CB-S-CTCN":"Bed Single Cotton Candy","LLAU-CB-S-DGY":"Bed Single Dove Grey","LLAU-CB-S-DSBL":"Bed Single Dusty Blue","LLAU-CB-S-PST":"Bed Single Pistachio","LLAU-CB-S-BABL":"Bed Single Baby Blue","LLAU-CB-KS-CTCN":"Bed King Single Cotton Candy","LLAU-CB-KS-DGY":"Bed King Single Dove Grey","LLAU-CB-KS-PST":"Bed King Single Pistachio","LLAU-CB-KS-MSM":"Bed King Single Marshmallow","LLAU-CB-KS-BABL":"Bed King Single Baby Blue","LLAU-CB-KS-DSBL":"Bed King Single Dusty Blue","LLAU-CB-D-DSBL":"Bed Double Dusty Blue","LLAU-CB-D-CTCN":"Bed Double Cotton Candy","LLAU-CB-D-PST":"Bed Double Pistachio","LLAU-CB-D-DGY":"Bed Double Dove Grey","LLAU-CB-D-MSM":"Bed Double Marshmallow","LLAU-CB-D-BABL":"Bed Double Baby Blue","LLAU-CBCF-S-MSM":"Combo Single Marshmallow","LLAU-CBCF-S-CTCN":"Combo Single Cotton Candy","LLAU-CBCF-S-DGY":"Combo Single Dove Grey","LLAU-CBCF-S-DSBL":"Combo Single Dusty Blue","LLAU-CBCF-S-PST":"Combo Single Pistachio","LLAU-CBCF-S-BABL":"Combo Single Baby Blue","LLAU-CBCF-KS-CTCN":"Combo King Single Cotton Candy","LLAU-CBCF-KS-DGY":"Combo King Single Dove Grey","LLAU-CBCF-KS-PST":"Combo King Single Pistachio","LLAU-CBCF-KS-MSM":"Combo King Single Marshmallow","LLAU-CBCF-KS-BABL":"Combo King Single Baby Blue","LLAU-CBCF-KS-DSBL":"Combo King Single Dusty Blue","LLAU-CBCF-D-DSBL":"Combo Double Dusty Blue","LLAU-CBCF-D-CTCN":"Combo Double Cotton Candy","LLAU-CBCF-D-PST":"Combo Double Pistachio","LLAU-CBCF-D-DGY":"Combo Double Dove Grey","LLAU-CBCF-D-MSM":"Combo Double Marshmallow","LLAU-CBCF-D-BABL":"Combo Double Baby Blue"};
+  const names = {"LLAU-CB-S-MSM":"Bed S Marshmallow","LLAU-CB-S-CTCN":"Bed S Cotton Candy","LLAU-CB-S-DGY":"Bed S Dove Grey","LLAU-CB-S-DSBL":"Bed S Dusty Blue","LLAU-CB-S-PST":"Bed S Pistachio","LLAU-CB-S-BABL":"Bed S Baby Blue","LLAU-CB-KS-CTCN":"Bed KS Cotton Candy","LLAU-CB-KS-DGY":"Bed KS Dove Grey","LLAU-CB-KS-PST":"Bed KS Pistachio","LLAU-CB-KS-MSM":"Bed KS Marshmallow","LLAU-CB-KS-BABL":"Bed KS Baby Blue","LLAU-CB-KS-DSBL":"Bed KS Dusty Blue","LLAU-CB-D-DSBL":"Bed D Dusty Blue","LLAU-CB-D-CTCN":"Bed D Cotton Candy","LLAU-CB-D-PST":"Bed D Pistachio","LLAU-CB-D-DGY":"Bed D Dove Grey","LLAU-CB-D-MSM":"Bed D Marshmallow","LLAU-CB-D-BABL":"Bed D Baby Blue"};
   
-  // Build summary
-  let lines = ['CURRENT LITTLE LIFELY AU STOCK DATA (live from CIN7 + Shopify):', ''];
-  lines.push('SKU | Product | CIN7 SOH | Shopify Qty | Weekly Velocity');
-  lines.push('--- | --- | --- | --- | ---');
+  // Compact format: only bed SKUs with pre-computed metrics
+  let lines = ['LITTLE LIFELY AU STOCK (live):', ''];
+  lines.push('Product | SOH | Shopify | Net | Vel/wk | Wks Left');
   
   for (const [sku, name] of Object.entries(names)) {
     const soh = cin7[sku] ? (typeof cin7[sku] === 'object' ? cin7[sku].soh : cin7[sku]) : 0;
     const shop = shopify[sku] || 0;
-    const vel = velocity[sku] || 0;
-    lines.push(`${sku} | ${name} | ${soh} | ${shop} | ${vel}/wk`);
+    const comboSku = sku.replace('LLAU-CB-','LLAU-CBCF-');
+    const comboShop = shopify[comboSku] || 0;
+    const net = soh + Math.min(shop, 0) + Math.min(comboShop, 0);
+    const vel = (velocity[sku] || 0) + (velocity[comboSku] || 0);
+    const wks = vel > 0 ? Math.round(net / vel) : 99;
+    let inc = 0;
+    for (const po of (pos || [])) { inc += (po.items?.[sku] || 0); }
+    lines.push(\`\${name} | \${soh} | \${shop}/\${comboShop} | \${net} | \${vel.toFixed(1)} | \${wks}wk (inc:\${inc})\`);
   }
   
   lines.push('');
-  lines.push('INCOMING PURCHASE ORDERS:');
-  for (const po of (pos || [])) {
-    const totalUnits = Object.values(po.items || {}).reduce((a,b) => a+b, 0);
-    lines.push(`- ${po.name} (${po.status}) — arriving ${po.arrival} — ${totalUnits} total units`);
-    for (const [sku, qty] of Object.entries(po.items || {})) {
-      lines.push(`  ${names[sku] || sku}: ${qty} units`);
-    }
-  }
-  
+  lines.push('POs: ' + (pos||[]).map(po => \`\${po.name} (\${po.status}) arr \${po.arrival}, \${Object.values(po.items||{}).reduce((a,b)=>a+b,0)} units\`).join(' | '));
   lines.push('');
-  lines.push('KEY CONTEXT:');
-  lines.push('- "Bed" SKUs (LLAU-CB-) = bed frame + cover as one unit');
-  lines.push('- "Combo" SKUs (LLAU-CBCF-) = bed + mattress bundle (Deep Dream combo)');
-  lines.push('- Both bed and combo sales consume the same physical bed stock');
-  lines.push('- Combined velocity = bed velocity + combo velocity for the same size/color');
-  lines.push('- Negative Shopify qty = pre-orders/oversold');
-  lines.push('- Sizes: S = Single, KS = King Single, D = Double');
-  lines.push('- Colors: MSM=Marshmallow, CTCN=Cotton Candy, DGY=Dove Grey, DSBL=Dusty Blue, PST=Pistachio, BABL=Baby Blue');
-  lines.push('- Lead time from factory: ~8 weeks');
-  lines.push('- Safety stock target: 4 weeks');
-  lines.push(`- Data last refreshed: ${dataCache.lastRefresh || 'embedded fallback'}`);
+  lines.push('Notes: Bed+Combo consume same physical stock. Lead time 8wk. Safety 4wk. Sizes: S=Single, KS=King Single, D=Double.');
   
   return lines.join('\n');
 }
