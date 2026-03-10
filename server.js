@@ -300,7 +300,7 @@ ${dataContext}`;
   });
 
   return new Promise((resolve, reject) => {
-    const url = `/v1beta/models/gemini-2.0-flash-001:generateContent?key=${GEMINI_KEY}`;
+    const url = `/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_KEY}`;
     const req = https.request({
       hostname: 'generativelanguage.googleapis.com',
       path: url,
