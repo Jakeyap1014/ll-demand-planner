@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Little Lifely — Demand Planner</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-accent: #0f3460;
+  --bg-card: #1e2a4a;
+  --alert: #e94560;
+  --green: #4ecca3;
+  --yellow: #f5a623;
+  --blue: #4facfe;
+  --text: #e8e8e8;
+  --text-dim: #8899aa;
+  --border: #2a3a5c;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text); min-height: 100vh; }
+.header { background: var(--bg-secondary); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--bg-accent); }
+.header h1 { font-size: 22px; font-weight: 700; }
+.header h1 span { color: var(--blue); }
+.header .subtitle { color: var(--text-dim); font-size: 13px; }
+.tabs { display: flex; gap: 0; background: var(--bg-secondary); padding: 0 32px; border-bottom: 1px solid var(--border); }
+.tab { padding: 12px 24px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-dim); border-bottom: 3px solid transparent; transition: all 0.2s; }
+.tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.container { max-width: 1600px; margin: 0 auto; padding: 24px 32px; }
+.view { display: none; }
+.view.active { display: block; }
+
+/* Cards */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+.card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 8px; }
+.card .value { font-size: 32px; font-weight: 700; }
+.card .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+.card.red .value { color: var(--alert); }
+.card.green .value { color: var(--green); }
+.card.blue .value { color: var(--blue); }
+.card.yellow .value { color: var(--yellow); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th { background: var(--bg-secondary); padding: 12px 16px; text-align: left; font-weight: 600; position: sticky; top: 0; white-space: nowrap; border-bottom: 2px solid var(--border); }
+tbody td { padding: 10px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tbody tr:hover { background: rgba(79,172,254,0.05); }
+.badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
+.badge.stockout { background: rgba(233,69,96,0.2); color: var(--alert); }
+.badge.critical { background: rgba(233,69,96,0.15); color: #ff7b93; }
+.badge.low { background: rgba(245,166,35,0.2); color: var(--yellow); }
+.badge.ok { background: rgba(78,204,163,0.15); color: var(--green); }
+.badge.healthy { background: rgba(78,204,163,0.2); color: #7cffc5; }
+
+/* Filters */
+.filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.filter-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; font-size: 13px; transition: all 0.2s; }
+.filter-btn.active, .filter-btn:hover { background: var(--bg-accent); color: var(--text); border-color: var(--blue); }
+
+/* Scenario Controls */
+.controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+.control-panel { background: var(--bg-card); border-radius: 12px; padding: 24px; border: 1px solid var(--border); }
+.control-panel h3 { margin-bottom: 16px; font-size: 16px; color: var(--blue); }
+.control-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.control-row label { font-size: 13px; color: var(--text-dim); flex: 1; }
+.control-row input[type=range] { width: 150px; accent-color: var(--blue); }
+.control-row .val { width: 60px; text-align: right; font-weight: 600; font-size: 14px; }
+.control-row input[type=number] { width: 70px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; text-align: center; }
+.control-row select { background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; }
+.presets { display: flex; gap: 8px; margin-bottom: 16px; }
+.preset-btn { padding: 6px 16px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; font-size: 12px; font-weight: 600; }
+.preset-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* Charts */
+.chart-container { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-bottom: 24px; }
+.chart-container h3 { margin-bottom: 12px; font-size: 15px; }
+.chart-container canvas { max-height: 400px; }
+
+/* SKU selector */
+.sku-select { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.sku-chip { padding: 4px 12px; border-radius: 16px; font-size: 11px; border: 1px solid var(--border); cursor: pointer; background: transparent; color: var(--text-dim); }
+.sku-chip.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* PO Editor */
+.po-list { margin-top: 12px; }
+.po-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: var(--bg-secondary); border-radius: 8px; }
+.po-row input { background: var(--bg-primary); border: 1px solid var(--border); color: var(--text); padding: 6px; border-radius: 4px; font-size: 12px; }
+.po-row .po-name { width: 140px; }
+.po-row .po-date { width: 130px; }
+.po-row .po-qty { width: 70px; text-align: center; }
+.btn { padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-danger { background: var(--alert); color: #fff; }
+.btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+.btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* Comparison */
+.comparison-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.scenario-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+.scenario-card h4 { color: var(--blue); margin-bottom: 12px; }
+.scenario-card .metric { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+
+/* Responsive */
+@media (max-width: 1024px) { .controls-grid { grid-template-columns: 1fr; } .comparison-grid { grid-template-columns: 1fr; } }
+.neg { color: var(--alert); }
+.pos { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="header">
+  <div><h1>Little Lifely <span>Demand Planner</span></h1><div class="subtitle">Live data: CIN7 + Shopify + Stock Calendar · Generated 10 Mar 2026</div></div>
+  <div style="text-align:right"><div style="font-size:12px;color:var(--text-dim)">AU Market · 36 SKUs</div></div>
+</div>
+<div class="tabs">
+  <div class="tab active" data-view="dashboard">📊 Dashboard</div>
+  <div class="tab" data-view="scenario">🎛️ Scenario Planner</div>
+  <div class="tab" data-view="reorder">🚨 Reorder Calculator</div>
+  <div class="tab" data-view="compare">⚡ Compare Scenarios</div>
+</div>
+<div class="container">
+<!-- Dashboard View -->
+<div id="dashboard" class="view active">
+  <div class="cards" id="summary-cards"></div>
+  <div class="filters" id="dash-filters"></div>
+  <div class="chart-container"><h3>Stock Position by SKU</h3><canvas id="stockChart"></canvas></div>
+  <div class="table-wrap"><table id="stockTable"><thead></thead><tbody></tbody></table></div>
+</div>
+
+<!-- Scenario Planner View -->
+<div id="scenario" class="view">
+  <div class="controls-grid">
+    <div class="control-panel">
+      <h3>📈 Growth & Seasonality</h3>
+      <div class="presets" id="presets"></div>
+      <div class="control-row"><label>Weekly Growth Rate</label><input type="range" id="growthRate" min="0" max="10" step="0.5" value="3"><span class="val" id="growthVal">3%</span></div>
+      <div id="seasonalControls"></div>
+    </div>
+    <div class="control-panel">
+      <h3>📦 Inventory Parameters</h3>
+      <div class="control-row"><label>Safety Stock (weeks)</label><input type="range" id="safetyWeeks" min="1" max="8" step="1" value="4"><span class="val" id="safetyVal">4</span></div>
+      <div class="control-row"><label>Lead Time (weeks)</label><input type="range" id="leadWeeks" min="4" max="16" step="1" value="8"><span class="val" id="leadVal">8</span></div>
+      <div class="control-row"><label>View SKU</label><select id="skuSelect"></select></div>
+    </div>
+  </div>
+  <div class="control-panel" style="margin-bottom:24px">
+    <h3>🚢 PO Pipeline <button class="btn btn-ghost" onclick="addPO()" style="margin-left:12px;padding:4px 12px">+ Add PO</button></h3>
+    <div class="po-list" id="poList"></div>
+  </div>
+  <div class="chart-container"><h3>Projected Stock — <span id="projTitle">All Products</span></h3><canvas id="projChart"></canvas></div>
+  <div class="chart-container"><h3>Stockout Risk Map</h3><canvas id="riskChart"></canvas></div>
+</div>
+
+<!-- Reorder Calculator View -->
+<div id="reorder" class="view">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <h2 style="font-size:18px">Reorder Recommendations</h2>
+    <button class="btn btn-primary" onclick="exportCSV()">📥 Export CSV</button>
+  </div>
+  <div class="table-wrap"><table id="reorderTable"><thead></thead><tbody></tbody></table></div>
+  <div class="chart-container" style="margin-top:24px"><h3>PO Arrival vs Stockout Timeline</h3><canvas id="timelineChart"></canvas></div>
+</div>
+
+<!-- Compare Scenarios View -->
+<div id="compare" class="view">
+  <div style="display:flex;gap:12px;margin-bottom:24px">
+    <button class="btn btn-primary" onclick="saveScenario()">💾 Save Current Scenario</button>
+    <button class="btn btn-ghost" onclick="clearScenarios()">🗑️ Clear All</button>
+  </div>
+  <div class="comparison-grid" id="compGrid"></div>
+  <div class="chart-container"><h3>Scenario Comparison — Total Stock</h3><canvas id="compChart"></canvas></div>
+</div>
+</div>
+
+<script>
+// ===== EMBEDDED DATA =====
+const DATA = {
+  cin7: {"LLAU-CB-S-MSM":264,"LLAU-CB-S-CTCN":188,"LLAU-CB-S-DGY":121,"LLAU-CB-S-DSBL":24,"LLAU-CB-S-PST":20,"LLAU-CB-S-BABL":11,"LLAU-CB-KS-CTCN":154,"LLAU-CB-KS-DGY":69,"LLAU-CB-KS-PST":87,"LLAU-CB-KS-MSM":113,"LLAU-CB-KS-BABL":47,"LLAU-CB-KS-DSBL":0,"LLAU-CB-D-DSBL":110,"LLAU-CB-D-CTCN":254,"LLAU-CB-D-PST":186,"LLAU-CB-D-DGY":65,"LLAU-CB-D-MSM":100,"LLAU-CB-D-BABL":68},
+  shopify: {"LLAU-CB-S-CTCN":54,"LLAU-CB-S-MSM":14,"LLAU-CB-S-DGY":6,"LLAU-CB-S-PST":-126,"LLAU-CB-S-BABL":-126,"LLAU-CB-S-DSBL":3,"LLAU-CBCF-S-CTCN":-22,"LLAU-CBCF-S-MSM":-54,"LLAU-CBCF-S-DGY":-25,"LLAU-CBCF-S-PST":-14,"LLAU-CBCF-S-BABL":-23,"LLAU-CBCF-S-DSBL":-1,"LLAU-CB-KS-CTCN":86,"LLAU-CB-KS-MSM":-13,"LLAU-CB-KS-DGY":38,"LLAU-CB-KS-PST":35,"LLAU-CB-KS-BABL":-43,"LLAU-CB-KS-DSBL":-63,"LLAU-CBCF-KS-CTCN":-8,"LLAU-CBCF-KS-MSM":-13,"LLAU-CBCF-KS-DGY":-9,"LLAU-CBCF-KS-PST":-10,"LLAU-CBCF-KS-BABL":-10,"LLAU-CBCF-KS-DSBL":-1,"LLAU-CB-D-CTCN":-1,"LLAU-CB-D-MSM":-44,"LLAU-CB-D-DGY":-37,"LLAU-CB-D-PST":-39,"LLAU-CB-D-BABL":-133,"LLAU-CB-D-DSBL":98,"LLAU-CBCF-D-CTCN":-50,"LLAU-CBCF-D-MSM":-101,"LLAU-CBCF-D-DGY":-42,"LLAU-CBCF-D-PST":-44,"LLAU-CBCF-D-BABL":-72,"LLAU-CBCF-D-DSBL":-2},
+  names: {"LLAU-CB-S-MSM":"Bed S Marshmallow","LLAU-CB-S-CTCN":"Bed S Cotton Candy","LLAU-CB-S-DGY":"Bed S Dove Grey","LLAU-CB-S-DSBL":"Bed S Dusty Blue","LLAU-CB-S-PST":"Bed S Pistachio","LLAU-CB-S-BABL":"Bed S Baby Blue","LLAU-CB-KS-CTCN":"Bed KS Cotton Candy","LLAU-CB-KS-DGY":"Bed KS Dove Grey","LLAU-CB-KS-PST":"Bed KS Pistachio","LLAU-CB-KS-MSM":"Bed KS Marshmallow","LLAU-CB-KS-BABL":"Bed KS Baby Blue","LLAU-CB-KS-DSBL":"Bed KS Dusty Blue","LLAU-CB-D-DSBL":"Bed D Dusty Blue","LLAU-CB-D-CTCN":"Bed D Cotton Candy","LLAU-CB-D-PST":"Bed D Pistachio","LLAU-CB-D-DGY":"Bed D Dove Grey","LLAU-CB-D-MSM":"Bed D Marshmallow","LLAU-CB-D-BABL":"Bed D Baby Blue","LLAU-CBCF-S-MSM":"Combo S Marshmallow","LLAU-CBCF-S-CTCN":"Combo S Cotton Candy","LLAU-CBCF-S-DGY":"Combo S Dove Grey","LLAU-CBCF-S-DSBL":"Combo S Dusty Blue","LLAU-CBCF-S-PST":"Combo S Pistachio","LLAU-CBCF-S-BABL":"Combo S Baby Blue","LLAU-CBCF-KS-CTCN":"Combo KS Cotton Candy","LLAU-CBCF-KS-DGY":"Combo KS Dove Grey","LLAU-CBCF-KS-PST":"Combo KS Pistachio","LLAU-CBCF-KS-MSM":"Combo KS Marshmallow","LLAU-CBCF-KS-BABL":"Combo KS Baby Blue","LLAU-CBCF-KS-DSBL":"Combo KS Dusty Blue","LLAU-CBCF-D-DSBL":"Combo D Dusty Blue","LLAU-CBCF-D-CTCN":"Combo D Cotton Candy","LLAU-CBCF-D-PST":"Combo D Pistachio","LLAU-CBCF-D-DGY":"Combo D Dove Grey","LLAU-CBCF-D-MSM":"Combo D Marshmallow","LLAU-CBCF-D-BABL":"Combo D Baby Blue"},
+  velocity: {"LLAU-CB-S-MSM":8.3,"LLAU-CB-S-CTCN":3.2,"LLAU-CB-S-DGY":2.8,"LLAU-CB-S-DSBL":1.2,"LLAU-CB-S-PST":5.0,"LLAU-CB-S-BABL":4.1,"LLAU-CB-KS-CTCN":2.6,"LLAU-CB-KS-DGY":1.5,"LLAU-CB-KS-PST":3.7,"LLAU-CB-KS-MSM":4.9,"LLAU-CB-KS-BABL":2.5,"LLAU-CB-KS-DSBL":1.2,"LLAU-CB-D-DSBL":2.5,"LLAU-CB-D-CTCN":4.9,"LLAU-CB-D-PST":8.0,"LLAU-CB-D-DGY":3.6,"LLAU-CB-D-MSM":13.9,"LLAU-CB-D-BABL":6.8,"LLAU-CBCF-S-MSM":8.5,"LLAU-CBCF-S-CTCN":5.5,"LLAU-CBCF-S-DGY":4.4,"LLAU-CBCF-S-DSBL":1.5,"LLAU-CBCF-S-PST":3.6,"LLAU-CBCF-S-BABL":4.9,"LLAU-CBCF-KS-CTCN":5.8,"LLAU-CBCF-KS-DGY":4.7,"LLAU-CBCF-KS-PST":5.8,"LLAU-CBCF-KS-MSM":9.8,"LLAU-CBCF-KS-BABL":6.8,"LLAU-CBCF-KS-DSBL":3.7,"LLAU-CBCF-D-DSBL":6.0,"LLAU-CBCF-D-CTCN":9.2,"LLAU-CBCF-D-PST":11.4,"LLAU-CBCF-D-DGY":6.8,"LLAU-CBCF-D-MSM":20.4,"LLAU-CBCF-D-BABL":12.8},
+  pos: [
+    {name:"PO-AU002-11/12",status:"Shipping",arrival:"2026-04-07",items:{"LLAU-CB-S-DSBL":53,"LLAU-CB-KS-DSBL":135,"LLAU-CB-D-DSBL":105,"LLAU-CB-D-DGY":3,"LLAU-CB-S-PST":3,"LLAU-CB-D-MSM":280,"LLAU-CB-KS-CTCN":2}},
+    {name:"AU003",status:"Production",arrival:"2026-05-11",items:{"LLAU-CB-S-DSBL":30,"LLAU-CB-KS-DSBL":45,"LLAU-CB-D-DSBL":100,"LLAU-CB-S-DGY":45,"LLAU-CB-KS-DGY":25,"LLAU-CB-D-DGY":75,"LLAU-CB-S-PST":100,"LLAU-CB-KS-PST":50,"LLAU-CB-D-PST":155,"LLAU-CB-S-BABL":65,"LLAU-CB-KS-BABL":65,"LLAU-CB-D-BABL":140,"LLAU-CB-S-CTCN":90,"LLAU-CB-KS-CTCN":70,"LLAU-CB-D-CTCN":100,"LLAU-CB-S-MSM":140,"LLAU-CB-KS-MSM":100,"LLAU-CB-D-MSM":240}}
+  ],
+  seasonal: {1:1.4,2:1.4,3:1.0,4:1.0,5:1.0,6:1.3,7:0.85,8:0.85,9:1.1,10:1.1,11:1.0,12:1.0}
+};
+
+const SKUS = Object.keys(DATA.names);
+const TODAY = new Date(2026, 2, 10);
+const PRESETS = {
+  conservative: {growth:0, seasonal:{1:1,2:1,3:1,4:1,5:1,6:1,7:1,8:1,9:1,10:1,11:1,12:1}},
+  base: {growth:3, seasonal:{...DATA.seasonal}},
+  aggressive: {growth:5, seasonal:{1:1.5,2:1.5,3:1.0,4:1.0,5:1.0,6:1.4,7:0.9,8:0.9,9:1.2,10:1.2,11:1.1,12:1.1}}
+};
+let scenarios = [];
+let customPOs = [...DATA.pos];
+let charts = {};
+
+// ===== HELPERS =====
+function getSize(sku) { return sku.includes('-S-')?'Single':sku.includes('-KS-')?'King Single':'Double'; }
+function getType(sku) { return sku.includes('CBCF')?'Combo':'Bed'; }
+function getNet(sku) { return (DATA.cin7[sku]||0) + Math.min(DATA.shopify[sku]||0, 0); }
+function getIncoming(sku) { return customPOs.reduce((t,po)=>(po.items&&po.items[sku]?t+po.items[sku]:t),0); }
+function getCombinedVel(sku) {
+  let v = DATA.velocity[sku]||0;
+  if(!sku.includes('CBCF')) { let c=sku.replace('LLAU-CB-','LLAU-CBCF-'); v+=(DATA.velocity[c]||0); }
+  return v;
+}
+function getWeeks() {
+  let weeks=[], dt=new Date(TODAY);
+  while(dt<=new Date(2026,11,31)) {
+    let end=new Date(dt); end.setDate(end.getDate()+6);
+    weeks.push({start:new Date(dt), end:end, label:dt.toLocaleDateString('en-AU',{day:'numeric',month:'short'})+' - '+end.toLocaleDateString('en-AU',{day:'numeric',month:'short'})});
+    dt.setDate(dt.getDate()+7);
+  }
+  return weeks;
+}
+function getSettings() {
+  return {
+    growth: parseFloat(document.getElementById('growthRate')?.value||3)/100,
+    safety: parseInt(document.getElementById('safetyWeeks')?.value||4),
+    lead: parseInt(document.getElementById('leadWeeks')?.value||8),
+    seasonal: Object.fromEntries([...Array(12)].map((_,i)=>[i+1, parseFloat(document.getElementById('sm'+(i+1))?.value||DATA.seasonal[i+1])]))
+  };
+}
+function project(sku, settings) {
+  let weeks=getWeeks(), net=getNet(sku), vel=getCombinedVel(sku), running=net, result=[];
+  weeks.forEach((w,i)=>{
+    let open=running;
+    let g=Math.pow(1+settings.growth,i);
+    let s=settings.seasonal[w.start.getMonth()+1]||1;
+    let sales=Math.round(vel*g*s);
+    let inc=0;
+    customPOs.forEach(po=>{
+      if(!po.arrival) return;
+      let ad=new Date(po.arrival);
+      if(ad>=w.start&&ad<=w.end) inc+=(po.items&&po.items[sku])||0;
+    });
+    let close=open-sales+inc;
+    result.push({week:w, open, sales, inc, close, date:w.start});
+    running=close;
+  });
+  return result;
+}
+function statusBadge(weeksLeft) {
+  if(weeksLeft<=0) return '<span class="badge stockout">STOCKOUT</span>';
+  if(weeksLeft<=2) return '<span class="badge critical">CRITICAL</span>';
+  if(weeksLeft<=4) return '<span class="badge low">LOW</span>';
+  if(weeksLeft<=8) return '<span class="badge ok">OK</span>';
+  return '<span class="badge healthy">HEALTHY</span>';
+}
+function fmt(n) { return n<0?`<span class="neg">${n.toLocaleString()}</span>`:n.toLocaleString(); }
+
+// ===== TAB NAVIGATION =====
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.view).classList.add('active');
+}));
+
+// ===== DASHBOARD =====
+let dashFilter = {size:'All',type:'All'};
+function renderDashboard() {
+  let totalSOH=0, totalInc=0, totalOversold=0, totalVel=0;
+  SKUS.forEach(s=>{
+    totalSOH+=(DATA.cin7[s]||0);
+    totalInc+=getIncoming(s);
+    let shop=DATA.shopify[s]||0; if(shop<0) totalOversold+=shop;
+    totalVel+=getCombinedVel(s);
+  });
+  let weeksTotal=totalVel>0?Math.round((totalSOH+Math.min(totalOversold,0))/totalVel):99;
+  document.getElementById('summary-cards').innerHTML=`
+    <div class="card green"><div class="label">Total CIN7 SOH</div><div class="value">${totalSOH.toLocaleString()}</div><div class="sub">Physical stock in Malcove</div></div>
+    <div class="card blue"><div class="label">Total Incoming</div><div class="value">${totalInc.toLocaleString()}</div><div class="sub">${customPOs.length} open POs</div></div>
+    <div class="card red"><div class="label">Oversold (Shopify)</div><div class="value">${totalOversold.toLocaleString()}</div><div class="sub">Negative = pre-order commitments</div></div>
+    <div class="card yellow"><div class="label">Avg Weeks of Stock</div><div class="value">${weeksTotal}</div><div class="sub">At current velocity (combined)</div></div>`;
+  // Filters
+  document.getElementById('dash-filters').innerHTML=['All','Single','King Single','Double'].map(s=>
+    `<button class="filter-btn ${dashFilter.size===s?'active':''}" onclick="dashFilter.size='${s}';renderDashboard()">${s}</button>`).join('')+
+    ['All','Bed','Combo'].map(t=>
+    `<button class="filter-btn ${dashFilter.type===t?'active':''}" onclick="dashFilter.type='${t}';renderDashboard()">${t}</button>`).join('');
+  // Table
+  let filtered=SKUS.filter(s=>(dashFilter.size==='All'||getSize(s)===dashFilter.size)&&(dashFilter.type==='All'||getType(s)===dashFilter.type));
+  let thead='<tr><th>SKU</th><th>Product</th><th>Size</th><th>CIN7 SOH</th><th>Shopify</th><th>Net Stock</th><th>Incoming</th><th>Vel/wk</th><th>Wks Left</th><th>Status</th></tr>';
+  let tbody=filtered.map(s=>{
+    let soh=DATA.cin7[s]||0, shop=DATA.shopify[s]||0, net=getNet(s), inc=getIncoming(s), vel=getCombinedVel(s);
+    let wks=vel>0?Math.round(net/vel):99;
+    return `<tr><td style="font-family:monospace;font-size:11px">${s}</td><td>${DATA.names[s]}</td><td>${getSize(s)}</td><td>${fmt(soh)}</td><td>${fmt(shop)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}</td><td>${wks}</td><td>${statusBadge(wks)}</td></tr>`;
+  }).join('');
+  document.querySelector('#stockTable thead').innerHTML=thead;
+  document.querySelector('#stockTable tbody').innerHTML=tbody;
+  // Chart
+  let chartSkus=filtered.filter(s=>DATA.cin7[s]>0||getIncoming(s)>0);
+  if(charts.stock) charts.stock.destroy();
+  charts.stock=new Chart(document.getElementById('stockChart'),{type:'bar',data:{
+    labels:chartSkus.map(s=>DATA.names[s]),
+    datasets:[
+      {label:'SOH',data:chartSkus.map(s=>DATA.cin7[s]||0),backgroundColor:'#4ecca3'},
+      {label:'Incoming',data:chartSkus.map(s=>getIncoming(s)),backgroundColor:'#4facfe'},
+      {label:'Oversold',data:chartSkus.map(s=>Math.min(DATA.shopify[s]||0,0)),backgroundColor:'#e94560'}
+    ]},options:{responsive:true,plugins:{legend:{labels:{color:'#e8e8e8'}}},scales:{x:{stacked:true,ticks:{color:'#8899aa',maxRotation:45}},y:{stacked:true,ticks:{color:'#8899aa'},grid:{color:'#2a3a5c'}}}}});
+}
+
+// ===== SCENARIO PLANNER =====
+function initScenario() {
+  // Presets
+  document.getElementById('presets').innerHTML=Object.keys(PRESETS).map(p=>
+    `<button class="preset-btn ${p==='base'?'active':''}" onclick="applyPreset('${p}')">${p.charAt(0).toUpperCase()+p.slice(1)}</button>`).join('');
+  // Seasonal controls
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('seasonalControls').innerHTML=months.map((m,i)=>
+    `<div class="control-row"><label>${m}</label><input type="range" id="sm${i+1}" min="0.5" max="2.0" step="0.05" value="${DATA.seasonal[i+1]}" oninput="document.getElementById('sv${i+1}').textContent=this.value+'x';updateScenario()"><span class="val" id="sv${i+1}">${DATA.seasonal[i+1]}x</span></div>`).join('');
+  // SKU selector
+  let sel=document.getElementById('skuSelect');
+  sel.innerHTML='<option value="ALL">All Products (Total)</option>'+SKUS.map(s=>`<option value="${s}">${DATA.names[s]}</option>`).join('');
+  sel.onchange=()=>updateScenario();
+  // Slider events
+  ['growthRate','safetyWeeks','leadWeeks'].forEach(id=>{
+    let el=document.getElementById(id);
+    el.oninput=()=>{
+      document.getElementById(id.replace('Rate','Val').replace('Weeks','Val')).textContent=
+        id==='growthRate'?el.value+'%':el.value;
+      updateScenario();
+    };
+  });
+  renderPOs();
+  updateScenario();
+}
+function applyPreset(name) {
+  let p=PRESETS[name];
+  document.getElementById('growthRate').value=p.growth;
+  document.getElementById('growthVal').textContent=p.growth+'%';
+  for(let m=1;m<=12;m++){
+    document.getElementById('sm'+m).value=p.seasonal[m];
+    document.getElementById('sv'+m).textContent=p.seasonal[m]+'x';
+  }
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  updateScenario();
+}
+function renderPOs() {
+  document.getElementById('poList').innerHTML=customPOs.map((po,i)=>
+    `<div class="po-row">
+      <input class="po-name" value="${po.name}" onchange="customPOs[${i}].name=this.value">
+      <span style="color:var(--text-dim);font-size:12px">${po.status||'Custom'}</span>
+      <input class="po-date" type="date" value="${po.arrival}" onchange="customPOs[${i}].arrival=this.value;updateScenario()">
+      <span style="font-size:12px;color:var(--text-dim)">${Object.values(po.items||{}).reduce((a,b)=>a+b,0)} units</span>
+      ${i>=2?`<button class="btn btn-danger" style="padding:2px 8px;font-size:11px" onclick="customPOs.splice(${i},1);renderPOs();updateScenario()">×</button>`:''}
+    </div>`).join('');
+}
+function addPO() {
+  customPOs.push({name:'New PO',status:'Custom',arrival:'2026-06-15',items:{}});
+  renderPOs();
+}
+function updateScenario() {
+  let s=getSettings(), sel=document.getElementById('skuSelect').value, weeks=getWeeks();
+  document.getElementById('projTitle').textContent=sel==='ALL'?'All Products (Total)':DATA.names[sel];
+  // Project
+  if(sel==='ALL') {
+    let totals=weeks.map(()=>({open:0,sales:0,inc:0,close:0}));
+    SKUS.forEach(sku=>{
+      let proj=project(sku,s);
+      proj.forEach((p,i)=>{totals[i].open+=p.open;totals[i].sales+=p.sales;totals[i].inc+=p.inc;totals[i].close+=p.close;});
+    });
+    renderProjChart(weeks, totals);
+  } else {
+    renderProjChart(weeks, project(sel,s));
+  }
+  renderRiskChart(s);
+}
+function renderProjChart(weeks, data) {
+  if(charts.proj) charts.proj.destroy();
+  let labels=weeks.map(w=>w.start);
+  charts.proj=new Chart(document.getElementById('projChart'),{type:'line',data:{
+    labels:data.map(d=>d.date||d.week?.start),
+    datasets:[
+      {label:'Closing Stock',data:data.map(d=>d.close),borderColor:'#4ecca3',backgroundColor:'rgba(78,204,163,0.1)',fill:true,tension:0.3},
+      {label:'Sales/wk',data:data.map(d=>d.sales),borderColor:'#e94560',borderDash:[5,5],tension:0.3},
+      {label:'Incoming',data:data.map(d=>d.inc),type:'bar',backgroundColor:'rgba(79,172,254,0.5)'}
+    ]},options:{responsive:true,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:'#e8e8e8'}},tooltip:{callbacks:{title:ctx=>{ let d=ctx[0]?.raw!==undefined&&data[ctx[0].dataIndex]?.week?.label; return d||''; }}}},scales:{x:{type:'time',time:{unit:'week',displayFormats:{week:'dd MMM'}},ticks:{color:'#8899aa'},grid:{color:'#2a3a5c'}},y:{ticks:{color:'#8899aa'},grid:{color:'#2a3a5c'}}}}});
+}
+function renderRiskChart(s) {
+  if(charts.risk) charts.risk.destroy();
+  let weeks=getWeeks();
+  // Find stockout week per SKU (bed SKUs only)
+  let bedSkus=SKUS.filter(s=>!s.includes('CBCF')&&DATA.cin7[s]!==undefined);
+  let datasets=bedSkus.map(sku=>{
+    let proj=project(sku,s);
+    let color=proj[proj.length-1].close>0?'#4ecca3':proj.some(p=>p.close<=0)?'#e94560':'#f5a623';
+    return {label:DATA.names[sku],data:proj.map(p=>p.close),borderColor:color,borderWidth:1.5,pointRadius:0,tension:0.3};
+  });
+  charts.risk=new Chart(document.getElementById('riskChart'),{type:'line',data:{
+    labels:weeks.map(w=>w.start),datasets},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{
+      x:{type:'time',time:{unit:'month',displayFormats:{month:'MMM yy'}},ticks:{color:'#8899aa'},grid:{color:'#2a3a5c'}},
+      y:{ticks:{color:'#8899aa'},grid:{color:'#2a3a5c'}}},
+    interaction:{intersect:false,mode:'nearest'}}});
+}
+
+// ===== REORDER CALCULATOR =====
+function renderReorder() {
+  let s=getSettings(), weeks=getWeeks();
+  let rows=SKUS.map(sku=>{
+    let net=getNet(sku), vel=getCombinedVel(sku), inc=getIncoming(sku);
+    let futureVel=vel*Math.pow(1+s.growth,s.lead);
+    let proj=project(sku,s);
+    let stockoutWk=proj.findIndex(p=>p.close<=0);
+    let wksLeft=stockoutWk>=0?stockoutWk:99;
+    let stockoutDate=stockoutWk>=0?new Date(TODAY.getTime()+stockoutWk*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Beyond 2026';
+    let safetyUnits=Math.round(futureVel*s.safety);
+    let rop=Math.round(futureVel*s.lead+safetyUnits);
+    let reorderQty=Math.max(0,Math.round(futureVel*12+safetyUnits-net-inc));
+    let orderByWk=Math.max(0,wksLeft-s.lead-s.safety);
+    let orderBy=wksLeft<99?new Date(TODAY.getTime()+orderByWk*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Not urgent';
+    return {sku,name:DATA.names[sku],net,vel,futureVel:Math.round(futureVel*10)/10,inc,wksLeft,stockoutDate,safetyUnits,rop,reorderQty,orderBy,size:getSize(sku),type:getType(sku)};
+  }).sort((a,b)=>a.wksLeft-b.wksLeft);
+  let thead='<tr><th>SKU</th><th>Product</th><th>Net SOH</th><th>Vel/wk</th><th>Future Vel</th><th>Incoming</th><th>Wks Left</th><th>Stockout</th><th>Safety (units)</th><th>Reorder Pt</th><th>Order Qty</th><th>Order By</th><th>Status</th></tr>';
+  let tbody=rows.map(r=>
+    `<tr><td style="font-family:monospace;font-size:11px">${r.sku}</td><td>${r.name}</td><td>${fmt(r.net)}</td><td>${r.vel.toFixed(1)}</td><td>${r.futureVel}</td><td>${r.inc}</td><td>${r.wksLeft>=99?'99+':r.wksLeft}</td><td>${r.stockoutDate}</td><td>${r.safetyUnits}</td><td>${r.rop}</td><td>${r.reorderQty>0?`<b>${r.reorderQty}</b>`:'—'}</td><td>${r.orderBy}</td><td>${statusBadge(r.wksLeft)}</td></tr>`).join('');
+  document.querySelector('#reorderTable thead').innerHTML=thead;
+  document.querySelector('#reorderTable tbody').innerHTML=tbody;
+  // Timeline chart
+  if(charts.timeline) charts.timeline.destroy();
+  let bedRows=rows.filter(r=>r.type==='Bed'&&r.wksLeft<99);
+  charts.timeline=new Chart(document.getElementById('timelineChart'),{type:'bar',data:{
+    labels:bedRows.map(r=>r.name),
+    datasets:[
+      {label:'Weeks of Stock',data:bedRows.map(r=>r.wksLeft),backgroundColor:bedRows.map(r=>r.wksLeft<=2?'#e94560':r.wksLeft<=4?'#f5a623':r.wksLeft<=8?'#4facfe':'#4ecca3')},
+    ]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8899aa'},grid:{color:'#2a3a5c'}},y:{ticks:{color:'#e8e8e8',font:{size:11}}}}}});
+}
+
+// ===== EXPORT CSV =====
+function exportCSV() {
+  let s=getSettings();
+  let rows=[['SKU','Product','Net SOH','Velocity/wk','Incoming','Weeks Left','Stockout Date','Safety Stock','Reorder Qty','Order By']];
+  SKUS.forEach(sku=>{
+    let net=getNet(sku),vel=getCombinedVel(sku),inc=getIncoming(sku);
+    let proj=project(sku,s), stockoutWk=proj.findIndex(p=>p.close<=0), wks=stockoutWk>=0?stockoutWk:99;
+    let futureVel=vel*Math.pow(1+s.growth,s.lead);
+    let safetyU=Math.round(futureVel*s.safety);
+    let reorderQ=Math.max(0,Math.round(futureVel*12+safetyU-net-inc));
+    rows.push([sku,DATA.names[sku],net,vel.toFixed(1),inc,wks,wks<99?new Date(TODAY.getTime()+wks*7*86400000).toLocaleDateString():'Beyond 2026',safetyU,reorderQ,wks<99?new Date(TODAY.getTime()+Math.max(0,wks-s.lead-s.safety)*7*86400000).toLocaleDateString():'N/A']);
+  });
+  let csv=rows.map(r=>r.join(',')).join('\n');
+  let blob=new Blob([csv],{type:'text/csv'});
+  let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='demand_plan_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+}
+
+// ===== SCENARIO COMPARISON =====
+function saveScenario() {
+  if(scenarios.length>=3){alert('Max 3 scenarios. Clear first.');return;}
+  let name=prompt('Scenario name:','Scenario '+(scenarios.length+1));
+  if(!name) return;
+  let s=getSettings();
+  let totalClose=0, totalSales=0, firstStockout=99;
+  SKUS.forEach(sku=>{
+    let proj=project(sku,s);
+    totalClose+=proj[proj.length-1].close;
+    totalSales+=proj.reduce((t,p)=>t+p.sales,0);
+    let so=proj.findIndex(p=>p.close<=0);
+    if(so>=0&&so<firstStockout) firstStockout=so;
+  });
+  scenarios.push({name,settings:{...s},totalClose,totalSales,firstStockout,weekly:getWeeks().map((_,i)=>{
+    let t=0;SKUS.forEach(sku=>{let p=project(sku,s);t+=p[i]?.close||0;});return t;
+  })});
+  renderCompare();
+}
+function clearScenarios(){scenarios=[];renderCompare();}
+function renderCompare() {
+  document.getElementById('compGrid').innerHTML=scenarios.map(sc=>
+    `<div class="scenario-card"><h4>${sc.name}</h4>
+    <div class="metric"><span>Growth Rate</span><span>${(sc.settings.growth*100).toFixed(1)}%</span></div>
+    <div class="metric"><span>Safety Stock</span><span>${sc.settings.safety} wks</span></div>
+    <div class="metric"><span>Lead Time</span><span>${sc.settings.lead} wks</span></div>
+    <div class="metric"><span>Total Projected Sales</span><span>${sc.totalSales.toLocaleString()}</span></div>
+    <div class="metric"><span>End 2026 Stock</span><span style="color:${sc.totalClose>0?'var(--green)':'var(--alert)'}">${sc.totalClose.toLocaleString()}</span></div>
+    <div class="metric"><span>First Stockout (weeks)</span><span style="color:${sc.firstStockout<8?'var(--alert)':'var(--green)'}">${sc.firstStockout>=99?'None':sc.firstStockout}</span></div>
+    </div>`).join('');
+  if(charts.comp) charts.comp.destroy();
+  if(scenarios.length===0) return;
+  let weeks=getWeeks();
+  let colors=['#4facfe','#4ecca3','#f5a623'];
+  charts.comp=new Chart(document.getElementById('compChart'),{type:'line',data:{
+    labels:weeks.map(w=>w.start),
+    datasets:scenarios.map((sc,i)=>({label:sc.name,data:sc.weekly,borderColor:colors[i],tension:0.3,pointRadius:0}))
+  },options:{responsive:true,plugins:{legend:{labels:{color:'#e8e8e8'}}},scales:{x:{type:'time',time:{unit:'month'},ticks:{color:'#8899aa'},grid:{color:'#2a3a5c'}},y:{ticks:{color:'#8899aa'},grid:{color:'#2a3a5c'}}}}});
+}
+
+// ===== INIT =====
+renderDashboard();
+initScenario();
+renderReorder();
+renderCompare();
+</script>
+</body>
+</html>
