@@ -282,7 +282,7 @@ ${dataContext}`;
     contents: messages,
     generationConfig: {
       temperature: 0.7,
-      maxOutputTokens: 4096
+      maxOutputTokens: 1500
     }
   });
 
@@ -312,7 +312,7 @@ ${dataContext}`;
       });
     });
     req.on('error', reject);
-    req.setTimeout(30000, () => { req.destroy(); reject(new Error('AI request timed out')); });
+    req.setTimeout(25000, () => { req.destroy(); reject(new Error('AI request timed out')); });
     req.write(payload);
     req.end();
   });
