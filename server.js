@@ -299,7 +299,11 @@ ${dataContext}`;
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
-          const text = json.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I couldn\'t process that. Try rephrasing?';
+          const parts = json.candidates?.[0]?.content?.parts || [];
+          const text = parts.map(p => p.text || '').join('') || 'Sorry, I couldn\'t process that. Try rephrasing?';
+          const finish = json.candidates?.[0]?.finishReason;
+          console.log('[Gemini] Response length:', text.length, 'chars, finishReason:', finish);
+          if (finish !== 'STOP') console.log('[Gemini] WARNING: Response may be truncated. finishReason:', finish);
           resolve(text);
         } catch(e) {
           console.error('Gemini parse error:', data.substring(0, 200));
