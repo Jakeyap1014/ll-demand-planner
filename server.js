@@ -203,6 +203,123 @@ async function sendToDiscord(username, message) {
   });
 }
 
+
+// ===== AI CHAT AGENT =====
+const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
+
+function buildDataContext() {
+  const cin7 = dataCache.cin7;
+  const shopify = dataCache.shopify;
+  const velocity = dataCache.velocity;
+  const pos = dataCache.pos;
+  
+  const names = {"LLAU-CB-S-MSM":"Bed Single Marshmallow","LLAU-CB-S-CTCN":"Bed Single Cotton Candy","LLAU-CB-S-DGY":"Bed Single Dove Grey","LLAU-CB-S-DSBL":"Bed Single Dusty Blue","LLAU-CB-S-PST":"Bed Single Pistachio","LLAU-CB-S-BABL":"Bed Single Baby Blue","LLAU-CB-KS-CTCN":"Bed King Single Cotton Candy","LLAU-CB-KS-DGY":"Bed King Single Dove Grey","LLAU-CB-KS-PST":"Bed King Single Pistachio","LLAU-CB-KS-MSM":"Bed King Single Marshmallow","LLAU-CB-KS-BABL":"Bed King Single Baby Blue","LLAU-CB-KS-DSBL":"Bed King Single Dusty Blue","LLAU-CB-D-DSBL":"Bed Double Dusty Blue","LLAU-CB-D-CTCN":"Bed Double Cotton Candy","LLAU-CB-D-PST":"Bed Double Pistachio","LLAU-CB-D-DGY":"Bed Double Dove Grey","LLAU-CB-D-MSM":"Bed Double Marshmallow","LLAU-CB-D-BABL":"Bed Double Baby Blue","LLAU-CBCF-S-MSM":"Combo Single Marshmallow","LLAU-CBCF-S-CTCN":"Combo Single Cotton Candy","LLAU-CBCF-S-DGY":"Combo Single Dove Grey","LLAU-CBCF-S-DSBL":"Combo Single Dusty Blue","LLAU-CBCF-S-PST":"Combo Single Pistachio","LLAU-CBCF-S-BABL":"Combo Single Baby Blue","LLAU-CBCF-KS-CTCN":"Combo King Single Cotton Candy","LLAU-CBCF-KS-DGY":"Combo King Single Dove Grey","LLAU-CBCF-KS-PST":"Combo King Single Pistachio","LLAU-CBCF-KS-MSM":"Combo King Single Marshmallow","LLAU-CBCF-KS-BABL":"Combo King Single Baby Blue","LLAU-CBCF-KS-DSBL":"Combo King Single Dusty Blue","LLAU-CBCF-D-DSBL":"Combo Double Dusty Blue","LLAU-CBCF-D-CTCN":"Combo Double Cotton Candy","LLAU-CBCF-D-PST":"Combo Double Pistachio","LLAU-CBCF-D-DGY":"Combo Double Dove Grey","LLAU-CBCF-D-MSM":"Combo Double Marshmallow","LLAU-CBCF-D-BABL":"Combo Double Baby Blue"};
+  
+  // Build summary
+  let lines = ['CURRENT LITTLE LIFELY AU STOCK DATA (live from CIN7 + Shopify):', ''];
+  lines.push('SKU | Product | CIN7 SOH | Shopify Qty | Weekly Velocity');
+  lines.push('--- | --- | --- | --- | ---');
+  
+  for (const [sku, name] of Object.entries(names)) {
+    const soh = cin7[sku] ? (typeof cin7[sku] === 'object' ? cin7[sku].soh : cin7[sku]) : 0;
+    const shop = shopify[sku] || 0;
+    const vel = velocity[sku] || 0;
+    lines.push(`${sku} | ${name} | ${soh} | ${shop} | ${vel}/wk`);
+  }
+  
+  lines.push('');
+  lines.push('INCOMING PURCHASE ORDERS:');
+  for (const po of (pos || [])) {
+    const totalUnits = Object.values(po.items || {}).reduce((a,b) => a+b, 0);
+    lines.push(`- ${po.name} (${po.status}) — arriving ${po.arrival} — ${totalUnits} total units`);
+    for (const [sku, qty] of Object.entries(po.items || {})) {
+      lines.push(`  ${names[sku] || sku}: ${qty} units`);
+    }
+  }
+  
+  lines.push('');
+  lines.push('KEY CONTEXT:');
+  lines.push('- "Bed" SKUs (LLAU-CB-) = bed frame + cover as one unit');
+  lines.push('- "Combo" SKUs (LLAU-CBCF-) = bed + mattress bundle (Deep Dream combo)');
+  lines.push('- Both bed and combo sales consume the same physical bed stock');
+  lines.push('- Combined velocity = bed velocity + combo velocity for the same size/color');
+  lines.push('- Negative Shopify qty = pre-orders/oversold');
+  lines.push('- Sizes: S = Single, KS = King Single, D = Double');
+  lines.push('- Colors: MSM=Marshmallow, CTCN=Cotton Candy, DGY=Dove Grey, DSBL=Dusty Blue, PST=Pistachio, BABL=Baby Blue');
+  lines.push('- Lead time from factory: ~8 weeks');
+  lines.push('- Safety stock target: 4 weeks');
+  lines.push(`- Data last refreshed: ${dataCache.lastRefresh || 'embedded fallback'}`);
+  
+  return lines.join('\n');
+}
+
+async function askAgent(question, chatHistory) {
+  const dataContext = buildDataContext();
+  
+  const systemPrompt = `You are Caesar 🐒, the AI demand planning agent for Little Lifely (a children's bed brand by Lifely, an Australian DTC company).
+
+You have access to LIVE inventory data from CIN7 (warehouse) and Shopify (storefront). Answer questions about:
+- Stock levels, stockout risk, weeks of stock remaining
+- Sales velocity and trending products
+- Purchase order status and incoming stock
+- Reorder recommendations (when to order, how much)
+- Demand forecasting and scenarios
+
+Be concise, specific, and data-driven. Use actual numbers from the data. Format key numbers in bold.
+When calculating weeks of stock: Net SOH = CIN7 SOH + min(Shopify qty, 0). Weeks = Net SOH / combined weekly velocity.
+When a SKU has negative Shopify qty, that means pre-orders that eat into the CIN7 stock.
+
+Keep answers short and actionable — this is a team chat, not a report. Use bullet points.
+If you don't have enough data to answer, say so honestly.
+
+${dataContext}`;
+
+  const messages = [
+    { role: 'user', parts: [{ text: systemPrompt + '\n\n---\n\nUser question: ' + question }] }
+  ];
+  
+  // Add chat history context
+  if (chatHistory && chatHistory.length > 0) {
+    const historyText = chatHistory.slice(-6).map(m => `${m.role}: ${m.text}`).join('\n');
+    messages[0].parts[0].text += '\n\nRecent chat history:\n' + historyText;
+  }
+
+  const payload = JSON.stringify({
+    contents: messages,
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 1024,
+    }
+  });
+
+  return new Promise((resolve, reject) => {
+    const url = `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+    const req = https.request({
+      hostname: 'generativelanguage.googleapis.com',
+      path: url,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+    }, res => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const text = json.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I couldn\'t process that. Try rephrasing?';
+          resolve(text);
+        } catch(e) {
+          console.error('Gemini parse error:', data.substring(0, 200));
+          reject(new Error('Failed to parse AI response'));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(30000, () => { req.destroy(); reject(new Error('AI request timed out')); });
+    req.write(payload);
+    req.end();
+  });
+}
+
 // ===== ROUTES =====
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 
@@ -226,13 +343,24 @@ app.post('/api/refresh', requireAuth, async (req, res) => {
 });
 
 app.post('/api/chat', requireAuth, async (req, res) => {
-  const { username, message } = req.body;
+  const { username, message, history } = req.body;
   if (!message) return res.status(400).json({ error: 'No message' });
   try {
-    const result = await sendToDiscord(username || 'Team', message);
-    res.json(result);
+    if (GEMINI_KEY) {
+      const reply = await askAgent(message, history);
+      // Also relay to Discord if webhook is set
+      if (DISCORD_WEBHOOK) {
+        sendToDiscord(username || 'Team', message).catch(() => {});
+      }
+      res.json({ ok: true, reply });
+    } else {
+      // Fallback to Discord-only
+      const result = await sendToDiscord(username || 'Team', message);
+      res.json({ ok: true, reply: 'Message sent to Caesar in #little-lifely. I\'ll respond there shortly! 🐒' });
+    }
   } catch(e) {
-    res.status(500).json({ error: e.message });
+    console.error('Chat error:', e);
+    res.json({ ok: true, reply: 'Sorry, I hit an error processing that. Try again or ask in #little-lifely directly. 🐒' });
   }
 });
 

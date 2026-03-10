@@ -284,6 +284,8 @@ function toggleChat() {
   if (chatOpen) document.getElementById('chatInput').focus();
 }
 
+let chatHistory = [];
+
 async function sendChat() {
   const input = document.getElementById('chatInput');
   const msg = input.value.trim();
@@ -291,25 +293,46 @@ async function sendChat() {
   input.value = '';
   
   const msgs = document.getElementById('chatMessages');
-  msgs.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+  msgs.innerHTML += `<div class="chat-msg user">${escapeHtml(msg)}</div>`;
+  msgs.innerHTML += `<div class="chat-msg bot" id="typing"><span style="opacity:0.6">Thinking...</span></div>`;
   msgs.scrollTop = msgs.scrollHeight;
   
-  // Send to Discord via webhook
+  chatHistory.push({role: 'user', text: msg});
+  
   try {
     const res = await fetch('/api/chat', {
       method: 'POST', headers: headers(),
-      body: JSON.stringify({username: 'Team Member', message: msg})
+      body: JSON.stringify({username: 'Team Member', message: msg, history: chatHistory.slice(-10)})
     });
     const data = await res.json();
-    if (data.ok) {
-      msgs.innerHTML += `<div class="chat-msg bot">Message sent to Caesar in #little-lifely. I'll respond there shortly! 🐒</div>`;
+    const typing = document.getElementById('typing');
+    if (typing) typing.remove();
+    
+    if (data.reply) {
+      const formatted = formatReply(data.reply);
+      msgs.innerHTML += `<div class="chat-msg bot">${formatted}</div>`;
+      chatHistory.push({role: 'assistant', text: data.reply});
     } else {
-      msgs.innerHTML += `<div class="chat-msg bot">Couldn't reach Discord. Try asking in #little-lifely directly.</div>`;
+      msgs.innerHTML += `<div class="chat-msg bot">Something went wrong. Try again? 🐒</div>`;
     }
   } catch(e) {
-    msgs.innerHTML += `<div class="chat-msg bot">Connection error. Try asking in #little-lifely directly.</div>`;
+    const typing = document.getElementById('typing');
+    if (typing) typing.remove();
+    msgs.innerHTML += `<div class="chat-msg bot">Connection error. Check if the app is online.</div>`;
   }
   msgs.scrollTop = msgs.scrollHeight;
+}
+
+function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function formatReply(text) {
+  // Simple markdown-like formatting
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:3px">$1</code>')
+    .replace(/^- /gm, '• ')
+    .replace(/\n/g, '<br>');
 }
 
 const SKUS = Object.keys(DATA.names);
@@ -632,7 +655,7 @@ fetchLiveData();
     <button onclick="toggleChat()" style="background:none;border:none;color:var(--text);cursor:pointer;font-size:18px">✕</button>
   </div>
   <div class="chat-messages" id="chatMessages">
-    <div class="chat-msg bot">Hey! I'm Caesar 🐒 Ask me anything about Little Lifely demand planning — stock levels, reorder recommendations, PO status, or scenario questions.</div>
+    <div class="chat-msg bot">Hey! I'm Caesar 🐒 I can answer questions about Little Lifely stock using <strong>live data</strong>. Try asking:<br><br>• "When does Double Marshmallow stock out?"<br>• "What's our best seller right now?"<br>• "How much should we reorder for King Single?"<br>• "What's the status of our POs?"</div>
   </div>
   <div class="chat-input">
     <input type="text" id="chatInput" placeholder="Ask about stock, POs, forecasts..." onkeydown="if(event.key==='Enter')sendChat()">
