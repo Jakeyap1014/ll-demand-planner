@@ -259,11 +259,13 @@ When a SKU has negative Shopify qty, that means pre-orders that eat into the CIN
 This is a chat widget — keep answers concise but complete (max 250 words).
 Formatting rules:
 - Use bullet points with • character
-- Bold key numbers with **number**
+- DO NOT use markdown formatting like ** or ### or tables
+- Write numbers plainly, no bold markers
+- Keep total response under 200 words
 - When listing SKUs, show top 5 most critical
 - Always include the actual data (SOH, velocity, weeks left)
 - End with a clear action or recommendation
-- Use line breaks between items for readability
+- Use line breaks between items
 If you don't have enough data to answer, say so honestly.
 
 ${dataContext}`;
