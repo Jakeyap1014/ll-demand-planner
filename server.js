@@ -295,12 +295,12 @@ ${dataContext}`;
     contents: messages,
     generationConfig: {
       temperature: 0.7,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 4096
     }
   });
 
   return new Promise((resolve, reject) => {
-    const url = `/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+    const url = `/v1beta/models/gemini-2.0-flash-001:generateContent?key=${GEMINI_KEY}`;
     const req = https.request({
       hostname: 'generativelanguage.googleapis.com',
       path: url,
