@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: ll-demand-planner
+    runtime: static
+    buildCommand: echo "Static site - no build needed"
+    staticPublishPath: .
+    envVars: []
