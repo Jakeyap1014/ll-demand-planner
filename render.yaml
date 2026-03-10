@@ -17,3 +17,5 @@ services:
         value: lifelystore.myshopify.com
       - key: DISCORD_WEBHOOK
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
