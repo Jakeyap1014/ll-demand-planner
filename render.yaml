@@ -1,7 +1,19 @@
 services:
   - type: web
     name: ll-demand-planner
-    runtime: static
-    buildCommand: echo "Static site - no build needed"
-    staticPublishPath: .
-    envVars: []
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: APP_PASSWORD
+        sync: false
+      - key: CIN7_USER
+        sync: false
+      - key: CIN7_KEY
+        sync: false
+      - key: SHOPIFY_TOKEN
+        sync: false
+      - key: SHOPIFY_STORE
+        value: lifelystore.myshopify.com
+      - key: DISCORD_WEBHOOK
+        sync: false

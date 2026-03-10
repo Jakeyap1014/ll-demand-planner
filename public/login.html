@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Little Lifely — Login</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a1a2e;color:#e8e8e8;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.login-box{background:#16213e;border-radius:16px;padding:48px;width:380px;border:1px solid #2a3a5c;text-align:center}
+.login-box h1{font-size:24px;margin-bottom:8px}
+.login-box h1 span{color:#4facfe}
+.login-box p{color:#8899aa;font-size:14px;margin-bottom:32px}
+.input-wrap{position:relative;margin-bottom:16px}
+input{width:100%;padding:14px 16px;background:#1a1a2e;border:1px solid #2a3a5c;border-radius:10px;color:#e8e8e8;font-size:15px;outline:none;transition:border 0.2s}
+input:focus{border-color:#4facfe}
+button{width:100%;padding:14px;background:#4facfe;border:none;border-radius:10px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s}
+button:hover{background:#3d8ce4;transform:translateY(-1px)}
+.error{color:#e94560;font-size:13px;margin-top:12px;display:none}
+.logo{font-size:48px;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="logo">🛏️</div>
+  <h1>Little Lifely <span>Demand Planner</span></h1>
+  <p>Enter your team password to continue</p>
+  <form onsubmit="login(event)">
+    <div class="input-wrap"><input type="password" id="pwd" placeholder="Password" autofocus></div>
+    <button type="submit">Sign In</button>
+  </form>
+  <div class="error" id="err">Wrong password. Try again.</div>
+</div>
+<script>
+async function login(e) {
+  e.preventDefault();
+  const pwd = document.getElementById('pwd').value;
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({password: pwd})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      sessionStorage.setItem('session', data.session);
+      window.location.href = '/?session=' + data.session;
+    } else {
+      document.getElementById('err').style.display = 'block';
+    }
+  } catch(e) { document.getElementById('err').style.display = 'block'; }
+}
+</script>
+</body>
+</html>

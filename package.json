@@ -1,0 +1,13 @@
+{
+  "name": "ll-demand-planner",
+  "version": "1.0.0",
+  "description": "Little Lifely Demand Planning Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-cron": "^3.0.3"
+  }
+}
