@@ -284,7 +284,8 @@ ${dataContext}`;
     contents: messages,
     generationConfig: {
       temperature: 0.7,
-      maxOutputTokens: 1500
+      maxOutputTokens: 8192,
+      thinkingConfig: { thinkingBudget: 0 }
     }
   });
 
