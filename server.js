@@ -288,36 +288,30 @@ ${dataContext}`;
     }
   });
 
-  return new Promise((resolve, reject) => {
-    const url = `/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_KEY}`;
-    const req = https.request({
-      hostname: 'generativelanguage.googleapis.com',
-      path: url,
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_KEY}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+  
+  try {
+    const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
-    }, res => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          const parts = json.candidates?.[0]?.content?.parts || [];
-          const text = parts.map(p => p.text || '').join('') || 'Sorry, I couldn\'t process that. Try rephrasing?';
-          const finish = json.candidates?.[0]?.finishReason;
-          console.log('[Gemini] Response length:', text.length, 'chars, finishReason:', finish);
-          if (finish !== 'STOP') console.log('[Gemini] WARNING: Response may be truncated. finishReason:', finish);
-          resolve(text);
-        } catch(e) {
-          console.error('Gemini parse error:', data.substring(0, 200));
-          reject(new Error('Failed to parse AI response'));
-        }
-      });
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      signal: controller.signal
     });
-    req.on('error', reject);
-    req.setTimeout(25000, () => { req.destroy(); reject(new Error('AI request timed out')); });
-    req.write(payload);
-    req.end();
-  });
+    clearTimeout(timeout);
+    
+    const json = await response.json();
+    const parts = json.candidates?.[0]?.content?.parts || [];
+    const text = parts.map(p => p.text || '').join('') || 'Sorry, I couldn\'t process that. Try rephrasing?';
+    const finish = json.candidates?.[0]?.finishReason;
+    console.log('[Gemini] Response length:', text.length, 'chars, finishReason:', finish);
+    return text;
+  } catch(e) {
+    clearTimeout(timeout);
+    console.error('[Gemini] Error:', e.message);
+    throw e;
+  }
 }
 
 // ===== ROUTES =====
