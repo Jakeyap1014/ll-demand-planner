@@ -213,29 +213,36 @@ function buildDataContext() {
   const velocity = dataCache.velocity;
   const pos = dataCache.pos;
   
-  const names = {"LLAU-CB-S-MSM":"Bed S Marshmallow","LLAU-CB-S-CTCN":"Bed S Cotton Candy","LLAU-CB-S-DGY":"Bed S Dove Grey","LLAU-CB-S-DSBL":"Bed S Dusty Blue","LLAU-CB-S-PST":"Bed S Pistachio","LLAU-CB-S-BABL":"Bed S Baby Blue","LLAU-CB-KS-CTCN":"Bed KS Cotton Candy","LLAU-CB-KS-DGY":"Bed KS Dove Grey","LLAU-CB-KS-PST":"Bed KS Pistachio","LLAU-CB-KS-MSM":"Bed KS Marshmallow","LLAU-CB-KS-BABL":"Bed KS Baby Blue","LLAU-CB-KS-DSBL":"Bed KS Dusty Blue","LLAU-CB-D-DSBL":"Bed D Dusty Blue","LLAU-CB-D-CTCN":"Bed D Cotton Candy","LLAU-CB-D-PST":"Bed D Pistachio","LLAU-CB-D-DGY":"Bed D Dove Grey","LLAU-CB-D-MSM":"Bed D Marshmallow","LLAU-CB-D-BABL":"Bed D Baby Blue"};
+  const skuNames = {
+    "S-MSM":"S Marshmallow","S-CTCN":"S Cotton Candy","S-DGY":"S Dove Grey",
+    "S-DSBL":"S Dusty Blue","S-PST":"S Pistachio","S-BABL":"S Baby Blue",
+    "KS-MSM":"KS Marshmallow","KS-CTCN":"KS Cotton Candy","KS-DGY":"KS Dove Grey",
+    "KS-DSBL":"KS Dusty Blue","KS-PST":"KS Pistachio","KS-BABL":"KS Baby Blue",
+    "D-MSM":"D Marshmallow","D-CTCN":"D Cotton Candy","D-DGY":"D Dove Grey",
+    "D-DSBL":"D Dusty Blue","D-PST":"D Pistachio","D-BABL":"D Baby Blue"
+  };
   
-  // Compact format: only bed SKUs with pre-computed metrics
-  let lines = ['LITTLE LIFELY AU STOCK (live):', ''];
-  lines.push('Product | SOH | Shopify | Net | Vel/wk | Wks Left');
+  let lines = ['Little Lifely AU Stock (live from CIN7+Shopify):', ''];
+  lines.push('Product | SOH | Net | Vel/wk | Status | Incoming');
   
-  for (const [sku, name] of Object.entries(names)) {
-    const soh = cin7[sku] ? (typeof cin7[sku] === 'object' ? cin7[sku].soh : cin7[sku]) : 0;
-    const shop = shopify[sku] || 0;
-    const comboSku = sku.replace('LLAU-CB-','LLAU-CBCF-');
-    const comboShop = shopify[comboSku] || 0;
-    const net = soh + Math.min(shop, 0) + Math.min(comboShop, 0);
-    const vel = (velocity[sku] || 0) + (velocity[comboSku] || 0);
+  for (const [suffix, name] of Object.entries(skuNames)) {
+    const bedSku = "LLAU-CB-" + suffix;
+    const comboSku = "LLAU-CBCF-" + suffix;
+    const soh = cin7[bedSku] ? (typeof cin7[bedSku] === 'object' ? cin7[bedSku].soh : cin7[bedSku]) : 0;
+    const bedShop = Math.min(shopify[bedSku] || 0, 0);
+    const comboShop = Math.min(shopify[comboSku] || 0, 0);
+    const net = soh + bedShop + comboShop;
+    const vel = Math.round(((velocity[bedSku] || 0) + (velocity[comboSku] || 0)) * 10) / 10;
     const wks = vel > 0 ? Math.round(net / vel) : 99;
     let inc = 0;
-    for (const po of (pos || [])) { inc += (po.items?.[sku] || 0); }
-    lines.push(\`\${name} | \${soh} | \${shop}/\${comboShop} | \${net} | \${vel.toFixed(1)} | \${wks}wk (inc:\${inc})\`);
+    for (const po of (pos || [])) { inc += (po.items?.[bedSku] || 0); }
+    const status = net <= 0 ? 'STOCKOUT' : wks <= 4 ? 'CRITICAL' : wks <= 8 ? 'LOW' : 'OK';
+    lines.push(name + ' | ' + soh + ' | ' + net + ' | ' + vel + '/wk | ' + status + ' | ' + inc);
   }
   
   lines.push('');
-  lines.push('POs: ' + (pos||[]).map(po => \`\${po.name} (\${po.status}) arr \${po.arrival}, \${Object.values(po.items||{}).reduce((a,b)=>a+b,0)} units\`).join(' | '));
-  lines.push('');
-  lines.push('Notes: Bed+Combo consume same physical stock. Lead time 8wk. Safety 4wk. Sizes: S=Single, KS=King Single, D=Double.');
+  lines.push('POs: ' + (pos||[]).map(po => po.name + ' arr ' + po.arrival + ' (' + Object.values(po.items||{}).reduce((a,b)=>a+b,0) + ' units)').join('; '));
+  lines.push('Lead time: 8wk. Safety stock: 4wk. Sizes: S=Single, KS=King Single, D=Double.');
   
   return lines.join('\n');
 }
