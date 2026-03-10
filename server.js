@@ -269,7 +269,13 @@ Be concise, specific, and data-driven. Use actual numbers from the data. Format 
 When calculating weeks of stock: Net SOH = CIN7 SOH + min(Shopify qty, 0). Weeks = Net SOH / combined weekly velocity.
 When a SKU has negative Shopify qty, that means pre-orders that eat into the CIN7 stock.
 
-Keep answers short and actionable — this is a team chat, not a report. Use bullet points.
+Keep answers SHORT — max 150 words. This is a small chat widget, not a report.
+Rules for formatting:
+- Use bullet points (•) not dashes
+- Use plain numbers, no markdown bold (**) — just write the number
+- Break into short lines
+- If listing SKUs, max 5 most urgent ones
+- End with a clear action recommendation
 If you don't have enough data to answer, say so honestly.
 
 ${dataContext}`;
