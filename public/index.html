@@ -126,6 +126,13 @@ tbody tr:hover { background: rgba(44,71,75,0.05); }
 .chat-input{display:flex;padding:12px;gap:8px;border-top:1px solid var(--border)}
 .chat-input input{flex:1;background:#F6F8F4;border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:13px;outline:none}
 .chat-input button{background:var(--blue);border:none;color:#fff;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600}
+
+/* Tooltip */
+th[data-tip] { position: relative; cursor: help; }
+th[data-tip]:after { content: ' ⓘ'; font-size: 10px; opacity: 0.6; }
+th[data-tip]:hover .tip { display: block; }
+.tip { display: none; position: absolute; top: 100%; left: 0; min-width: 260px; max-width: 340px; background: #2C474B; color: #F6F8F4; padding: 12px 14px; border-radius: 8px; font-size: 12px; font-weight: 400; line-height: 1.5; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,0.18); white-space: normal; pointer-events: none; }
+.tip code { background: rgba(255,255,255,0.15); padding: 1px 4px; border-radius: 3px; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -432,7 +439,18 @@ function renderDashboard() {
     `<button class="filter-btn ${dashFilter.type===t?'active':''}" onclick="dashFilter.type='${t}';renderDashboard()">${t}</button>`).join('');
   // Table
   let filtered=SKUS.filter(s=>(dashFilter.size==='All'||getSize(s)===dashFilter.size)&&(dashFilter.type==='All'||getType(s)===dashFilter.type));
-  let thead='<tr><th>SKU</th><th>Product</th><th>Size</th><th>CIN7 SOH</th><th>Shopify</th><th>Net Stock</th><th>Incoming</th><th>Vel/wk</th><th>Wks Left</th><th>Status</th></tr>';
+  let thead=`<tr>
+<th data-tip>SKU<span class="tip">Unique product identifier from CIN7 inventory system.</span></th>
+<th data-tip>Product<span class="tip">Human-readable product name.</span></th>
+<th data-tip>Size<span class="tip">Bed size: Single, King Single, or Double.</span></th>
+<th data-tip>CIN7 SOH<span class="tip">Stock on Hand in CIN7 (Malcove warehouse). Physical units available.</span></th>
+<th data-tip>Shopify<span class="tip">Shopify inventory level. Negative values = oversold / pre-order commitments not yet fulfilled.</span></th>
+<th data-tip>Net Stock<span class="tip">Effective available stock.<br><code>CIN7 SOH + min(Shopify, 0)</code><br>Accounts for pre-order commitments against physical stock.</span></th>
+<th data-tip>Incoming<span class="tip">Total units arriving across all open Purchase Orders.</span></th>
+<th data-tip>Vel/wk<span class="tip">Combined weekly sales velocity (Bed + Combo Frame). Both product types consume the same bed inventory.</span></th>
+<th data-tip>Wks Left<span class="tip">Weeks of stock remaining.<br><code>Net Stock ÷ Combined Velocity</code><br>Simple ratio — Scenario Planner uses a more detailed projection with growth + seasonality.</span></th>
+<th data-tip>Status<span class="tip">Stock health:<br>• <b>STOCKOUT</b> = 0 wks<br>• <b>CRITICAL</b> = 1-2 wks<br>• <b>LOW</b> = 3-4 wks<br>• <b>OK</b> = 5-8 wks<br>• <b>HEALTHY</b> = 8+ wks</span></th>
+</tr>`;
   let tbody=filtered.map(s=>{
     let soh=DATA.cin7[s]||0, shop=DATA.shopify[s]||0, net=getNet(s), inc=getIncoming(s), vel=getCombinedVel(s);
     let wks=vel>0?Math.round(net/vel):99;
@@ -565,7 +583,21 @@ function renderReorder() {
     let orderBy=wksLeft<99?new Date(TODAY.getTime()+orderByWk*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Not urgent';
     return {sku,name:DATA.names[sku],net,vel,futureVel:Math.round(futureVel*10)/10,inc,wksLeft,stockoutDate,safetyUnits,rop,reorderQty,orderBy,size:getSize(sku),type:getType(sku)};
   }).sort((a,b)=>a.wksLeft-b.wksLeft);
-  let thead='<tr><th>SKU</th><th>Product</th><th>Net SOH</th><th>Vel/wk</th><th>Future Vel</th><th>Incoming</th><th>Wks Left</th><th>Stockout</th><th>Safety (units)</th><th>Reorder Pt</th><th>Order Qty</th><th>Order By</th><th>Status</th></tr>';
+  let thead=`<tr>
+<th data-tip>SKU<span class="tip">Unique product identifier from CIN7 inventory system.</span></th>
+<th data-tip>Product<span class="tip">Human-readable product name: Bed/Combo + Size + Colour.</span></th>
+<th data-tip>Net SOH<span class="tip">Net Stock on Hand.<br><code>CIN7 SOH + min(Shopify, 0)</code><br>Shopify negatives = pre-order commitments already sold.</span></th>
+<th data-tip>Vel/wk<span class="tip">Current sales velocity per week.<br>Combined: Bed + Combo Frame velocity (both consume the same bed stock).</span></th>
+<th data-tip>Future Vel<span class="tip">Projected velocity at lead time arrival.<br><code>Vel/wk × (1 + Growth Rate) ^ Lead Time weeks</code><br>Accounts for compounding weekly growth.</span></th>
+<th data-tip>Incoming<span class="tip">Total units arriving from all open Purchase Orders for this SKU.</span></th>
+<th data-tip>Wks Left<span class="tip">Weeks until stockout.<br>Simulated week-by-week: applies growth rate + seasonal multipliers + PO arrivals. First week where closing stock ≤ 0.</span></th>
+<th data-tip>Stockout<span class="tip">Projected stockout date.<br><code>Today + (Weeks Left × 7 days)</code><br>"Beyond 2026" = no stockout in forecast window.</span></th>
+<th data-tip>Safety (units)<span class="tip">Safety stock buffer in units.<br><code>Future Velocity × Safety Weeks</code><br>Default: 4 weeks of buffer. Adjustable in Scenario Planner.</span></th>
+<th data-tip>Reorder Pt<span class="tip">Reorder Point — place an order when stock drops to this level.<br><code>(Future Vel × Lead Time) + Safety Units</code><br>Covers demand during lead time + safety buffer.</span></th>
+<th data-tip>Order Qty<span class="tip">Recommended order quantity.<br><code>max(0, Future Vel × 12 weeks + Safety Units − Net SOH − Incoming)</code><br>Covers 12 weeks of projected demand plus safety, minus what you have and what's coming.</span></th>
+<th data-tip>Order By<span class="tip">Latest date to place order to avoid stockout.<br><code>Today + max(0, Wks Left − Lead Time − Safety Weeks) × 7 days</code><br>"Not urgent" = no stockout projected.</span></th>
+<th data-tip>Status<span class="tip">Stock health badge based on Weeks Left:<br>• <b>STOCKOUT</b> = 0 weeks<br>• <b>CRITICAL</b> = 1-2 weeks<br>• <b>LOW</b> = 3-4 weeks<br>• <b>OK</b> = 5-8 weeks<br>• <b>HEALTHY</b> = 8+ weeks</span></th>
+</tr>`;
   let tbody=rows.map(r=>
     `<tr><td style="font-family:monospace;font-size:11px">${r.sku}</td><td>${r.name}</td><td>${fmt(r.net)}</td><td>${r.vel.toFixed(1)}</td><td>${r.futureVel}</td><td>${r.inc}</td><td>${r.wksLeft>=99?'99+':r.wksLeft}</td><td>${r.stockoutDate}</td><td>${r.safetyUnits}</td><td>${r.rop}</td><td>${r.reorderQty>0?`<b>${r.reorderQty}</b>`:'—'}</td><td>${r.orderBy}</td><td>${statusBadge(r.wksLeft)}</td></tr>`).join('');
   document.querySelector('#reorderTable thead').innerHTML=thead;
