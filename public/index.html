@@ -466,7 +466,8 @@ function renderDashboard() {
     datasets:[
       {label:'SOH',data:chartSkus.map(s=>DATA.cin7[s]||0),backgroundColor:'#5BAB31'},
       {label:'Incoming',data:chartSkus.map(s=>getIncoming(s)),backgroundColor:'#2C474B'},
-      {label:'Oversold',data:chartSkus.map(s=>Math.min(DATA.shopify[s]||0,0)),backgroundColor:'#C33252'}
+      {label:'Oversold',data:chartSkus.map(s=>Math.min(DATA.shopify[s]||0,0)),backgroundColor:'#C33252'},
+      {label:'Net Available',data:chartSkus.map(s=>(DATA.cin7[s]||0)+getIncoming(s)+Math.min(DATA.shopify[s]||0,0)),type:'line',borderColor:'#D4930D',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#D4930D',tension:0.3,order:0}
     ]},options:{responsive:true,plugins:{legend:{labels:{color:'#282828'}}},scales:{x:{stacked:true,ticks:{color:'#758068',maxRotation:45}},y:{stacked:true,ticks:{color:'#758068'},grid:{color:'#DDE3D5'}}}}});
 }
 
