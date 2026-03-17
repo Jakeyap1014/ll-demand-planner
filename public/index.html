@@ -447,7 +447,7 @@ function renderDashboard() {
 <th data-tip>Shopify<span class="tip">Shopify inventory level. Negative values = oversold / pre-order commitments not yet fulfilled.</span></th>
 <th data-tip>Net Stock<span class="tip">Effective available stock.<br><code>CIN7 SOH + min(Shopify, 0)</code><br>Accounts for pre-order commitments against physical stock.</span></th>
 <th data-tip>Incoming<span class="tip">Total units arriving across all open Purchase Orders.</span></th>
-<th data-tip>Vel/wk<span class="tip">Combined weekly sales velocity (Bed + Combo Frame). Both product types consume the same bed inventory.</span></th>
+<th data-tip>Units/wk<span class="tip">Combined weekly sales velocity (Bed + Combo Frame). Both product types consume the same bed inventory.</span></th>
 <th data-tip>Wks Left<span class="tip">Weeks of stock remaining.<br><code>Net Stock ÷ Combined Velocity</code><br>Simple ratio — Scenario Planner uses a more detailed projection with growth + seasonality.</span></th>
 <th data-tip>Status<span class="tip">Stock health:<br>• <b>STOCKOUT</b> = 0 wks<br>• <b>CRITICAL</b> = 1-2 wks<br>• <b>LOW</b> = 3-4 wks<br>• <b>OK</b> = 5-8 wks<br>• <b>HEALTHY</b> = 8+ wks</span></th>
 </tr>`;
@@ -587,8 +587,8 @@ function renderReorder() {
 <th data-tip>SKU<span class="tip">Unique product identifier from CIN7 inventory system.</span></th>
 <th data-tip>Product<span class="tip">Human-readable product name: Bed/Combo + Size + Colour.</span></th>
 <th data-tip>Net SOH<span class="tip">Net Stock on Hand.<br><code>CIN7 SOH + min(Shopify, 0)</code><br>Shopify negatives = pre-order commitments already sold.</span></th>
-<th data-tip>Vel/wk<span class="tip">Current sales velocity per week.<br>Combined: Bed + Combo Frame velocity (both consume the same bed stock).</span></th>
-<th data-tip>Future Vel<span class="tip">Projected velocity at lead time arrival.<br><code>Vel/wk × (1 + Growth Rate) ^ Lead Time weeks</code><br>Accounts for compounding weekly growth.</span></th>
+<th data-tip>Units/wk<span class="tip">Current sales velocity per week.<br>Combined: Bed + Combo Frame velocity (both consume the same bed stock).</span></th>
+<th data-tip>Future Vel<span class="tip">Projected velocity at lead time arrival.<br><code>Units/wk × (1 + Growth Rate) ^ Lead Time weeks</code><br>Accounts for compounding weekly growth.</span></th>
 <th data-tip>Incoming<span class="tip">Total units arriving from all open Purchase Orders for this SKU.</span></th>
 <th data-tip>Wks Left<span class="tip">Weeks until stockout.<br>Simulated week-by-week: applies growth rate + seasonal multipliers + PO arrivals. First week where closing stock ≤ 0.</span></th>
 <th data-tip>Stockout<span class="tip">Projected stockout date.<br><code>Today + (Weeks Left × 7 days)</code><br>"Beyond 2026" = no stockout in forecast window.</span></th>
