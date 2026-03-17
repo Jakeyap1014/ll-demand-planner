@@ -378,6 +378,7 @@ app.get('/api/status', requireAuth, (req, res) => {
 
 // Static files (after auth check for main app)
 app.use('/login', express.static(path.join(__dirname, 'public')));
+app.use('/logos', express.static(path.join(__dirname, 'public', 'logos')));
 app.get('/', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.use(requireAuth, express.static(path.join(__dirname, 'public')));
 
