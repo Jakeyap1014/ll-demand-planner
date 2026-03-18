@@ -163,6 +163,7 @@ th[data-tip]:hover .tip { display: block; }
 <div class="tabs">
   <div class="tab active" data-view="dashboard">📊 Dashboard</div>
   <div class="tab" data-view="scenario">🎛️ Scenario Planner</div>
+  <div class="tab" data-view="stockout">📉 Stockout Projection</div>
   <div class="tab" data-view="reorder">🚨 Reorder Calculator</div>
   <div class="tab" data-view="compare">⚡ Compare Scenarios</div>
 </div>
@@ -196,6 +197,10 @@ th[data-tip]:hover .tip { display: block; }
     <div class="po-list" id="poList"></div>
   </div>
   <div class="chart-container"><h3>Projected Stock — <span id="projTitle">All Products</span></h3><canvas id="projChart"></canvas></div>
+</div>
+
+<!-- Stockout Projection View -->
+<div id="stockout" class="view">
   <div class="chart-container">
     <h3>Stockout Risk — Single Beds</h3>
     <div class="sku-toggles" id="toggles-single"></div>
@@ -456,6 +461,8 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   t.classList.add('active');
   document.getElementById(t.dataset.view).classList.add('active');
+  // Re-render stockout charts when tab is shown (Chart.js needs visible canvas)
+  if(t.dataset.view==='stockout') { setTimeout(()=>renderRiskChart(getSettings()), 100); }
 }));
 
 // ===== DASHBOARD =====
