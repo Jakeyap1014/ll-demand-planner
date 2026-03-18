@@ -3,976 +3,236 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Little Lifely — Demand Planner</title>
+<title>Lifely Demand Planner</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
-:root {
-  --bg-primary: #F6F8F4;
-  --bg-secondary: #2C474B;
-  --bg-accent: #3A5A5E;
-  --bg-card: #FFFFFF;
-  --alert: #C33252;
-  --green: #5BAB31;
-  --yellow: #D4930D;
-  --blue: #2C474B;
-  --text: #282828;
-  --text-dim: #758068;
-  --border: #DDE3D5;
-}
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text); min-height: 100vh; }
-.header { background: var(--bg-secondary); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--bg-accent); }
-.header h1 { font-size: 22px; font-weight: 700; color: #FFFFFF; }
-.header h1 span { color: #A8C5C8; }
-.header .subtitle { color: #A8C5C8; font-size: 13px; }
-.tabs { display: flex; gap: 0; background: var(--bg-secondary); padding: 0 32px; border-bottom: 1px solid var(--border); }
-.tab { padding: 12px 24px; cursor: pointer; font-size: 14px; font-weight: 500; color: #A8C5C8; border-bottom: 3px solid transparent; transition: all 0.2s; }
-.tab:hover { color: #FFFFFF; background: rgba(255,255,255,0.1); }
-.tab.active { color: #FFFFFF; border-bottom-color: #FFFFFF; }
-.container { max-width: 1600px; margin: 0 auto; padding: 24px 32px; }
-.view { display: none; }
-.view.active { display: block; }
-
-/* Cards */
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
-.card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-.card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 8px; }
-.card .value { font-size: 32px; font-weight: 700; }
-.card .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
-.card.red .value { color: var(--alert); }
-.card.green .value { color: var(--green); }
-.card.blue .value { color: var(--blue); }
-.card.yellow .value { color: var(--yellow); }
-
-/* Tables */
-.table-wrap { overflow-x: auto; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-thead th { background: var(--bg-secondary); padding: 12px 16px; text-align: left; font-weight: 600; position: sticky; top: 0; white-space: nowrap; border-bottom: 2px solid var(--border); color: #F6F8F4; }
-tbody td { padding: 10px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-tbody tr:hover { background: rgba(44,71,75,0.05); }
-.badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
-.badge.stockout { background: rgba(195,50,82,0.2); color: var(--alert); }
-.badge.critical { background: rgba(195,50,82,0.15); color: #C33252; }
-.badge.low { background: rgba(212,147,13,0.2); color: var(--yellow); }
-.badge.ok { background: rgba(91,171,49,0.15); color: var(--green); }
-.badge.healthy { background: rgba(91,171,49,0.2); color: #5BAB31; }
-
-/* Filters */
-.filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-.filter-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; font-size: 13px; transition: all 0.2s; }
-.filter-btn.active, .filter-btn:hover { background: var(--teal-light, #E8EFEF); color: var(--blue); border-color: var(--blue); }
-
-/* Scenario Controls */
-.controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-.control-panel { background: var(--bg-card); border-radius: 12px; padding: 24px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-.control-panel h3 { margin-bottom: 16px; font-size: 16px; color: var(--blue); }
-.control-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-.control-row label { font-size: 13px; color: var(--text-dim); flex: 1; }
-.control-row input[type=range] { width: 150px; accent-color: var(--blue); }
-.control-row .val { width: 60px; text-align: right; font-weight: 600; font-size: 14px; }
-.control-row input[type=number] { width: 70px; background: #FFFFFF; border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; text-align: center; }
-.control-row select { background: #FFFFFF; border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; }
-.presets { display: flex; gap: 8px; margin-bottom: 16px; }
-.preset-btn { padding: 6px 16px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; font-size: 12px; font-weight: 600; }
-.preset-btn.active { background: var(--blue); color: #FFFFFF; border-color: var(--blue); }
-
-/* Charts */
-.chart-container { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 24px; }
-.chart-container h3 { margin-bottom: 12px; font-size: 15px; }
-.chart-container canvas { max-height: 400px; }
-
-/* SKU selector */
-.sku-select { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.sku-chip { padding: 4px 12px; border-radius: 16px; font-size: 11px; border: 1px solid var(--border); cursor: pointer; background: transparent; color: var(--text-dim); }
-.sku-chip.active { background: var(--blue); color: #fff; border-color: var(--blue); }
-
-/* PO Editor */
-.po-list { margin-top: 12px; }
-.po-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: #F6F8F4; border-radius: 8px; border: 1px solid var(--border); }
-.po-row input { background: #FFFFFF; border: 1px solid var(--border); color: var(--text); padding: 6px; border-radius: 4px; font-size: 12px; }
-.po-row .po-name { width: 140px; }
-.po-row .po-date { width: 130px; }
-.po-row .po-qty { width: 70px; text-align: center; }
-.btn { padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
-.btn-primary { background: var(--blue); color: #fff; }
-.btn-danger { background: var(--alert); color: #fff; }
-.btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
-.btn:hover { opacity: 0.85; transform: translateY(-1px); }
-
-/* Comparison */
-.comparison-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-.scenario-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-.scenario-card h4 { color: var(--blue); margin-bottom: 12px; }
-.scenario-card .metric { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-
-/* Responsive */
-@media (max-width: 1024px) { .controls-grid { grid-template-columns: 1fr; } .comparison-grid { grid-template-columns: 1fr; } }
-.neg { color: var(--alert); }
-.pos { color: var(--green); }
-
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-/* Chat Widget */
-.chat-toggle{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 20px rgba(44,71,75,0.4);z-index:1000;transition:all 0.3s}
-.chat-toggle:hover{transform:scale(1.1)}
-.chat-panel{position:fixed;bottom:90px;right:24px;width:400px;height:560px;background:#FFFFFF;border:1px solid var(--border);border-radius:16px;z-index:1000;display:none;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.12)}
-.chat-panel.open{display:flex}
-.chat-header{padding:16px;background:var(--bg-accent);display:flex;align-items:center;justify-content:space-between}
-.chat-header h4{font-size:14px}
-.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px}
-.chat-msg{padding:10px 14px;border-radius:12px;font-size:13px;max-width:90%;line-height:1.5;word-wrap:break-word;overflow-wrap:break-word;white-space:pre-wrap}
-.chat-msg.user{background:var(--blue);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
-.chat-msg.bot{background:#F6F8F4;color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
-.chat-input{display:flex;padding:12px;gap:8px;border-top:1px solid var(--border)}
-.chat-input input{flex:1;background:#F6F8F4;border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:10px;font-size:13px;outline:none}
-.chat-input button{background:var(--blue);border:none;color:#fff;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:600}
-
-/* Tooltip */
-th[data-tip] { position: relative; cursor: help; }
-th[data-tip]:after { content: ' ⓘ'; font-size: 10px; opacity: 0.6; }
-th[data-tip]:hover .tip { display: block; }
-.tip { display: none; position: absolute; top: 100%; left: 0; min-width: 260px; max-width: 340px; background: #2C474B; color: #F6F8F4; padding: 12px 14px; border-radius: 8px; font-size: 12px; font-weight: 400; line-height: 1.5; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,0.18); white-space: normal; pointer-events: none; }
-.tip code { background: rgba(255,255,255,0.15); padding: 1px 4px; border-radius: 3px; font-size: 11px; }
-
-.sku-toggles { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-.sku-toggle { padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 600; cursor: pointer; border: 2px solid; transition: all 0.2s; }
-.sku-toggle.off { opacity: 0.35; }
-.heatmap-table { border-collapse: collapse; font-size: 11px; width: 100%; }
-.heatmap-table th, .heatmap-table td { padding: 6px 8px; text-align: center; white-space: nowrap; border: 1px solid var(--border); }
-.heatmap-table th { background: var(--bg-secondary); color: #F6F8F4; position: sticky; top: 0; z-index: 1; }
-.heatmap-table td.sku-name { text-align: left; font-weight: 600; background: #FFFFFF; position: sticky; left: 0; z-index: 1; min-width: 160px; }
-.hm-healthy { background: #d4edda; color: #155724; }
-.hm-ok { background: #fff3cd; color: #856404; }
-.hm-low { background: #ffe0b2; color: #7a4100; }
-.hm-critical { background: #f8d7da; color: #721c24; }
-.hm-stockout { background: #C33252; color: #fff; font-weight: 700; }
+:root{--bg-primary:#F6F8F4;--bg-secondary:#2C474B;--bg-accent:#3A5A5E;--bg-card:#FFFFFF;--alert:#C33252;--green:#5BAB31;--yellow:#D4930D;--blue:#2C474B;--text:#282828;--text-dim:#758068;--border:#DDE3D5;--sidebar-w:220px}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-primary);color:var(--text);min-height:100vh;display:flex}
+.sidebar{width:var(--sidebar-w);position:fixed;top:0;left:0;bottom:0;background:var(--bg-secondary);color:#F6F8F4;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
+.sidebar-brand{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,0.1)}.sidebar-brand h2{font-size:14px;font-weight:700}.sidebar-brand small{display:block;font-size:11px;color:#A8C5C8;margin-top:2px}
+.sidebar-label{padding:16px 16px 6px;font-size:10px;font-weight:600;color:#A8C5C8;text-transform:uppercase;letter-spacing:0.5px}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:8px 12px;margin:1px 8px;border-radius:8px;cursor:pointer;font-size:13px;color:#A8C5C8;transition:all 0.15s}
+.sidebar-item:hover{background:rgba(255,255,255,0.08);color:#fff}.sidebar-item.active{background:rgba(255,255,255,0.15);color:#fff;font-weight:600}
+.sidebar-item img{height:16px;max-width:60px;filter:brightness(0) invert(1);opacity:0.7}.sidebar-item.active img{opacity:1}
+.sidebar-footer{margin-top:auto;padding:12px 16px;font-size:10px;color:#A8C5C8;border-top:1px solid rgba(255,255,255,0.1)}
+.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh}
+.header{background:var(--bg-secondary);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--bg-accent)}
+.header h1{font-size:20px;font-weight:700;color:#FFF;display:flex;align-items:center;gap:12px}.header h1 img{height:32px;filter:brightness(0) invert(1)}
+.header .subtitle{color:#A8C5C8;font-size:12px}
+.tabs{display:flex;gap:0;background:var(--bg-secondary);padding:0 32px;border-bottom:1px solid var(--border)}
+.tab{padding:10px 20px;cursor:pointer;font-size:13px;font-weight:500;color:#A8C5C8;border-bottom:3px solid transparent;transition:all 0.2s}
+.tab:hover{color:#FFF;background:rgba(255,255,255,0.1)}.tab.active{color:#FFF;border-bottom-color:#FFF}
+.container{max-width:1600px;margin:0 auto;padding:24px 32px}.view{display:none}.view.active{display:block}
+.loading{text-align:center;padding:60px;color:var(--text-dim)}.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.card{background:var(--bg-card);border-radius:12px;padding:20px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.card .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:8px}.card .value{font-size:28px;font-weight:700}.card .sub{font-size:11px;color:var(--text-dim);margin-top:4px}
+.card.red .value{color:var(--alert)}.card.green .value{color:var(--green)}.card.blue .value{color:var(--blue)}.card.yellow .value{color:var(--yellow)}
+.table-wrap{overflow-x:auto;background:var(--bg-card);border-radius:12px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--bg-secondary);padding:10px 14px;text-align:left;font-weight:600;position:sticky;top:0;white-space:nowrap;border-bottom:2px solid var(--border);color:#F6F8F4}
+tbody td{padding:8px 14px;border-bottom:1px solid var(--border);white-space:nowrap}tbody tr:hover{background:rgba(44,71,75,0.05)}
+.badge{padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;display:inline-block}
+.badge.stockout{background:rgba(195,50,82,0.2);color:var(--alert)}.badge.critical{background:rgba(195,50,82,0.15);color:#C33252}
+.badge.low{background:rgba(212,147,13,0.2);color:var(--yellow)}.badge.ok{background:rgba(91,171,49,0.15);color:var(--green)}.badge.healthy{background:rgba(91,171,49,0.2);color:#5BAB31}
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;font-size:12px;transition:all 0.2s}
+.filter-btn.active,.filter-btn:hover{background:#E8EFEF;color:var(--blue);border-color:var(--blue)}
+.chart-container{background:var(--bg-card);border-radius:12px;padding:20px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.06);margin-bottom:24px}
+.chart-container h3{margin-bottom:12px;font-size:14px}.chart-container canvas{max-height:400px}
+.heatmap-table{border-collapse:collapse;font-size:11px;width:100%}.heatmap-table th,.heatmap-table td{padding:5px 7px;text-align:center;white-space:nowrap;border:1px solid var(--border)}
+.heatmap-table th{background:var(--bg-secondary);color:#F6F8F4;position:sticky;top:0;z-index:1}
+.heatmap-table td.sku-name{text-align:left;font-weight:600;background:#FFF;position:sticky;left:0;z-index:1;min-width:140px}
+.hm-healthy{background:#d4edda;color:#155724}.hm-ok{background:#fff3cd;color:#856404}.hm-low{background:#ffe0b2;color:#7a4100}.hm-critical{background:#f8d7da;color:#721c24}.hm-stockout{background:#C33252;color:#fff;font-weight:700}
+.btn{padding:7px 18px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s}.btn-primary{background:var(--blue);color:#fff}.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-dim)}.btn:hover{opacity:0.85}
+.chat-toggle{position:fixed;bottom:24px;right:24px;width:50px;height:50px;border-radius:50%;background:var(--blue);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 20px rgba(44,71,75,0.4);z-index:1000}
+.chat-panel{position:fixed;bottom:84px;right:24px;width:380px;height:500px;background:#FFF;border:1px solid var(--border);border-radius:16px;z-index:1000;display:none;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.12)}
+.chat-panel.open{display:flex}.chat-header{padding:14px;background:var(--bg-accent);display:flex;align-items:center;justify-content:space-between;color:#fff}
+.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}
+.chat-msg{padding:9px 12px;border-radius:12px;font-size:12px;max-width:90%;line-height:1.5;word-wrap:break-word;white-space:pre-wrap}
+.chat-msg.user{background:var(--blue);color:#fff;align-self:flex-end}.chat-msg.bot{background:#F6F8F4;color:var(--text);align-self:flex-start}
+.chat-input{display:flex;padding:10px;gap:8px;border-top:1px solid var(--border)}
+.chat-input input{flex:1;background:#F6F8F4;border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:10px;font-size:12px;outline:none}
+.chat-input button{background:var(--blue);border:none;color:#fff;padding:9px 14px;border-radius:10px;cursor:pointer;font-weight:600;font-size:12px}
+.neg{color:var(--alert)}.pos{color:var(--green)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@media(max-width:900px){.sidebar{display:none}.main{margin-left:0}}
 </style>
 </head>
 <body>
-<div class="header">
-  <div style="display:flex;align-items:center;gap:16px"><img src="/logos/little-lifely.png" alt="Little Lifely" style="height:40px;filter:brightness(0) invert(1)"><h1>Demand Planner</h1><div class="subtitle">Live data: CIN7 + Shopify + Stock Calendar · Generated 10 Mar 2026</div></div>
-  <div style="text-align:right">
-    <div style="font-size:12px;color:#A8C5C8">AU Market · 36 SKUs</div>
-    <div id="refreshStatus" style="font-size:11px;color:#A8C5C8;margin-top:4px">
-      <span id="lastRefresh">Loading...</span>
-      <button onclick="manualRefresh()" class="btn btn-ghost" style="padding:2px 10px;font-size:11px;margin-left:8px" id="refreshBtn">🔄 Refresh</button>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand"><h2>Lifely</h2><small>Demand Planner</small></div>
+  <div class="sidebar-label">Category Killers</div>
+  <div id="sidebarNav"></div>
+  <div class="sidebar-footer" id="sidebarFooter">Loading...</div>
+</nav>
+<div class="main">
+  <div class="header" id="mainHeader">
+    <div><h1 id="headerTitle"><span>Select a Category Killer</span></h1><div class="subtitle" id="headerSub">Loading data...</div></div>
+    <div style="text-align:right"><div style="font-size:11px;color:#A8C5C8" id="headerMeta"></div>
+    <button onclick="manualRefresh()" class="btn btn-ghost" style="padding:2px 10px;font-size:11px;margin-top:4px;color:#A8C5C8;border-color:#A8C5C8" id="refreshBtn">🔄 Refresh</button></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-view="dashboard">📊 Dashboard</div>
+    <div class="tab" data-view="stockout">📉 Stockout</div>
+    <div class="tab" data-view="reorder">🚨 Reorder</div>
+  </div>
+  <div class="container">
+    <div id="loadingScreen" class="loading"><div class="spinner"></div><br>Loading data from CIN7 + Shopify...</div>
+    <div id="dashboard" class="view">
+      <div class="cards" id="summary-cards"></div>
+      <div class="filters" id="dash-filters"></div>
+      <div class="chart-container"><h3>Stock Position by SKU</h3><canvas id="stockChart"></canvas></div>
+      <div class="table-wrap"><table id="stockTable"><thead></thead><tbody></tbody></table></div>
     </div>
-    <div id="liveIndicator" style="font-size:11px;margin-top:2px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#5BAB31;margin-right:4px;animation:pulse 2s infinite"></span>Live — auto-refreshes hourly</div>
-  </div>
-</div>
-<div class="tabs">
-  <div class="tab active" data-view="dashboard">📊 Dashboard</div>
-  <div class="tab" data-view="scenario">🎛️ Scenario Planner</div>
-  <div class="tab" data-view="stockout">📉 Stockout Projection</div>
-  <div class="tab" data-view="reorder">🚨 Reorder Calculator</div>
-  <div class="tab" data-view="compare">⚡ Compare Scenarios</div>
-</div>
-<div class="container">
-<!-- Dashboard View -->
-<div id="dashboard" class="view active">
-  <div class="cards" id="summary-cards"></div>
-  <div class="filters" id="dash-filters"></div>
-  <div class="chart-container"><h3>Stock Position by SKU</h3><canvas id="stockChart"></canvas></div>
-  <div class="table-wrap"><table id="stockTable"><thead></thead><tbody></tbody></table></div>
-</div>
-
-<!-- Scenario Planner View -->
-<div id="scenario" class="view">
-  <div class="controls-grid">
-    <div class="control-panel">
-      <h3>📈 Growth & Seasonality</h3>
-      <div class="presets" id="presets"></div>
-      <div class="control-row"><label>Weekly Growth Rate</label><input type="range" id="growthRate" min="0" max="10" step="0.5" value="3"><span class="val" id="growthVal">3%</span></div>
-      <div id="seasonalControls"></div>
+    <div id="stockout" class="view">
+      <div id="stockoutCharts"></div>
+      <div class="chart-container">
+        <h3>📅 Heatmap — Stock Health by Week</h3>
+        <div class="filters" style="margin-bottom:10px"><span style="font-size:11px;color:var(--text-dim)">Sort:</span>
+        <button class="filter-btn active" onclick="setHeatmapSort('risk',this)">Risk</button>
+        <button class="filter-btn" onclick="setHeatmapSort('size',this)">Size</button></div>
+        <div id="heatmapContainer" style="overflow-x:auto"></div>
+      </div>
     </div>
-    <div class="control-panel">
-      <h3>📦 Inventory Parameters</h3>
-      <div class="control-row"><label>Safety Stock (weeks)</label><input type="range" id="safetyWeeks" min="1" max="8" step="1" value="4"><span class="val" id="safetyVal">4</span></div>
-      <div class="control-row"><label>Lead Time (weeks)</label><input type="range" id="leadWeeks" min="4" max="16" step="1" value="8"><span class="val" id="leadVal">8</span></div>
-      <div class="control-row"><label>View SKU</label><select id="skuSelect"></select></div>
+    <div id="reorder" class="view">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:16px">Reorder Recommendations</h2>
+        <button class="btn btn-primary" onclick="exportCSV()">📥 Export CSV</button>
+      </div>
+      <div class="table-wrap"><table id="reorderTable"><thead></thead><tbody></tbody></table></div>
     </div>
   </div>
-  <div class="control-panel" style="margin-bottom:24px">
-    <h3>🚢 PO Pipeline <button class="btn btn-ghost" onclick="addPO()" style="margin-left:12px;padding:4px 12px">+ Add PO</button></h3>
-    <div class="po-list" id="poList"></div>
-  </div>
-  <div class="chart-container"><h3>Projected Stock — <span id="projTitle">All Products</span></h3><canvas id="projChart"></canvas></div>
 </div>
-
-<!-- Stockout Projection View -->
-<div id="stockout" class="view">
-  <div class="chart-container">
-    <h3>Stockout Risk — Single Beds</h3>
-    <div class="sku-toggles" id="toggles-single"></div>
-    <canvas id="riskSingle"></canvas>
-  </div>
-  <div class="chart-container">
-    <h3>Stockout Risk — King Single Beds</h3>
-    <div class="sku-toggles" id="toggles-ks"></div>
-    <canvas id="riskKS"></canvas>
-  </div>
-  <div class="chart-container">
-    <h3>Stockout Risk — Double Beds</h3>
-    <div class="sku-toggles" id="toggles-double"></div>
-    <canvas id="riskDouble"></canvas>
-  </div>
-  <div class="chart-container">
-    <h3>📅 Heatmap — Stock Health by Week</h3>
-    <div class="filters" style="margin-bottom:12px">
-      <span style="font-size:12px;color:var(--text-dim);margin-right:4px">Sort by:</span>
-      <button class="filter-btn active" onclick="setHeatmapSort('risk',this)">Stockout Risk</button>
-      <button class="filter-btn" onclick="setHeatmapSort('size',this)">Size</button>
-      <button class="filter-btn" onclick="setHeatmapSort('colour',this)">Colour</button>
-    </div>
-    <div id="heatmapContainer" style="overflow-x:auto"></div>
-  </div>
-  <div class="chart-container">
-    <h3>⏳ Weeks of Stock Remaining (normalised)</h3>
-    <div class="sku-toggles" id="toggles-wks"></div>
-    <canvas id="riskWeeks"></canvas>
-  </div>
+<button class="chat-toggle" onclick="toggleChat()" id="chatToggle">💬</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header"><h4 style="font-size:13px">🐒 Ask Caesar</h4><button onclick="toggleChat()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:16px">✕</button></div>
+  <div class="chat-messages" id="chatMessages"><div class="chat-msg bot">Hey! Ask me about stock, velocity, or reorder timing 🐒</div></div>
+  <div class="chat-input"><input type="text" id="chatInput" placeholder="Ask about stock..." onkeydown="if(event.key==='Enter')sendChat()"><button onclick="sendChat()">Send</button></div>
 </div>
-
-<!-- Reorder Calculator View -->
-<div id="reorder" class="view">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <h2 style="font-size:18px">Reorder Recommendations</h2>
-    <button class="btn btn-primary" onclick="exportCSV()">📥 Export CSV</button>
-  </div>
-  <div class="table-wrap"><table id="reorderTable"><thead></thead><tbody></tbody></table></div>
-  <div class="chart-container" style="margin-top:24px"><h3>PO Arrival vs Stockout Timeline</h3><canvas id="timelineChart"></canvas></div>
-</div>
-
-<!-- Compare Scenarios View -->
-<div id="compare" class="view">
-  <div style="display:flex;gap:12px;margin-bottom:24px">
-    <button class="btn btn-primary" onclick="saveScenario()">💾 Save Current Scenario</button>
-    <button class="btn btn-ghost" onclick="clearScenarios()">🗑️ Clear All</button>
-  </div>
-  <div class="comparison-grid" id="compGrid"></div>
-  <div class="chart-container"><h3>Scenario Comparison — Total Stock</h3><canvas id="compChart"></canvas></div>
-</div>
-</div>
-
 <script>
-// ===== EMBEDDED DATA =====
-const DATA = {
-  cin7: {"LLAU-CB-S-MSM":264,"LLAU-CB-S-CTCN":188,"LLAU-CB-S-DGY":121,"LLAU-CB-S-DSBL":24,"LLAU-CB-S-PST":20,"LLAU-CB-S-BABL":11,"LLAU-CB-KS-CTCN":154,"LLAU-CB-KS-DGY":69,"LLAU-CB-KS-PST":87,"LLAU-CB-KS-MSM":113,"LLAU-CB-KS-BABL":47,"LLAU-CB-KS-DSBL":0,"LLAU-CB-D-DSBL":110,"LLAU-CB-D-CTCN":254,"LLAU-CB-D-PST":186,"LLAU-CB-D-DGY":65,"LLAU-CB-D-MSM":100,"LLAU-CB-D-BABL":68},
-  shopify: {"LLAU-CB-S-CTCN":54,"LLAU-CB-S-MSM":14,"LLAU-CB-S-DGY":6,"LLAU-CB-S-PST":-126,"LLAU-CB-S-BABL":-126,"LLAU-CB-S-DSBL":3,"LLAU-CBCF-S-CTCN":-22,"LLAU-CBCF-S-MSM":-54,"LLAU-CBCF-S-DGY":-25,"LLAU-CBCF-S-PST":-14,"LLAU-CBCF-S-BABL":-23,"LLAU-CBCF-S-DSBL":-1,"LLAU-CB-KS-CTCN":86,"LLAU-CB-KS-MSM":-13,"LLAU-CB-KS-DGY":38,"LLAU-CB-KS-PST":35,"LLAU-CB-KS-BABL":-43,"LLAU-CB-KS-DSBL":-63,"LLAU-CBCF-KS-CTCN":-8,"LLAU-CBCF-KS-MSM":-13,"LLAU-CBCF-KS-DGY":-9,"LLAU-CBCF-KS-PST":-10,"LLAU-CBCF-KS-BABL":-10,"LLAU-CBCF-KS-DSBL":-1,"LLAU-CB-D-CTCN":-1,"LLAU-CB-D-MSM":-44,"LLAU-CB-D-DGY":-37,"LLAU-CB-D-PST":-39,"LLAU-CB-D-BABL":-133,"LLAU-CB-D-DSBL":98,"LLAU-CBCF-D-CTCN":-50,"LLAU-CBCF-D-MSM":-101,"LLAU-CBCF-D-DGY":-42,"LLAU-CBCF-D-PST":-44,"LLAU-CBCF-D-BABL":-72,"LLAU-CBCF-D-DSBL":-2},
-  names: {"LLAU-CB-S-MSM":"Bed S Marshmallow","LLAU-CB-S-CTCN":"Bed S Cotton Candy","LLAU-CB-S-DGY":"Bed S Dove Grey","LLAU-CB-S-DSBL":"Bed S Dusty Blue","LLAU-CB-S-PST":"Bed S Pistachio","LLAU-CB-S-BABL":"Bed S Baby Blue","LLAU-CB-KS-CTCN":"Bed KS Cotton Candy","LLAU-CB-KS-DGY":"Bed KS Dove Grey","LLAU-CB-KS-PST":"Bed KS Pistachio","LLAU-CB-KS-MSM":"Bed KS Marshmallow","LLAU-CB-KS-BABL":"Bed KS Baby Blue","LLAU-CB-KS-DSBL":"Bed KS Dusty Blue","LLAU-CB-D-DSBL":"Bed D Dusty Blue","LLAU-CB-D-CTCN":"Bed D Cotton Candy","LLAU-CB-D-PST":"Bed D Pistachio","LLAU-CB-D-DGY":"Bed D Dove Grey","LLAU-CB-D-MSM":"Bed D Marshmallow","LLAU-CB-D-BABL":"Bed D Baby Blue","LLAU-CBCF-S-MSM":"Combo S Marshmallow","LLAU-CBCF-S-CTCN":"Combo S Cotton Candy","LLAU-CBCF-S-DGY":"Combo S Dove Grey","LLAU-CBCF-S-DSBL":"Combo S Dusty Blue","LLAU-CBCF-S-PST":"Combo S Pistachio","LLAU-CBCF-S-BABL":"Combo S Baby Blue","LLAU-CBCF-KS-CTCN":"Combo KS Cotton Candy","LLAU-CBCF-KS-DGY":"Combo KS Dove Grey","LLAU-CBCF-KS-PST":"Combo KS Pistachio","LLAU-CBCF-KS-MSM":"Combo KS Marshmallow","LLAU-CBCF-KS-BABL":"Combo KS Baby Blue","LLAU-CBCF-KS-DSBL":"Combo KS Dusty Blue","LLAU-CBCF-D-DSBL":"Combo D Dusty Blue","LLAU-CBCF-D-CTCN":"Combo D Cotton Candy","LLAU-CBCF-D-PST":"Combo D Pistachio","LLAU-CBCF-D-DGY":"Combo D Dove Grey","LLAU-CBCF-D-MSM":"Combo D Marshmallow","LLAU-CBCF-D-BABL":"Combo D Baby Blue"},
-  velocity: {"LLAU-CB-S-MSM":8.3,"LLAU-CB-S-CTCN":3.2,"LLAU-CB-S-DGY":2.8,"LLAU-CB-S-DSBL":1.2,"LLAU-CB-S-PST":5.0,"LLAU-CB-S-BABL":4.1,"LLAU-CB-KS-CTCN":2.6,"LLAU-CB-KS-DGY":1.5,"LLAU-CB-KS-PST":3.7,"LLAU-CB-KS-MSM":4.9,"LLAU-CB-KS-BABL":2.5,"LLAU-CB-KS-DSBL":1.2,"LLAU-CB-D-DSBL":2.5,"LLAU-CB-D-CTCN":4.9,"LLAU-CB-D-PST":8.0,"LLAU-CB-D-DGY":3.6,"LLAU-CB-D-MSM":13.9,"LLAU-CB-D-BABL":6.8,"LLAU-CBCF-S-MSM":8.5,"LLAU-CBCF-S-CTCN":5.5,"LLAU-CBCF-S-DGY":4.4,"LLAU-CBCF-S-DSBL":1.5,"LLAU-CBCF-S-PST":3.6,"LLAU-CBCF-S-BABL":4.9,"LLAU-CBCF-KS-CTCN":5.8,"LLAU-CBCF-KS-DGY":4.7,"LLAU-CBCF-KS-PST":5.8,"LLAU-CBCF-KS-MSM":9.8,"LLAU-CBCF-KS-BABL":6.8,"LLAU-CBCF-KS-DSBL":3.7,"LLAU-CBCF-D-DSBL":6.0,"LLAU-CBCF-D-CTCN":9.2,"LLAU-CBCF-D-PST":11.4,"LLAU-CBCF-D-DGY":6.8,"LLAU-CBCF-D-MSM":20.4,"LLAU-CBCF-D-BABL":12.8},
-  pos: [
-    {name:"PO-AU002-11/12",status:"Shipping",arrival:"2026-04-07",items:{"LLAU-CB-S-DSBL":53,"LLAU-CB-KS-DSBL":135,"LLAU-CB-D-DSBL":105,"LLAU-CB-D-DGY":3,"LLAU-CB-S-PST":3,"LLAU-CB-D-MSM":280,"LLAU-CB-KS-CTCN":2}},
-    {name:"AU003",status:"Production",arrival:"2026-05-11",items:{"LLAU-CB-S-DSBL":30,"LLAU-CB-KS-DSBL":45,"LLAU-CB-D-DSBL":100,"LLAU-CB-S-DGY":45,"LLAU-CB-KS-DGY":25,"LLAU-CB-D-DGY":75,"LLAU-CB-S-PST":100,"LLAU-CB-KS-PST":50,"LLAU-CB-D-PST":155,"LLAU-CB-S-BABL":65,"LLAU-CB-KS-BABL":65,"LLAU-CB-D-BABL":140,"LLAU-CB-S-CTCN":90,"LLAU-CB-KS-CTCN":70,"LLAU-CB-D-CTCN":100,"LLAU-CB-S-MSM":140,"LLAU-CB-KS-MSM":100,"LLAU-CB-D-MSM":240}}
-  ],
-  seasonal: {1:1.4,2:1.4,3:1.0,4:1.0,5:1.0,6:1.3,7:0.85,8:0.85,9:1.1,10:1.1,11:1.0,12:1.0}
-};
+const SESSION=new URLSearchParams(window.location.search).get('session')||sessionStorage.getItem('session');
+if(!SESSION)window.location.href='/login';sessionStorage.setItem('session',SESSION);if(window.location.search)history.replaceState({},'','/');
+const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
+let DATA={cin7:{},shopify:{},velocity:{},pos:[],names:{},sizes:{}},currentCK=null,charts={},dashFilter={size:'All'},heatmapSortMode='risk';
+const TODAY=new Date();
+function getSkus(){return[...new Set([...Object.keys(DATA.cin7),...Object.keys(DATA.velocity)])]}
+function getNet(s){return(DATA.cin7[s]||0)+Math.min(DATA.shopify[s]||0,0)}
+function getIncoming(s){return(DATA.pos||[]).reduce((t,po)=>(po.items?.[s]||0)+t,0)}
+function getVel(s){return DATA.velocity[s]||0}
+function getSize(s){for(const[k,l]of Object.entries(DATA.sizes||{})){if(s.includes(k))return l}return'Other'}
+function getSizeKeys(){const s=new Set(getSkus().map(x=>getSize(x)));return['All',...s]}
+function skuName(s){return DATA.names[s]||s}
+function statusBadge(w){if(w<=0)return'<span class="badge stockout">STOCKOUT</span>';if(w<=2)return'<span class="badge critical">CRITICAL</span>';if(w<=4)return'<span class="badge low">LOW</span>';if(w<=8)return'<span class="badge ok">OK</span>';return'<span class="badge healthy">HEALTHY</span>'}
+function fmt(n){return n<0?`<span class="neg">${n.toLocaleString()}</span>`:n.toLocaleString()}
+function getWeeks(c=40){let w=[],d=new Date(TODAY);for(let i=0;i<c;i++){let e=new Date(d);e.setDate(e.getDate()+6);w.push({start:new Date(d),end:e});d.setDate(d.getDate()+7)}return w}
+function project(sku,weeks){if(!weeks)weeks=getWeeks();let net=getNet(sku),vel=getVel(sku),r=net,res=[];weeks.forEach((w,i)=>{let o=r,s=Math.round(vel),inc=0;(DATA.pos||[]).forEach(po=>{if(!po.arrival)return;let ad=new Date(po.arrival);if(ad>=w.start&&ad<=w.end)inc+=(po.items?.[sku]||0)});let c=o-s+inc;res.push({open:o,sales:s,inc,close:c,date:w.start});r=c});return res}
+function hashCode(s){let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h)+s.charCodeAt(i);return h}
 
-
-// ===== SESSION =====
-const SESSION = new URLSearchParams(window.location.search).get('session') || sessionStorage.getItem('session');
-if (!SESSION) window.location.href = '/login';
-sessionStorage.setItem('session', SESSION);
-// Clean URL
-if (window.location.search) history.replaceState({}, '', '/');
-
-const headers = () => ({'Content-Type':'application/json','X-Session': SESSION});
-
-// ===== LIVE DATA FETCH =====
-let liveData = null;
-
-async function fetchLiveData() {
-  try {
-    document.getElementById('refreshBtn').textContent = '⏳ Loading...';
-    const res = await fetch('/api/data', {headers: headers()});
-    if (res.status === 401) return window.location.href = '/login';
-    liveData = await res.json();
-    
-    // Merge live data into DATA
-    if (liveData.cin7 && Object.keys(liveData.cin7).length > 0) {
-      for (const [sku, val] of Object.entries(liveData.cin7)) {
-        DATA.cin7[sku] = typeof val === 'object' ? val.soh : val;
-      }
-    }
-    if (liveData.shopify && Object.keys(liveData.shopify).length > 0) {
-      DATA.shopify = {...DATA.shopify, ...liveData.shopify};
-    }
-    if (liveData.velocity && Object.keys(liveData.velocity).length > 0) {
-      DATA.velocity = {...DATA.velocity, ...liveData.velocity};
-    }
-    
-    document.getElementById('lastRefresh').textContent = liveData.lastRefresh ? 
-      'Last refresh: ' + new Date(liveData.lastRefresh).toLocaleString() : 'Using cached data';
-    document.getElementById('refreshBtn').textContent = '🔄 Refresh';
-    
-    // Re-render everything
-    renderDashboard();
-    updateScenario();
-    renderReorder();
-  } catch(e) {
-    console.error('Fetch error:', e);
-    document.getElementById('refreshBtn').textContent = '🔄 Refresh';
-    document.getElementById('lastRefresh').textContent = 'Using embedded data (offline mode)';
-  }
-}
-
-async function manualRefresh() {
-  document.getElementById('refreshBtn').textContent = '⏳ Pulling live data...';
-  try {
-    await fetch('/api/refresh', {method:'POST', headers: headers()});
-    await fetchLiveData();
-  } catch(e) {
-    document.getElementById('refreshBtn').textContent = '❌ Failed — Retry';
-  }
-}
-
-// Auto-refresh every hour
-setInterval(fetchLiveData, 60 * 60 * 1000);
-
-// ===== CHAT =====
-let chatOpen = false;
-function toggleChat() {
-  chatOpen = !chatOpen;
-  document.getElementById('chatPanel').classList.toggle('open', chatOpen);
-  document.getElementById('chatToggle').textContent = chatOpen ? '✕' : '💬';
-  if (chatOpen) document.getElementById('chatInput').focus();
-}
-
-let chatHistory = [];
-
-async function sendChat() {
-  const input = document.getElementById('chatInput');
-  const msg = input.value.trim();
-  if (!msg) return;
-  input.value = '';
-  
-  const msgs = document.getElementById('chatMessages');
-  msgs.innerHTML += `<div class="chat-msg user">${escapeHtml(msg)}</div>`;
-  msgs.innerHTML += `<div class="chat-msg bot" id="typing"><span style="opacity:0.6">Thinking...</span></div>`;
-  msgs.scrollTop = msgs.scrollHeight;
-  
-  chatHistory.push({role: 'user', text: msg});
-  
-  try {
-    const res = await fetch('/api/chat', {
-      method: 'POST', headers: headers(),
-      body: JSON.stringify({username: 'Team Member', message: msg, history: chatHistory.slice(-10)})
-    });
-    const data = await res.json();
-    const typing = document.getElementById('typing');
-    if (typing) typing.remove();
-    
-    if (data.reply) {
-      const formatted = formatReply(data.reply);
-      msgs.innerHTML += `<div class="chat-msg bot">${formatted}</div>`;
-      chatHistory.push({role: 'assistant', text: data.reply});
-    } else {
-      msgs.innerHTML += `<div class="chat-msg bot">Something went wrong. Try again? 🐒</div>`;
-    }
-  } catch(e) {
-    const typing = document.getElementById('typing');
-    if (typing) typing.remove();
-    msgs.innerHTML += `<div class="chat-msg bot">Connection error. Check if the app is online.</div>`;
-  }
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function formatReply(text) {
-  // Simple markdown-like formatting
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code style="background:rgba(44,71,75,0.1);padding:1px 4px;border-radius:3px">$1</code>')
-    .replace(/^- /gm, '• ')
-    .replace(/\n/g, '<br>');
-}
-
-const SKUS = Object.keys(DATA.names);
-const TODAY = new Date(2026, 2, 10);
-const PRESETS = {
-  conservative: {growth:0, seasonal:{1:1,2:1,3:1,4:1,5:1,6:1,7:1,8:1,9:1,10:1,11:1,12:1}},
-  base: {growth:3, seasonal:{...DATA.seasonal}},
-  aggressive: {growth:5, seasonal:{1:1.5,2:1.5,3:1.0,4:1.0,5:1.0,6:1.4,7:0.9,8:0.9,9:1.2,10:1.2,11:1.1,12:1.1}}
-};
-let scenarios = [];
-let customPOs = [...DATA.pos];
-let charts = {};
-
-// ===== HELPERS =====
-function getSize(sku) { return sku.includes('-S-')?'Single':sku.includes('-KS-')?'King Single':'Double'; }
-function getType(sku) { return sku.includes('CBCF')?'Combo':'Bed'; }
-function getNet(sku) { return (DATA.cin7[sku]||0) + Math.min(DATA.shopify[sku]||0, 0); }
-function getIncoming(sku) { return customPOs.reduce((t,po)=>(po.items&&po.items[sku]?t+po.items[sku]:t),0); }
-function getCombinedVel(sku) {
-  let v = DATA.velocity[sku]||0;
-  if(!sku.includes('CBCF')) { let c=sku.replace('LLAU-CB-','LLAU-CBCF-'); v+=(DATA.velocity[c]||0); }
-  return v;
-}
-function getWeeks() {
-  let weeks=[], dt=new Date(TODAY);
-  while(dt<=new Date(2026,11,31)) {
-    let end=new Date(dt); end.setDate(end.getDate()+6);
-    weeks.push({start:new Date(dt), end:end, label:dt.toLocaleDateString('en-AU',{day:'numeric',month:'short'})+' - '+end.toLocaleDateString('en-AU',{day:'numeric',month:'short'})});
-    dt.setDate(dt.getDate()+7);
-  }
-  return weeks;
-}
-function getSettings() {
-  return {
-    growth: parseFloat(document.getElementById('growthRate')?.value||3)/100,
-    safety: parseInt(document.getElementById('safetyWeeks')?.value||4),
-    lead: parseInt(document.getElementById('leadWeeks')?.value||8),
-    seasonal: Object.fromEntries([...Array(12)].map((_,i)=>[i+1, parseFloat(document.getElementById('sm'+(i+1))?.value||DATA.seasonal[i+1])]))
-  };
-}
-function project(sku, settings) {
-  let weeks=getWeeks(), net=getNet(sku), vel=getCombinedVel(sku), running=net, result=[];
-  weeks.forEach((w,i)=>{
-    let open=running;
-    let g=Math.pow(1+settings.growth,i);
-    let s=settings.seasonal[w.start.getMonth()+1]||1;
-    let sales=Math.round(vel*g*s);
-    let inc=0;
-    customPOs.forEach(po=>{
-      if(!po.arrival) return;
-      let ad=new Date(po.arrival);
-      if(ad>=w.start&&ad<=w.end) inc+=(po.items&&po.items[sku])||0;
-    });
-    let close=open-sales+inc;
-    result.push({week:w, open, sales, inc, close, date:w.start});
-    running=close;
-  });
-  return result;
-}
-function statusBadge(weeksLeft) {
-  if(weeksLeft<=0) return '<span class="badge stockout">STOCKOUT</span>';
-  if(weeksLeft<=2) return '<span class="badge critical">CRITICAL</span>';
-  if(weeksLeft<=4) return '<span class="badge low">LOW</span>';
-  if(weeksLeft<=8) return '<span class="badge ok">OK</span>';
-  return '<span class="badge healthy">HEALTHY</span>';
-}
-function fmt(n) { return n<0?`<span class="neg">${n.toLocaleString()}</span>`:n.toLocaleString(); }
-
-// ===== TAB NAVIGATION =====
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active');
-  document.getElementById(t.dataset.view).classList.add('active');
-  // Re-render stockout charts when tab is shown (Chart.js needs visible canvas)
-  if(t.dataset.view==='stockout') { setTimeout(()=>renderRiskChart(getSettings()), 100); }
+  t.classList.add('active');document.getElementById(t.dataset.view).classList.add('active');
+  if(t.dataset.view==='stockout')setTimeout(renderStockout,100);
+  if(t.dataset.view==='reorder')renderReorder();
 }));
 
-// ===== DASHBOARD =====
-let dashFilter = {size:'All',type:'All'};
-function renderDashboard() {
-  let totalSOH=0, totalInc=0, totalOversold=0, totalVel=0;
-  SKUS.forEach(s=>{
-    totalSOH+=(DATA.cin7[s]||0);
-    totalInc+=getIncoming(s);
-    let shop=DATA.shopify[s]||0; if(shop<0) totalOversold+=shop;
-    totalVel+=getCombinedVel(s);
-  });
-  let weeksTotal=totalVel>0?Math.round((totalSOH+Math.min(totalOversold,0))/totalVel):99;
+async function loadSidebar(){
+  try{const r=await fetch('/api/ck-list',{headers:H()});if(r.status===401)return window.location.href='/login';
+  const d=await r.json();document.getElementById('sidebarNav').innerHTML=d.list.map(ck=>
+    `<div class="sidebar-item" data-ck="${ck.id}" onclick="selectCK('${ck.id}')"><img src="/logos/${ck.logo}" alt=""><span>${ck.name}</span></div>`
+  ).join('');document.getElementById('sidebarFooter').textContent=d.lastRefresh?'Updated: '+new Date(d.lastRefresh).toLocaleTimeString():'Loading...';
+  if(d.list.length>0)selectCK(d.list[0].id)}catch(e){document.getElementById('sidebarNav').innerHTML='<div style="padding:12px;color:#C33252">Failed to load</div>'}}
+
+async function selectCK(ckId){
+  currentCK=ckId;document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.ck===ckId));
+  document.getElementById('loadingScreen').style.display='block';document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  try{const r=await fetch(`/api/ck/${ckId}`,{headers:H()});if(r.status===401)return window.location.href='/login';const d=await r.json();
+  DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],names:d.names||{},sizes:d.sizes||{}};
+  document.getElementById('headerTitle').innerHTML=`<img src="/logos/${d.ck.logo}" style="height:32px;filter:brightness(0) invert(1)"> ${d.ck.name}`;
+  document.getElementById('headerSub').textContent=`${Object.keys(DATA.cin7).length} CIN7 SKUs · ${Object.keys(DATA.velocity).length} with velocity · ${DATA.pos.length} open POs`;
+  document.getElementById('headerMeta').textContent=d.lastRefresh?'Last refresh: '+new Date(d.lastRefresh).toLocaleString():'';
+  Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};dashFilter.size='All';
+  document.getElementById('loadingScreen').style.display='none';document.getElementById('dashboard').classList.add('active');
+  document.querySelector('.tab.active')?.classList.remove('active');document.querySelector('[data-view="dashboard"]').classList.add('active');
+  renderDashboard()}catch(e){document.getElementById('loadingScreen').innerHTML=`<div style="color:var(--alert)">Error: ${e.message}</div>`}}
+
+function renderDashboard(){
+  const skus=getSkus();let tSOH=0,tInc=0,tOver=0,tVel=0;
+  skus.forEach(s=>{tSOH+=(DATA.cin7[s]||0);tInc+=getIncoming(s);let sh=DATA.shopify[s]||0;if(sh<0)tOver+=sh;tVel+=getVel(s)});
+  let wksT=tVel>0?Math.round((tSOH+Math.min(tOver,0))/tVel):99;
   document.getElementById('summary-cards').innerHTML=`
-    <div class="card green"><div class="label">Total CIN7 SOH</div><div class="value">${totalSOH.toLocaleString()}</div><div class="sub">Physical stock in Malcove</div></div>
-    <div class="card blue"><div class="label">Total Incoming</div><div class="value">${totalInc.toLocaleString()}</div><div class="sub">${customPOs.length} open POs</div></div>
-    <div class="card red"><div class="label">Oversold (Shopify)</div><div class="value">${totalOversold.toLocaleString()}</div><div class="sub">Negative = pre-order commitments</div></div>
-    <div class="card yellow"><div class="label">Avg Weeks of Stock</div><div class="value">${weeksTotal}</div><div class="sub">At current velocity (combined)</div></div>`;
-  // Filters
-  document.getElementById('dash-filters').innerHTML=['All','Single','King Single','Double'].map(s=>
-    `<button class="filter-btn ${dashFilter.size===s?'active':''}" onclick="dashFilter.size='${s}';renderDashboard()">${s}</button>`).join('')+
-    ['All','Bed','Combo'].map(t=>
-    `<button class="filter-btn ${dashFilter.type===t?'active':''}" onclick="dashFilter.type='${t}';renderDashboard()">${t}</button>`).join('');
-  // Table
-  let filtered=SKUS.filter(s=>(dashFilter.size==='All'||getSize(s)===dashFilter.size)&&(dashFilter.type==='All'||getType(s)===dashFilter.type));
-  let thead=`<tr>
-<th data-tip>SKU<span class="tip">Unique product identifier from CIN7 inventory system.</span></th>
-<th data-tip>Product<span class="tip">Human-readable product name.</span></th>
-<th data-tip>Size<span class="tip">Bed size: Single, King Single, or Double.</span></th>
-<th data-tip>CIN7 SOH<span class="tip">Stock on Hand in CIN7 (Malcove warehouse). Physical units available.</span></th>
-<th data-tip>Shopify<span class="tip">Shopify inventory level. Negative values = oversold / pre-order commitments not yet fulfilled.</span></th>
-<th data-tip>Net Stock<span class="tip">Effective available stock.<br><code>CIN7 SOH + min(Shopify, 0)</code><br>Accounts for pre-order commitments against physical stock.</span></th>
-<th data-tip>Incoming<span class="tip">Total units arriving across all open Purchase Orders.</span></th>
-<th data-tip>Units/wk<span class="tip">Combined weekly sales velocity (Bed + Combo Frame). Both product types consume the same bed inventory.</span></th>
-<th data-tip>Wks Left<span class="tip">Weeks of stock remaining.<br><code>Net Stock ÷ Combined Velocity</code><br>Simple ratio — Scenario Planner uses a more detailed projection with growth + seasonality.</span></th>
-<th data-tip>Status<span class="tip">Stock health:<br>• <b>STOCKOUT</b> = 0 wks<br>• <b>CRITICAL</b> = 1-2 wks<br>• <b>LOW</b> = 3-4 wks<br>• <b>OK</b> = 5-8 wks<br>• <b>HEALTHY</b> = 8+ wks</span></th>
-</tr>`;
-  let tbody=filtered.map(s=>{
-    let soh=DATA.cin7[s]||0, shop=DATA.shopify[s]||0, net=getNet(s), inc=getIncoming(s), vel=getCombinedVel(s);
-    let wks=vel>0?Math.round(net/vel):99;
-    return `<tr><td style="font-family:monospace;font-size:11px">${s}</td><td>${DATA.names[s]}</td><td>${getSize(s)}</td><td>${fmt(soh)}</td><td>${fmt(shop)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}</td><td>${wks}</td><td>${statusBadge(wks)}</td></tr>`;
-  }).join('');
-  document.querySelector('#stockTable thead').innerHTML=thead;
-  document.querySelector('#stockTable tbody').innerHTML=tbody;
-  // Chart
-  let chartSkus=filtered.filter(s=>DATA.cin7[s]>0||getIncoming(s)>0);
-  if(charts.stock) charts.stock.destroy();
-  charts.stock=new Chart(document.getElementById('stockChart'),{type:'bar',data:{
-    labels:chartSkus.map(s=>DATA.names[s]),
-    datasets:[
-      {label:'SOH',data:chartSkus.map(s=>DATA.cin7[s]||0),backgroundColor:'#5BAB31'},
-      {label:'Incoming',data:chartSkus.map(s=>getIncoming(s)),backgroundColor:'#2C474B'},
-      {label:'Oversold',data:chartSkus.map(s=>Math.min(DATA.shopify[s]||0,0)),backgroundColor:'#C33252'},
-      {label:'Net Available',data:chartSkus.map(s=>(DATA.cin7[s]||0)+getIncoming(s)+Math.min(DATA.shopify[s]||0,0)),type:'line',borderColor:'#D4930D',backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#D4930D',tension:0.3,order:0}
-    ]},options:{responsive:true,plugins:{legend:{labels:{color:'#282828'}}},scales:{x:{stacked:true,ticks:{color:'#758068',maxRotation:45}},y:{stacked:true,ticks:{color:'#758068'},grid:{color:'#DDE3D5'}}}}});
+    <div class="card green"><div class="label">CIN7 SOH</div><div class="value">${tSOH.toLocaleString()}</div><div class="sub">Physical stock</div></div>
+    <div class="card blue"><div class="label">Incoming</div><div class="value">${tInc.toLocaleString()}</div><div class="sub">${DATA.pos.length} open POs</div></div>
+    <div class="card red"><div class="label">Oversold</div><div class="value">${tOver.toLocaleString()}</div><div class="sub">Pre-order commitments</div></div>
+    <div class="card yellow"><div class="label">Avg Wks Stock</div><div class="value">${wksT}</div><div class="sub">At current velocity</div></div>`;
+  document.getElementById('dash-filters').innerHTML=getSizeKeys().map(s=>`<button class="filter-btn ${dashFilter.size===s?'active':''}" onclick="dashFilter.size='${s}';renderDashboard()">${s}</button>`).join('');
+  let filtered=skus.filter(s=>dashFilter.size==='All'||getSize(s)===dashFilter.size);
+  document.querySelector('#stockTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th>CIN7 SOH</th><th>Shopify</th><th>Net</th><th>Incoming</th><th>Units/wk</th><th>Wks Left</th><th>Status</th></tr>';
+  document.querySelector('#stockTable tbody').innerHTML=filtered.map(s=>{
+    let soh=DATA.cin7[s]||0,sh=DATA.shopify[s]||0,net=getNet(s),inc=getIncoming(s),vel=getVel(s),wks=vel>0?Math.round(net/vel):99;
+    return`<tr><td style="font-family:monospace;font-size:10px">${s}</td><td>${getSize(s)}</td><td>${fmt(soh)}</td><td>${fmt(sh)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}</td><td>${wks}</td><td>${statusBadge(wks)}</td></tr>`}).join('');
+  let cs=filtered.filter(s=>(DATA.cin7[s]||0)>0||getIncoming(s)>0).slice(0,30);
+  if(charts.stock)charts.stock.destroy();
+  charts.stock=new Chart(document.getElementById('stockChart'),{type:'bar',data:{labels:cs.map(s=>s),datasets:[
+    {label:'SOH',data:cs.map(s=>DATA.cin7[s]||0),backgroundColor:'#5BAB31'},
+    {label:'Incoming',data:cs.map(s=>getIncoming(s)),backgroundColor:'#2C474B'},
+    {label:'Oversold',data:cs.map(s=>Math.min(DATA.shopify[s]||0,0)),backgroundColor:'#C33252'},
+    {label:'Net',data:cs.map(s=>(DATA.cin7[s]||0)+getIncoming(s)+Math.min(DATA.shopify[s]||0,0)),type:'line',borderColor:'#D4930D',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,order:0}
+  ]},options:{responsive:true,plugins:{legend:{labels:{color:'#282828',font:{size:10}}}},scales:{x:{stacked:true,ticks:{color:'#758068',maxRotation:45,font:{size:9}}},y:{stacked:true,ticks:{color:'#758068'},grid:{color:'#DDE3D5'}}}}})
 }
 
-// ===== SCENARIO PLANNER =====
-function initScenario() {
-  // Presets
-  document.getElementById('presets').innerHTML=Object.keys(PRESETS).map(p=>
-    `<button class="preset-btn ${p==='base'?'active':''}" onclick="applyPreset('${p}')">${p.charAt(0).toUpperCase()+p.slice(1)}</button>`).join('');
-  // Seasonal controls
-  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  document.getElementById('seasonalControls').innerHTML=months.map((m,i)=>
-    `<div class="control-row"><label>${m}</label><input type="range" id="sm${i+1}" min="0.5" max="2.0" step="0.05" value="${DATA.seasonal[i+1]}" oninput="document.getElementById('sv${i+1}').textContent=this.value+'x';updateScenario()"><span class="val" id="sv${i+1}">${DATA.seasonal[i+1]}x</span></div>`).join('');
-  // SKU selector
-  let sel=document.getElementById('skuSelect');
-  sel.innerHTML='<option value="ALL">All Products (Total)</option>'+SKUS.map(s=>`<option value="${s}">${DATA.names[s]}</option>`).join('');
-  sel.onchange=()=>updateScenario();
-  // Slider events
-  ['growthRate','safetyWeeks','leadWeeks'].forEach(id=>{
-    let el=document.getElementById(id);
-    el.oninput=()=>{
-      document.getElementById(id.replace('Rate','Val').replace('Weeks','Val')).textContent=
-        id==='growthRate'?el.value+'%':el.value;
-      updateScenario();
-    };
-  });
-  renderPOs();
-  updateScenario();
-}
-function applyPreset(name) {
-  let p=PRESETS[name];
-  document.getElementById('growthRate').value=p.growth;
-  document.getElementById('growthVal').textContent=p.growth+'%';
-  for(let m=1;m<=12;m++){
-    document.getElementById('sm'+m).value=p.seasonal[m];
-    document.getElementById('sv'+m).textContent=p.seasonal[m]+'x';
-  }
-  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
-  event.target.classList.add('active');
-  updateScenario();
-}
-function renderPOs() {
-  document.getElementById('poList').innerHTML=customPOs.map((po,i)=>
-    `<div class="po-row">
-      <input class="po-name" value="${po.name}" onchange="customPOs[${i}].name=this.value">
-      <span style="color:var(--text-dim);font-size:12px">${po.status||'Custom'}</span>
-      <input class="po-date" type="date" value="${po.arrival}" onchange="customPOs[${i}].arrival=this.value;updateScenario()">
-      <span style="font-size:12px;color:#A8C5C8">${Object.values(po.items||{}).reduce((a,b)=>a+b,0)} units</span>
-      ${i>=2?`<button class="btn btn-danger" style="padding:2px 8px;font-size:11px" onclick="customPOs.splice(${i},1);renderPOs();updateScenario()">×</button>`:''}
-    </div>`).join('');
-}
-function addPO() {
-  customPOs.push({name:'New PO',status:'Custom',arrival:'2026-06-15',items:{}});
-  renderPOs();
-}
-function updateScenario() {
-  let s=getSettings(), sel=document.getElementById('skuSelect').value, weeks=getWeeks();
-  document.getElementById('projTitle').textContent=sel==='ALL'?'All Products (Total)':DATA.names[sel];
-  // Project
-  if(sel==='ALL') {
-    let totals=weeks.map(()=>({open:0,sales:0,inc:0,close:0}));
-    SKUS.forEach(sku=>{
-      let proj=project(sku,s);
-      proj.forEach((p,i)=>{totals[i].open+=p.open;totals[i].sales+=p.sales;totals[i].inc+=p.inc;totals[i].close+=p.close;});
-    });
-    renderProjChart(weeks, totals);
-  } else {
-    renderProjChart(weeks, project(sel,s));
-  }
-  renderRiskChart(s);
-}
-function renderProjChart(weeks, data) {
-  if(charts.proj) charts.proj.destroy();
-  let labels=weeks.map(w=>w.start);
-  charts.proj=new Chart(document.getElementById('projChart'),{type:'line',data:{
-    labels:data.map(d=>d.date||d.week?.start),
-    datasets:[
-      {label:'Closing Stock',data:data.map(d=>d.close),borderColor:'#5BAB31',backgroundColor:'rgba(91,171,49,0.1)',fill:true,tension:0.3},
-      {label:'Sales/wk',data:data.map(d=>d.sales),borderColor:'#C33252',borderDash:[5,5],tension:0.3},
-      {label:'Incoming',data:data.map(d=>d.inc),type:'bar',backgroundColor:'rgba(44,71,75,0.4)'}
-    ]},options:{responsive:true,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:'#282828'}},tooltip:{callbacks:{title:ctx=>{ let d=ctx[0]?.raw!==undefined&&data[ctx[0].dataIndex]?.week?.label; return d||''; }}}},scales:{x:{type:'time',time:{unit:'week',displayFormats:{week:'dd MMM'}},ticks:{color:'#758068'},grid:{color:'#DDE3D5'}},y:{ticks:{color:'#758068'},grid:{color:'#DDE3D5'}}}}});
+function renderStockout(){
+  const skus=getSkus().filter(s=>getVel(s)>0),weeks=getWeeks(),sg={};
+  skus.forEach(s=>{const sz=getSize(s);if(!sg[sz])sg[sz]=[];sg[sz].push(s)});
+  Object.keys(charts).forEach(k=>{if(k.startsWith('risk-')){charts[k].destroy();delete charts[k]}});
+  let html='';for(const[sz,ss]of Object.entries(sg)){const id='risk-'+sz.replace(/\s/g,'');html+=`<div class="chart-container"><h3>Stockout Risk — ${sz}</h3><canvas id="${id}"></canvas></div>`}
+  document.getElementById('stockoutCharts').innerHTML=html;
+  setTimeout(()=>{for(const[sz,ss]of Object.entries(sg)){const id='risk-'+sz.replace(/\s/g,''),cv=document.getElementById(id);if(!cv)continue;
+  const ds=ss.map(sku=>{const p=project(sku,weeks),so=p.some(x=>x.close<=0),hue=Math.abs(hashCode(sku))%360;
+  return{label:sku,data:p.map(x=>x.close),borderColor:`hsl(${hue},60%,45%)`,borderWidth:1.5,pointRadius:0,tension:0.3,borderDash:so?[]:[5,3]}});
+  charts[id]=new Chart(cv,{type:'line',data:{labels:weeks.map(w=>w.start),datasets:ds},options:{responsive:true,plugins:{legend:{labels:{color:'#282828',font:{size:10}}}},scales:{x:{type:'time',time:{unit:'month',displayFormats:{month:'MMM yy'}},ticks:{color:'#758068'},grid:{color:'#DDE3D5'}},y:{ticks:{color:'#758068'},grid:{color:'#DDE3D5'}}},interaction:{intersect:false,mode:'nearest'}}})}
+  renderHeatmap()},50)
 }
 
-// Colour palette for bed colours
-const COLOUR_MAP = {
-  'MSM': {name:'Marshmallow', hex:'#E8B4B8', dark:'#C4878D'},
-  'CTCN': {name:'Cotton Candy', hex:'#F4A6C4', dark:'#D4789E'},
-  'DGY': {name:'Dove Grey', hex:'#9E9E9E', dark:'#6E6E6E'},
-  'DSBL': {name:'Dusty Blue', hex:'#7BA7C2', dark:'#4A7A9A'},
-  'PST': {name:'Pistachio', hex:'#93C572', dark:'#6B9E4A'},
-  'BABL': {name:'Baby Blue', hex:'#6CB4EE', dark:'#3A8AC2'}
-};
+function setHeatmapSort(m,b){heatmapSortMode=m;b.parentElement.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderHeatmap()}
+function renderHeatmap(){
+  const skus=getSkus().filter(s=>getVel(s)>0||(DATA.cin7[s]||0)>0),weeks=getWeeks();
+  let sd=skus.map(sku=>{const p=project(sku,weeks),sw=p.findIndex(x=>x.close<=0);return{sku,proj:p,soWk:sw>=0?sw:999,size:getSize(sku)}});
+  if(heatmapSortMode==='size')sd.sort((a,b)=>a.size.localeCompare(b.size)||a.soWk-b.soWk);else sd.sort((a,b)=>a.soWk-b.soWk);
+  let wi=[];for(let i=0;i<weeks.length;i+=2)wi.push(i);
+  let h='<table class="heatmap-table"><thead><tr><th style="position:sticky;left:0;z-index:2">SKU</th>';
+  wi.forEach(i=>{h+=`<th>${weeks[i].start.toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</th>`});h+='</tr></thead><tbody>';
+  let ps='';sd.forEach(({sku,proj,size})=>{
+    if(heatmapSortMode==='size'&&size!==ps){h+=`<tr><td colspan="${wi.length+1}" style="background:var(--bg-secondary);color:#F6F8F4;font-weight:700;font-size:11px;padding:5px 10px">${size}</td></tr>`;ps=size}
+    h+=`<tr><td class="sku-name">${sku}</td>`;wi.forEach(i=>{let st=Math.round(proj[i].close),v=getVel(sku),wl=v>0?st/v:99;
+    let c=st<=0?'hm-stockout':wl<=2?'hm-critical':wl<=4?'hm-low':wl<=8?'hm-ok':'hm-healthy';h+=`<td class="${c}" title="${Math.round(wl)}wk">${st}</td>`});h+='</tr>'});
+  h+='</tbody></table>';document.getElementById('heatmapContainer').innerHTML=h}
 
-function getColourCode(sku) { return sku.split('-').pop(); }
+function renderReorder(){
+  const skus=getSkus(),weeks=getWeeks(),sw=4,lw=8;
+  let rows=skus.map(sku=>{let net=getNet(sku),vel=getVel(sku),inc=getIncoming(sku),p=project(sku,weeks),sw2=p.findIndex(x=>x.close<=0),wl=sw2>=0?sw2:99;
+  let sd=sw2>=0?new Date(TODAY.getTime()+sw2*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Beyond forecast';
+  let su=Math.round(vel*sw),rop=Math.round(vel*lw+su),rq=Math.max(0,Math.round(vel*12+su-net-inc));
+  let obw=Math.max(0,wl-lw-sw),ob=wl<99?new Date(TODAY.getTime()+obw*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Not urgent';
+  return{sku,net,vel,inc,wl,sd,su,rop,rq,ob,size:getSize(sku)}}).sort((a,b)=>a.wl-b.wl);
+  document.querySelector('#reorderTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th>Net SOH</th><th>Units/wk</th><th>Incoming</th><th>Wks Left</th><th>Stockout</th><th>Safety</th><th>Reorder Pt</th><th>Order Qty</th><th>Order By</th><th>Status</th></tr>';
+  document.querySelector('#reorderTable tbody').innerHTML=rows.map(r=>
+    `<tr><td style="font-family:monospace;font-size:10px">${r.sku}</td><td>${r.size}</td><td>${fmt(r.net)}</td><td>${r.vel.toFixed(1)}</td><td>${r.inc}</td><td>${r.wl>=99?'99+':r.wl}</td><td>${r.sd}</td><td>${r.su}</td><td>${r.rop}</td><td>${r.rq>0?`<b>${r.rq}</b>`:'—'}</td><td>${r.ob}</td><td>${statusBadge(r.wl)}</td></tr>`).join('')}
 
-// Track which SKUs are toggled on/off per chart
-let riskToggles = {};
+function exportCSV(){let rows=[['SKU','Size','Net SOH','Vel/wk','Incoming','Wks Left','Reorder Qty']];getSkus().forEach(sku=>{let net=getNet(sku),vel=getVel(sku),inc=getIncoming(sku),p=project(sku),sw=p.findIndex(x=>x.close<=0),wl=sw>=0?sw:99,su=Math.round(vel*4),rq=Math.max(0,Math.round(vel*12+su-net-inc));rows.push([sku,getSize(sku),net,vel.toFixed(1),inc,wl,rq])});let csv=rows.map(r=>r.join(',')).join('\n'),b=new Blob([csv],{type:'text/csv'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`demand_${currentCK}_${new Date().toISOString().slice(0,10)}.csv`;a.click()}
 
-function initToggles(containerId, skuList) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  el.innerHTML = skuList.map(sku => {
-    const cc = getColourCode(sku);
-    const cm = COLOUR_MAP[cc] || {name:cc, hex:'#888', dark:'#555'};
-    if (!(containerId in riskToggles)) riskToggles[containerId] = {};
-    riskToggles[containerId][sku] = true;
-    return `<span class="sku-toggle" data-sku="${sku}" data-container="${containerId}" 
-      style="border-color:${cm.dark};background:${cm.hex};color:#222"
-      onclick="toggleSku(this,'${sku}','${containerId}')">${cm.name}</span>`;
-  }).join('');
-}
-
-function toggleSku(el, sku, containerId) {
-  riskToggles[containerId][sku] = !riskToggles[containerId][sku];
-  el.classList.toggle('off');
-  updateScenario();
-}
-
-function renderSizeRiskChart(canvasId, toggleContainerId, skuList, settings) {
-  const chartKey = canvasId;
-  if (charts[chartKey]) charts[chartKey].destroy();
-  
-  let weeks = getWeeks();
-  let datasets = skuList.filter(sku => {
-    return !riskToggles[toggleContainerId] || riskToggles[toggleContainerId][sku] !== false;
-  }).map(sku => {
-    let proj = project(sku, settings);
-    let cc = getColourCode(sku);
-    let cm = COLOUR_MAP[cc] || {name:cc, hex:'#888', dark:'#555'};
-    let stocksOut = proj.some(p => p.close <= 0);
-    return {
-      label: cm.name,
-      data: proj.map(p => p.close),
-      borderColor: cm.dark,
-      backgroundColor: cm.hex + '20',
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.3,
-      fill: false,
-      borderDash: stocksOut ? [] : [5, 3]
-    };
-  });
-  
-  charts[chartKey] = new Chart(document.getElementById(canvasId), {
-    type: 'line',
-    data: { labels: weeks.map(w => w.start), datasets },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { labels: { color: '#282828', usePointStyle: true, pointStyle: 'line' } },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${Math.round(ctx.raw)} units`
-          }
-        }
-      },
-      scales: {
-        x: { type: 'time', time: { unit: 'month', displayFormats: { month: 'MMM yy' } }, ticks: { color: '#758068' }, grid: { color: '#DDE3D5' } },
-        y: { ticks: { color: '#758068' }, grid: { color: '#DDE3D5' },
-          title: { display: true, text: 'Units', color: '#758068' }
-        }
-      },
-      interaction: { intersect: false, mode: 'index' }
-    }
-  });
-}
-
-let heatmapSortMode = 'risk';
-
-function setHeatmapSort(mode, btn) {
-  heatmapSortMode = mode;
-  // Update active button
-  btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  updateScenario();
-}
-
-const SIZE_ORDER = {'Single': 0, 'King Single': 1, 'Double': 2};
-const COLOUR_ORDER = {'MSM': 0, 'CTCN': 1, 'DGY': 2, 'PST': 3, 'BABL': 4, 'DSBL': 5};
-
-function renderHeatmap(settings) {
-  let weeks = getWeeks();
-  let bedSkus = SKUS.filter(s => !s.includes('CBCF') && DATA.cin7[s] !== undefined);
-  
-  let skuData = bedSkus.map(sku => {
-    let proj = project(sku, settings);
-    let soWk = proj.findIndex(p => p.close <= 0);
-    let cc = getColourCode(sku);
-    let size = getSize(sku);
-    return { sku, proj, soWk: soWk >= 0 ? soWk : 999, cc, size };
-  });
-  
-  // Sort based on selected mode
-  if (heatmapSortMode === 'risk') {
-    skuData.sort((a, b) => a.soWk - b.soWk);
-  } else if (heatmapSortMode === 'size') {
-    skuData.sort((a, b) => {
-      let sd = SIZE_ORDER[a.size] - SIZE_ORDER[b.size];
-      return sd !== 0 ? sd : a.soWk - b.soWk;
-    });
-  } else if (heatmapSortMode === 'colour') {
-    skuData.sort((a, b) => {
-      let cd = (COLOUR_ORDER[a.cc]||99) - (COLOUR_ORDER[b.cc]||99);
-      return cd !== 0 ? cd : SIZE_ORDER[a.size] - SIZE_ORDER[b.size];
-    });
-  }
-  
-  let weekIndices = [];
-  for (let i = 0; i < weeks.length; i += 2) weekIndices.push(i);
-  
-  let html = '<table class="heatmap-table"><thead><tr><th style="position:sticky;left:0;z-index:2">SKU</th>';
-  weekIndices.forEach(i => {
-    html += '<th>' + weeks[i].start.toLocaleDateString('en-AU', {day:'numeric', month:'short'}) + '</th>';
-  });
-  html += '</tr></thead><tbody>';
-  
-  let prevGroup = '';
-  skuData.forEach(({sku, proj, cc, size}) => {
-    let cm = COLOUR_MAP[cc] || {name:cc};
-    
-    // Add group separator row for size/colour sort
-    let groupKey = heatmapSortMode === 'size' ? size : heatmapSortMode === 'colour' ? cm.name : '';
-    if (groupKey && groupKey !== prevGroup) {
-      html += '<tr><td colspan="' + (weekIndices.length + 1) + '" style="background:var(--bg-secondary);color:#F6F8F4;font-weight:700;font-size:12px;padding:6px 12px">' + groupKey + '</td></tr>';
-      prevGroup = groupKey;
-    }
-    
-    html += '<tr><td class="sku-name">' + size + ' ' + cm.name + '</td>';
-    weekIndices.forEach(i => {
-      let stock = Math.round(proj[i].close);
-      let vel = getCombinedVel(sku);
-      let wksLeft = vel > 0 ? stock / vel : 99;
-      let cls;
-      if (stock <= 0) cls = 'hm-stockout';
-      else if (wksLeft <= 2) cls = 'hm-critical';
-      else if (wksLeft <= 4) cls = 'hm-low';
-      else if (wksLeft <= 8) cls = 'hm-ok';
-      else cls = 'hm-healthy';
-      html += '<td class="' + cls + '" title="' + Math.round(wksLeft) + 'wk supply">' + stock + '</td>';
-    });
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  document.getElementById('heatmapContainer').innerHTML = html;
-}
-
-function renderWeeksRemainingChart(settings) {
-  const chartKey = 'riskWeeks';
-  if (charts[chartKey]) charts[chartKey].destroy();
-  
-  let weeks = getWeeks();
-  let bedSkus = SKUS.filter(s => !s.includes('CBCF') && DATA.cin7[s] !== undefined);
-  
-  // Filter by toggles
-  let activeSkus = bedSkus.filter(sku => {
-    return !riskToggles['toggles-wks'] || riskToggles['toggles-wks'][sku] !== false;
-  });
-  
-  let datasets = activeSkus.map(sku => {
-    let proj = project(sku, settings);
-    let vel = getCombinedVel(sku);
-    let cc = getColourCode(sku);
-    let cm = COLOUR_MAP[cc] || {name:cc, hex:'#888', dark:'#555'};
-    let size = getSize(sku);
-    let lineStyle = size === 'Single' ? [] : size === 'King Single' ? [8, 4] : [2, 2];
-    
-    return {
-      label: `${size} ${cm.name}`,
-      data: proj.map(p => vel > 0 ? Math.max(p.close / vel, -5) : 99),
-      borderColor: cm.dark,
-      borderWidth: 1.5,
-      pointRadius: 0,
-      tension: 0.3,
-      borderDash: lineStyle
-    };
-  });
-  
-  charts[chartKey] = new Chart(document.getElementById('riskWeeks'), {
-    type: 'line',
-    data: { labels: weeks.map(w => w.start), datasets },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(1)} weeks`
-          }
-        },
-        annotation: undefined
-      },
-      scales: {
-        x: { type: 'time', time: { unit: 'month', displayFormats: { month: 'MMM yy' } }, ticks: { color: '#758068' }, grid: { color: '#DDE3D5' } },
-        y: {
-          ticks: { color: '#758068', callback: v => v + 'wk' },
-          grid: { color: '#DDE3D5' },
-          title: { display: true, text: 'Weeks of Stock', color: '#758068' }
-        }
-      },
-      interaction: { intersect: false, mode: 'nearest' }
-    }
-  });
-}
-
-function renderRiskChart(s) {
-  let bedSkus = SKUS.filter(s => !s.includes('CBCF') && DATA.cin7[s] !== undefined);
-  let singles = bedSkus.filter(sku => sku.includes('-S-'));
-  let kingSingles = bedSkus.filter(sku => sku.includes('-KS-'));
-  let doubles = bedSkus.filter(sku => sku.includes('-D-'));
-  
-  // Init toggles if not done
-  if (!riskToggles['toggles-single'] || Object.keys(riskToggles['toggles-single']).length === 0) {
-    initToggles('toggles-single', singles);
-    initToggles('toggles-ks', kingSingles);
-    initToggles('toggles-double', doubles);
-    initToggles('toggles-wks', bedSkus);
-  }
-  
-  // Render size-separated charts
-  renderSizeRiskChart('riskSingle', 'toggles-single', singles, s);
-  renderSizeRiskChart('riskKS', 'toggles-ks', kingSingles, s);
-  renderSizeRiskChart('riskDouble', 'toggles-double', doubles, s);
-  
-  // Render heatmap
-  renderHeatmap(s);
-  
-  // Render weeks remaining
-  renderWeeksRemainingChart(s);
-}
-
-// ===== REORDER CALCULATOR =====
-function renderReorder() {
-  let s=getSettings(), weeks=getWeeks();
-  let rows=SKUS.map(sku=>{
-    let net=getNet(sku), vel=getCombinedVel(sku), inc=getIncoming(sku);
-    let futureVel=vel*Math.pow(1+s.growth,s.lead);
-    let proj=project(sku,s);
-    let stockoutWk=proj.findIndex(p=>p.close<=0);
-    let wksLeft=stockoutWk>=0?stockoutWk:99;
-    let stockoutDate=stockoutWk>=0?new Date(TODAY.getTime()+stockoutWk*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Beyond 2026';
-    let safetyUnits=Math.round(futureVel*s.safety);
-    let rop=Math.round(futureVel*s.lead+safetyUnits);
-    let reorderQty=Math.max(0,Math.round(futureVel*12+safetyUnits-net-inc));
-    let orderByWk=Math.max(0,wksLeft-s.lead-s.safety);
-    let orderBy=wksLeft<99?new Date(TODAY.getTime()+orderByWk*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Not urgent';
-    return {sku,name:DATA.names[sku],net,vel,futureVel:Math.round(futureVel*10)/10,inc,wksLeft,stockoutDate,safetyUnits,rop,reorderQty,orderBy,size:getSize(sku),type:getType(sku)};
-  }).sort((a,b)=>a.wksLeft-b.wksLeft);
-  let thead=`<tr>
-<th data-tip>SKU<span class="tip">Unique product identifier from CIN7 inventory system.</span></th>
-<th data-tip>Product<span class="tip">Human-readable product name: Bed/Combo + Size + Colour.</span></th>
-<th data-tip>Net SOH<span class="tip">Net Stock on Hand.<br><code>CIN7 SOH + min(Shopify, 0)</code><br>Shopify negatives = pre-order commitments already sold.</span></th>
-<th data-tip>Units/wk<span class="tip">Current sales velocity per week.<br>Combined: Bed + Combo Frame velocity (both consume the same bed stock).</span></th>
-<th data-tip>Future Vel<span class="tip">Projected velocity at lead time arrival.<br><code>Units/wk × (1 + Growth Rate) ^ Lead Time weeks</code><br>Accounts for compounding weekly growth.</span></th>
-<th data-tip>Incoming<span class="tip">Total units arriving from all open Purchase Orders for this SKU.</span></th>
-<th data-tip>Wks Left<span class="tip">Weeks until stockout.<br>Simulated week-by-week: applies growth rate + seasonal multipliers + PO arrivals. First week where closing stock ≤ 0.</span></th>
-<th data-tip>Stockout<span class="tip">Projected stockout date.<br><code>Today + (Weeks Left × 7 days)</code><br>"Beyond 2026" = no stockout in forecast window.</span></th>
-<th data-tip>Safety (units)<span class="tip">Safety stock buffer in units.<br><code>Future Velocity × Safety Weeks</code><br>Default: 4 weeks of buffer. Adjustable in Scenario Planner.</span></th>
-<th data-tip>Reorder Pt<span class="tip">Reorder Point — place an order when stock drops to this level.<br><code>(Future Vel × Lead Time) + Safety Units</code><br>Covers demand during lead time + safety buffer.</span></th>
-<th data-tip>Order Qty<span class="tip">Recommended order quantity.<br><code>max(0, Future Vel × 12 weeks + Safety Units − Net SOH − Incoming)</code><br>Covers 12 weeks of projected demand plus safety, minus what you have and what's coming.</span></th>
-<th data-tip>Order By<span class="tip">Latest date to place order to avoid stockout.<br><code>Today + max(0, Wks Left − Lead Time − Safety Weeks) × 7 days</code><br>"Not urgent" = no stockout projected.</span></th>
-<th data-tip>Status<span class="tip">Stock health badge based on Weeks Left:<br>• <b>STOCKOUT</b> = 0 weeks<br>• <b>CRITICAL</b> = 1-2 weeks<br>• <b>LOW</b> = 3-4 weeks<br>• <b>OK</b> = 5-8 weeks<br>• <b>HEALTHY</b> = 8+ weeks</span></th>
-</tr>`;
-  let tbody=rows.map(r=>
-    `<tr><td style="font-family:monospace;font-size:11px">${r.sku}</td><td>${r.name}</td><td>${fmt(r.net)}</td><td>${r.vel.toFixed(1)}</td><td>${r.futureVel}</td><td>${r.inc}</td><td>${r.wksLeft>=99?'99+':r.wksLeft}</td><td>${r.stockoutDate}</td><td>${r.safetyUnits}</td><td>${r.rop}</td><td>${r.reorderQty>0?`<b>${r.reorderQty}</b>`:'—'}</td><td>${r.orderBy}</td><td>${statusBadge(r.wksLeft)}</td></tr>`).join('');
-  document.querySelector('#reorderTable thead').innerHTML=thead;
-  document.querySelector('#reorderTable tbody').innerHTML=tbody;
-  // Timeline chart
-  if(charts.timeline) charts.timeline.destroy();
-  let bedRows=rows.filter(r=>r.type==='Bed'&&r.wksLeft<99);
-  charts.timeline=new Chart(document.getElementById('timelineChart'),{type:'bar',data:{
-    labels:bedRows.map(r=>r.name),
-    datasets:[
-      {label:'Weeks of Stock',data:bedRows.map(r=>r.wksLeft),backgroundColor:bedRows.map(r=>r.wksLeft<=2?'#C33252':r.wksLeft<=4?'#D4930D':r.wksLeft<=8?'#2C474B':'#5BAB31')},
-    ]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#758068'},grid:{color:'#DDE3D5'}},y:{ticks:{color:'#282828',font:{size:11}}}}}});
-}
-
-// ===== EXPORT CSV =====
-function exportCSV() {
-  let s=getSettings();
-  let rows=[['SKU','Product','Net SOH','Velocity/wk','Incoming','Weeks Left','Stockout Date','Safety Stock','Reorder Qty','Order By']];
-  SKUS.forEach(sku=>{
-    let net=getNet(sku),vel=getCombinedVel(sku),inc=getIncoming(sku);
-    let proj=project(sku,s), stockoutWk=proj.findIndex(p=>p.close<=0), wks=stockoutWk>=0?stockoutWk:99;
-    let futureVel=vel*Math.pow(1+s.growth,s.lead);
-    let safetyU=Math.round(futureVel*s.safety);
-    let reorderQ=Math.max(0,Math.round(futureVel*12+safetyU-net-inc));
-    rows.push([sku,DATA.names[sku],net,vel.toFixed(1),inc,wks,wks<99?new Date(TODAY.getTime()+wks*7*86400000).toLocaleDateString():'Beyond 2026',safetyU,reorderQ,wks<99?new Date(TODAY.getTime()+Math.max(0,wks-s.lead-s.safety)*7*86400000).toLocaleDateString():'N/A']);
-  });
-  let csv=rows.map(r=>r.join(',')).join('\n');
-  let blob=new Blob([csv],{type:'text/csv'});
-  let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='demand_plan_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
-}
-
-// ===== SCENARIO COMPARISON =====
-function saveScenario() {
-  if(scenarios.length>=3){alert('Max 3 scenarios. Clear first.');return;}
-  let name=prompt('Scenario name:','Scenario '+(scenarios.length+1));
-  if(!name) return;
-  let s=getSettings();
-  let totalClose=0, totalSales=0, firstStockout=99;
-  SKUS.forEach(sku=>{
-    let proj=project(sku,s);
-    totalClose+=proj[proj.length-1].close;
-    totalSales+=proj.reduce((t,p)=>t+p.sales,0);
-    let so=proj.findIndex(p=>p.close<=0);
-    if(so>=0&&so<firstStockout) firstStockout=so;
-  });
-  scenarios.push({name,settings:{...s},totalClose,totalSales,firstStockout,weekly:getWeeks().map((_,i)=>{
-    let t=0;SKUS.forEach(sku=>{let p=project(sku,s);t+=p[i]?.close||0;});return t;
-  })});
-  renderCompare();
-}
-function clearScenarios(){scenarios=[];renderCompare();}
-function renderCompare() {
-  document.getElementById('compGrid').innerHTML=scenarios.map(sc=>
-    `<div class="scenario-card"><h4>${sc.name}</h4>
-    <div class="metric"><span>Growth Rate</span><span>${(sc.settings.growth*100).toFixed(1)}%</span></div>
-    <div class="metric"><span>Safety Stock</span><span>${sc.settings.safety} wks</span></div>
-    <div class="metric"><span>Lead Time</span><span>${sc.settings.lead} wks</span></div>
-    <div class="metric"><span>Total Projected Sales</span><span>${sc.totalSales.toLocaleString()}</span></div>
-    <div class="metric"><span>End 2026 Stock</span><span style="color:${sc.totalClose>0?'var(--green)':'var(--alert)'}">${sc.totalClose.toLocaleString()}</span></div>
-    <div class="metric"><span>First Stockout (weeks)</span><span style="color:${sc.firstStockout<8?'var(--alert)':'var(--green)'}">${sc.firstStockout>=99?'None':sc.firstStockout}</span></div>
-    </div>`).join('');
-  if(charts.comp) charts.comp.destroy();
-  if(scenarios.length===0) return;
-  let weeks=getWeeks();
-  let colors=['#2C474B','#5BAB31','#D4930D'];
-  charts.comp=new Chart(document.getElementById('compChart'),{type:'line',data:{
-    labels:weeks.map(w=>w.start),
-    datasets:scenarios.map((sc,i)=>({label:sc.name,data:sc.weekly,borderColor:colors[i],tension:0.3,pointRadius:0}))
-  },options:{responsive:true,plugins:{legend:{labels:{color:'#282828'}}},scales:{x:{type:'time',time:{unit:'month'},ticks:{color:'#758068'},grid:{color:'#DDE3D5'}},y:{ticks:{color:'#758068'},grid:{color:'#DDE3D5'}}}}});
-}
-
-// ===== INIT =====
-renderDashboard();
-initScenario();
-renderReorder();
-renderCompare();
-
-// Fetch live data on load
-fetchLiveData();
+let chatOpen=false,chatHistory=[];
+function toggleChat(){chatOpen=!chatOpen;document.getElementById('chatPanel').classList.toggle('open',chatOpen);document.getElementById('chatToggle').textContent=chatOpen?'✕':'💬'}
+function escapeHtml(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+async function sendChat(){const i=document.getElementById('chatInput'),m=i.value.trim();if(!m)return;i.value='';const ms=document.getElementById('chatMessages');
+ms.innerHTML+=`<div class="chat-msg user">${escapeHtml(m)}</div><div class="chat-msg bot" id="typing"><span style="opacity:0.6">Thinking...</span></div>`;ms.scrollTop=ms.scrollHeight;chatHistory.push({role:'user',text:m});
+try{const r=await fetch('/api/chat',{method:'POST',headers:H(),body:JSON.stringify({message:m,history:chatHistory.slice(-10),ckId:currentCK})});const d=await r.json();document.getElementById('typing')?.remove();
+ms.innerHTML+=`<div class="chat-msg bot">${d.reply||'Error'}</div>`;chatHistory.push({role:'assistant',text:d.reply})}catch(e){document.getElementById('typing')?.remove();ms.innerHTML+=`<div class="chat-msg bot">Connection error.</div>`}ms.scrollTop=ms.scrollHeight}
+async function manualRefresh(){document.getElementById('refreshBtn').textContent='⏳...';try{await fetch('/api/refresh',{method:'POST',headers:H()});if(currentCK)await selectCK(currentCK);loadSidebar()}catch(e){}document.getElementById('refreshBtn').textContent='🔄 Refresh'}
+loadSidebar();
 </script>
-
-<!-- Chat Widget -->
-<button class="chat-toggle" onclick="toggleChat()" id="chatToggle">💬</button>
-<div class="chat-panel" id="chatPanel">
-  <div class="chat-header">
-    <h4>🐒 Ask Caesar</h4>
-    <button onclick="toggleChat()" style="background:none;border:none;color:var(--text);cursor:pointer;font-size:18px">✕</button>
-  </div>
-  <div class="chat-messages" id="chatMessages">
-    <div class="chat-msg bot">Hey! I'm Caesar 🐒 I can answer questions about Little Lifely stock using <strong>live data</strong>. Try asking:<br><br>• "When does Double Marshmallow stock out?"<br>• "What's our best seller right now?"<br>• "How much should we reorder for King Single?"<br>• "What's the status of our POs?"</div>
-  </div>
-  <div class="chat-input">
-    <input type="text" id="chatInput" placeholder="Ask about stock, POs, forecasts..." onkeydown="if(event.key==='Enter')sendChat()">
-    <button onclick="sendChat()">Send</button>
-  </div>
-</div>
 </body>
 </html>
