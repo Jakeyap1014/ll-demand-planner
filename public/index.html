@@ -213,6 +213,12 @@ th[data-tip]:hover .tip { display: block; }
   </div>
   <div class="chart-container">
     <h3>📅 Heatmap — Stock Health by Week</h3>
+    <div class="filters" style="margin-bottom:12px">
+      <span style="font-size:12px;color:var(--text-dim);margin-right:4px">Sort by:</span>
+      <button class="filter-btn active" onclick="setHeatmapSort('risk',this)">Stockout Risk</button>
+      <button class="filter-btn" onclick="setHeatmapSort('size',this)">Size</button>
+      <button class="filter-btn" onclick="setHeatmapSort('colour',this)">Colour</button>
+    </div>
     <div id="heatmapContainer" style="overflow-x:auto"></div>
   </div>
   <div class="chart-container">
@@ -670,41 +676,78 @@ function renderSizeRiskChart(canvasId, toggleContainerId, skuList, settings) {
   });
 }
 
+let heatmapSortMode = 'risk';
+
+function setHeatmapSort(mode, btn) {
+  heatmapSortMode = mode;
+  // Update active button
+  btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateScenario();
+}
+
+const SIZE_ORDER = {'Single': 0, 'King Single': 1, 'Double': 2};
+const COLOUR_ORDER = {'MSM': 0, 'CTCN': 1, 'DGY': 2, 'PST': 3, 'BABL': 4, 'DSBL': 5};
+
 function renderHeatmap(settings) {
   let weeks = getWeeks();
   let bedSkus = SKUS.filter(s => !s.includes('CBCF') && DATA.cin7[s] !== undefined);
-  // Sort by stockout urgency
+  
   let skuData = bedSkus.map(sku => {
     let proj = project(sku, settings);
     let soWk = proj.findIndex(p => p.close <= 0);
-    return { sku, proj, soWk: soWk >= 0 ? soWk : 999 };
-  }).sort((a, b) => a.soWk - b.soWk);
+    let cc = getColourCode(sku);
+    let size = getSize(sku);
+    return { sku, proj, soWk: soWk >= 0 ? soWk : 999, cc, size };
+  });
   
-  // Show every 2nd week to keep it compact
+  // Sort based on selected mode
+  if (heatmapSortMode === 'risk') {
+    skuData.sort((a, b) => a.soWk - b.soWk);
+  } else if (heatmapSortMode === 'size') {
+    skuData.sort((a, b) => {
+      let sd = SIZE_ORDER[a.size] - SIZE_ORDER[b.size];
+      return sd !== 0 ? sd : a.soWk - b.soWk;
+    });
+  } else if (heatmapSortMode === 'colour') {
+    skuData.sort((a, b) => {
+      let cd = (COLOUR_ORDER[a.cc]||99) - (COLOUR_ORDER[b.cc]||99);
+      return cd !== 0 ? cd : SIZE_ORDER[a.size] - SIZE_ORDER[b.size];
+    });
+  }
+  
   let weekIndices = [];
   for (let i = 0; i < weeks.length; i += 2) weekIndices.push(i);
   
   let html = '<table class="heatmap-table"><thead><tr><th style="position:sticky;left:0;z-index:2">SKU</th>';
   weekIndices.forEach(i => {
-    html += `<th>${weeks[i].start.toLocaleDateString('en-AU', {day:'numeric', month:'short'})}</th>`;
+    html += '<th>' + weeks[i].start.toLocaleDateString('en-AU', {day:'numeric', month:'short'}) + '</th>';
   });
   html += '</tr></thead><tbody>';
   
-  skuData.forEach(({sku, proj}) => {
-    let cc = getColourCode(sku);
+  let prevGroup = '';
+  skuData.forEach(({sku, proj, cc, size}) => {
     let cm = COLOUR_MAP[cc] || {name:cc};
-    html += `<tr><td class="sku-name">${getSize(sku)} ${cm.name}</td>`;
+    
+    // Add group separator row for size/colour sort
+    let groupKey = heatmapSortMode === 'size' ? size : heatmapSortMode === 'colour' ? cm.name : '';
+    if (groupKey && groupKey !== prevGroup) {
+      html += '<tr><td colspan="' + (weekIndices.length + 1) + '" style="background:var(--bg-secondary);color:#F6F8F4;font-weight:700;font-size:12px;padding:6px 12px">' + groupKey + '</td></tr>';
+      prevGroup = groupKey;
+    }
+    
+    html += '<tr><td class="sku-name">' + size + ' ' + cm.name + '</td>';
     weekIndices.forEach(i => {
       let stock = Math.round(proj[i].close);
       let vel = getCombinedVel(sku);
       let wksLeft = vel > 0 ? stock / vel : 99;
-      let cls, label;
-      if (stock <= 0) { cls = 'hm-stockout'; label = stock; }
-      else if (wksLeft <= 2) { cls = 'hm-critical'; label = stock; }
-      else if (wksLeft <= 4) { cls = 'hm-low'; label = stock; }
-      else if (wksLeft <= 8) { cls = 'hm-ok'; label = stock; }
-      else { cls = 'hm-healthy'; label = stock; }
-      html += `<td class="${cls}" title="${Math.round(wksLeft)}wk supply">${label}</td>`;
+      let cls;
+      if (stock <= 0) cls = 'hm-stockout';
+      else if (wksLeft <= 2) cls = 'hm-critical';
+      else if (wksLeft <= 4) cls = 'hm-low';
+      else if (wksLeft <= 8) cls = 'hm-ok';
+      else cls = 'hm-healthy';
+      html += '<td class="' + cls + '" title="' + Math.round(wksLeft) + 'wk supply">' + stock + '</td>';
     });
     html += '</tr>';
   });
