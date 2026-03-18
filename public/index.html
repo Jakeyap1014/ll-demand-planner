@@ -133,6 +133,19 @@ th[data-tip]:after { content: ' ⓘ'; font-size: 10px; opacity: 0.6; }
 th[data-tip]:hover .tip { display: block; }
 .tip { display: none; position: absolute; top: 100%; left: 0; min-width: 260px; max-width: 340px; background: #2C474B; color: #F6F8F4; padding: 12px 14px; border-radius: 8px; font-size: 12px; font-weight: 400; line-height: 1.5; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,0.18); white-space: normal; pointer-events: none; }
 .tip code { background: rgba(255,255,255,0.15); padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+
+.sku-toggles { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.sku-toggle { padding: 4px 12px; border-radius: 14px; font-size: 11px; font-weight: 600; cursor: pointer; border: 2px solid; transition: all 0.2s; }
+.sku-toggle.off { opacity: 0.35; }
+.heatmap-table { border-collapse: collapse; font-size: 11px; width: 100%; }
+.heatmap-table th, .heatmap-table td { padding: 6px 8px; text-align: center; white-space: nowrap; border: 1px solid var(--border); }
+.heatmap-table th { background: var(--bg-secondary); color: #F6F8F4; position: sticky; top: 0; z-index: 1; }
+.heatmap-table td.sku-name { text-align: left; font-weight: 600; background: #FFFFFF; position: sticky; left: 0; z-index: 1; min-width: 160px; }
+.hm-healthy { background: #d4edda; color: #155724; }
+.hm-ok { background: #fff3cd; color: #856404; }
+.hm-low { background: #ffe0b2; color: #7a4100; }
+.hm-critical { background: #f8d7da; color: #721c24; }
+.hm-stockout { background: #C33252; color: #fff; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -183,7 +196,30 @@ th[data-tip]:hover .tip { display: block; }
     <div class="po-list" id="poList"></div>
   </div>
   <div class="chart-container"><h3>Projected Stock — <span id="projTitle">All Products</span></h3><canvas id="projChart"></canvas></div>
-  <div class="chart-container"><h3>Stockout Risk Map</h3><canvas id="riskChart"></canvas></div>
+  <div class="chart-container">
+    <h3>Stockout Risk — Single Beds</h3>
+    <div class="sku-toggles" id="toggles-single"></div>
+    <canvas id="riskSingle"></canvas>
+  </div>
+  <div class="chart-container">
+    <h3>Stockout Risk — King Single Beds</h3>
+    <div class="sku-toggles" id="toggles-ks"></div>
+    <canvas id="riskKS"></canvas>
+  </div>
+  <div class="chart-container">
+    <h3>Stockout Risk — Double Beds</h3>
+    <div class="sku-toggles" id="toggles-double"></div>
+    <canvas id="riskDouble"></canvas>
+  </div>
+  <div class="chart-container">
+    <h3>📅 Heatmap — Stock Health by Week</h3>
+    <div id="heatmapContainer" style="overflow-x:auto"></div>
+  </div>
+  <div class="chart-container">
+    <h3>⏳ Weeks of Stock Remaining (normalised)</h3>
+    <div class="sku-toggles" id="toggles-wks"></div>
+    <canvas id="riskWeeks"></canvas>
+  </div>
 </div>
 
 <!-- Reorder Calculator View -->
@@ -549,22 +585,215 @@ function renderProjChart(weeks, data) {
       {label:'Incoming',data:data.map(d=>d.inc),type:'bar',backgroundColor:'rgba(44,71,75,0.4)'}
     ]},options:{responsive:true,interaction:{intersect:false,mode:'index'},plugins:{legend:{labels:{color:'#282828'}},tooltip:{callbacks:{title:ctx=>{ let d=ctx[0]?.raw!==undefined&&data[ctx[0].dataIndex]?.week?.label; return d||''; }}}},scales:{x:{type:'time',time:{unit:'week',displayFormats:{week:'dd MMM'}},ticks:{color:'#758068'},grid:{color:'#DDE3D5'}},y:{ticks:{color:'#758068'},grid:{color:'#DDE3D5'}}}}});
 }
-function renderRiskChart(s) {
-  if(charts.risk) charts.risk.destroy();
-  let weeks=getWeeks();
-  // Find stockout week per SKU (bed SKUs only)
-  let bedSkus=SKUS.filter(s=>!s.includes('CBCF')&&DATA.cin7[s]!==undefined);
-  let datasets=bedSkus.map(sku=>{
-    let proj=project(sku,s);
-    let color=proj[proj.length-1].close>0?'#5BAB31':proj.some(p=>p.close<=0)?'#C33252':'#D4930D';
-    return {label:DATA.names[sku],data:proj.map(p=>p.close),borderColor:color,borderWidth:1.5,pointRadius:0,tension:0.3};
+
+// Colour palette for bed colours
+const COLOUR_MAP = {
+  'MSM': {name:'Marshmallow', hex:'#E8B4B8', dark:'#C4878D'},
+  'CTCN': {name:'Cotton Candy', hex:'#F4A6C4', dark:'#D4789E'},
+  'DGY': {name:'Dove Grey', hex:'#9E9E9E', dark:'#6E6E6E'},
+  'DSBL': {name:'Dusty Blue', hex:'#7BA7C2', dark:'#4A7A9A'},
+  'PST': {name:'Pistachio', hex:'#93C572', dark:'#6B9E4A'},
+  'BABL': {name:'Baby Blue', hex:'#6CB4EE', dark:'#3A8AC2'}
+};
+
+function getColourCode(sku) { return sku.split('-').pop(); }
+
+// Track which SKUs are toggled on/off per chart
+let riskToggles = {};
+
+function initToggles(containerId, skuList) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = skuList.map(sku => {
+    const cc = getColourCode(sku);
+    const cm = COLOUR_MAP[cc] || {name:cc, hex:'#888', dark:'#555'};
+    if (!(containerId in riskToggles)) riskToggles[containerId] = {};
+    riskToggles[containerId][sku] = true;
+    return `<span class="sku-toggle" data-sku="${sku}" data-container="${containerId}" 
+      style="border-color:${cm.dark};background:${cm.hex};color:#222"
+      onclick="toggleSku(this,'${sku}','${containerId}')">${cm.name}</span>`;
+  }).join('');
+}
+
+function toggleSku(el, sku, containerId) {
+  riskToggles[containerId][sku] = !riskToggles[containerId][sku];
+  el.classList.toggle('off');
+  updateScenario();
+}
+
+function renderSizeRiskChart(canvasId, toggleContainerId, skuList, settings) {
+  const chartKey = canvasId;
+  if (charts[chartKey]) charts[chartKey].destroy();
+  
+  let weeks = getWeeks();
+  let datasets = skuList.filter(sku => {
+    return !riskToggles[toggleContainerId] || riskToggles[toggleContainerId][sku] !== false;
+  }).map(sku => {
+    let proj = project(sku, settings);
+    let cc = getColourCode(sku);
+    let cm = COLOUR_MAP[cc] || {name:cc, hex:'#888', dark:'#555'};
+    let stocksOut = proj.some(p => p.close <= 0);
+    return {
+      label: cm.name,
+      data: proj.map(p => p.close),
+      borderColor: cm.dark,
+      backgroundColor: cm.hex + '20',
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3,
+      fill: false,
+      borderDash: stocksOut ? [] : [5, 3]
+    };
   });
-  charts.risk=new Chart(document.getElementById('riskChart'),{type:'line',data:{
-    labels:weeks.map(w=>w.start),datasets},
-    options:{responsive:true,plugins:{legend:{display:false}},scales:{
-      x:{type:'time',time:{unit:'month',displayFormats:{month:'MMM yy'}},ticks:{color:'#758068'},grid:{color:'#DDE3D5'}},
-      y:{ticks:{color:'#758068'},grid:{color:'#DDE3D5'}}},
-    interaction:{intersect:false,mode:'nearest'}}});
+  
+  charts[chartKey] = new Chart(document.getElementById(canvasId), {
+    type: 'line',
+    data: { labels: weeks.map(w => w.start), datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#282828', usePointStyle: true, pointStyle: 'line' } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${Math.round(ctx.raw)} units`
+          }
+        }
+      },
+      scales: {
+        x: { type: 'time', time: { unit: 'month', displayFormats: { month: 'MMM yy' } }, ticks: { color: '#758068' }, grid: { color: '#DDE3D5' } },
+        y: { ticks: { color: '#758068' }, grid: { color: '#DDE3D5' },
+          title: { display: true, text: 'Units', color: '#758068' }
+        }
+      },
+      interaction: { intersect: false, mode: 'index' }
+    }
+  });
+}
+
+function renderHeatmap(settings) {
+  let weeks = getWeeks();
+  let bedSkus = SKUS.filter(s => !s.includes('CBCF') && DATA.cin7[s] !== undefined);
+  // Sort by stockout urgency
+  let skuData = bedSkus.map(sku => {
+    let proj = project(sku, settings);
+    let soWk = proj.findIndex(p => p.close <= 0);
+    return { sku, proj, soWk: soWk >= 0 ? soWk : 999 };
+  }).sort((a, b) => a.soWk - b.soWk);
+  
+  // Show every 2nd week to keep it compact
+  let weekIndices = [];
+  for (let i = 0; i < weeks.length; i += 2) weekIndices.push(i);
+  
+  let html = '<table class="heatmap-table"><thead><tr><th style="position:sticky;left:0;z-index:2">SKU</th>';
+  weekIndices.forEach(i => {
+    html += `<th>${weeks[i].start.toLocaleDateString('en-AU', {day:'numeric', month:'short'})}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  
+  skuData.forEach(({sku, proj}) => {
+    let cc = getColourCode(sku);
+    let cm = COLOUR_MAP[cc] || {name:cc};
+    html += `<tr><td class="sku-name">${getSize(sku)} ${cm.name}</td>`;
+    weekIndices.forEach(i => {
+      let stock = Math.round(proj[i].close);
+      let vel = getCombinedVel(sku);
+      let wksLeft = vel > 0 ? stock / vel : 99;
+      let cls, label;
+      if (stock <= 0) { cls = 'hm-stockout'; label = stock; }
+      else if (wksLeft <= 2) { cls = 'hm-critical'; label = stock; }
+      else if (wksLeft <= 4) { cls = 'hm-low'; label = stock; }
+      else if (wksLeft <= 8) { cls = 'hm-ok'; label = stock; }
+      else { cls = 'hm-healthy'; label = stock; }
+      html += `<td class="${cls}" title="${Math.round(wksLeft)}wk supply">${label}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('heatmapContainer').innerHTML = html;
+}
+
+function renderWeeksRemainingChart(settings) {
+  const chartKey = 'riskWeeks';
+  if (charts[chartKey]) charts[chartKey].destroy();
+  
+  let weeks = getWeeks();
+  let bedSkus = SKUS.filter(s => !s.includes('CBCF') && DATA.cin7[s] !== undefined);
+  
+  // Filter by toggles
+  let activeSkus = bedSkus.filter(sku => {
+    return !riskToggles['toggles-wks'] || riskToggles['toggles-wks'][sku] !== false;
+  });
+  
+  let datasets = activeSkus.map(sku => {
+    let proj = project(sku, settings);
+    let vel = getCombinedVel(sku);
+    let cc = getColourCode(sku);
+    let cm = COLOUR_MAP[cc] || {name:cc, hex:'#888', dark:'#555'};
+    let size = getSize(sku);
+    let lineStyle = size === 'Single' ? [] : size === 'King Single' ? [8, 4] : [2, 2];
+    
+    return {
+      label: `${size} ${cm.name}`,
+      data: proj.map(p => vel > 0 ? Math.max(p.close / vel, -5) : 99),
+      borderColor: cm.dark,
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0.3,
+      borderDash: lineStyle
+    };
+  });
+  
+  charts[chartKey] = new Chart(document.getElementById('riskWeeks'), {
+    type: 'line',
+    data: { labels: weeks.map(w => w.start), datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(1)} weeks`
+          }
+        },
+        annotation: undefined
+      },
+      scales: {
+        x: { type: 'time', time: { unit: 'month', displayFormats: { month: 'MMM yy' } }, ticks: { color: '#758068' }, grid: { color: '#DDE3D5' } },
+        y: {
+          ticks: { color: '#758068', callback: v => v + 'wk' },
+          grid: { color: '#DDE3D5' },
+          title: { display: true, text: 'Weeks of Stock', color: '#758068' }
+        }
+      },
+      interaction: { intersect: false, mode: 'nearest' }
+    }
+  });
+}
+
+function renderRiskChart(s) {
+  let bedSkus = SKUS.filter(s => !s.includes('CBCF') && DATA.cin7[s] !== undefined);
+  let singles = bedSkus.filter(sku => sku.includes('-S-'));
+  let kingSingles = bedSkus.filter(sku => sku.includes('-KS-'));
+  let doubles = bedSkus.filter(sku => sku.includes('-D-'));
+  
+  // Init toggles if not done
+  if (!riskToggles['toggles-single'] || Object.keys(riskToggles['toggles-single']).length === 0) {
+    initToggles('toggles-single', singles);
+    initToggles('toggles-ks', kingSingles);
+    initToggles('toggles-double', doubles);
+    initToggles('toggles-wks', bedSkus);
+  }
+  
+  // Render size-separated charts
+  renderSizeRiskChart('riskSingle', 'toggles-single', singles, s);
+  renderSizeRiskChart('riskKS', 'toggles-ks', kingSingles, s);
+  renderSizeRiskChart('riskDouble', 'toggles-double', doubles, s);
+  
+  // Render heatmap
+  renderHeatmap(s);
+  
+  // Render weeks remaining
+  renderWeeksRemainingChart(s);
 }
 
 // ===== REORDER CALCULATOR =====
