@@ -100,7 +100,7 @@ function apiRequest(options, postData) {
 
 // ===== CIN7: FETCH ALL PRODUCTS =====
 async function fetchCin7AllProducts() {
-  if (!CIN7_USER || !CIN7_KEY) return {};
+  if (!CIN7_USER || !CIN7_KEY) { console.log('CIN7 SKIPPED: no credentials. USER=' + (CIN7_USER ? 'set' : 'empty') + ' KEY=' + (CIN7_KEY ? 'set' : 'empty')); return {}; }
   const auth = Buffer.from(`${CIN7_USER}:${CIN7_KEY}`).toString('base64');
   const results = {};
   for (let page = 1; page <= 10; page++) {
@@ -255,6 +255,10 @@ async function refreshAllData() {
     ]);
     
     dataCache.cin7Products = cin7Products;
+    // Debug: log sample LLAU data
+    const llauCount = Object.keys(cin7Products).filter(k => k.startsWith('LLAU-CB-S-MSM')).length;
+    const llauSample = cin7Products['LLAU-CB-S-MSM'];
+    console.log('CIN7 debug: LLAU-CB-S-MSM count=' + llauCount + ' data=' + JSON.stringify(llauSample));
     dataCache.cin7POs = cin7POs;
     dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
     dataCache.shopifyInventory = { lifely: lifelyInv, cushie: cushieInv };
