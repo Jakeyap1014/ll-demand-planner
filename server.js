@@ -257,10 +257,7 @@ async function refreshAllData() {
     ]);
     
     dataCache.cin7Products = cin7Products;
-    // Debug: log sample LLAU data
-    const llauCount = Object.keys(cin7Products).filter(k => k.startsWith('LLAU-CB-S-MSM')).length;
-    const llauSample = cin7Products['LLAU-CB-S-MSM'];
-    console.log('CIN7 debug: LLAU-CB-S-MSM count=' + llauCount + ' data=' + JSON.stringify(llauSample));
+
     dataCache.cin7POs = cin7POs;
     dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
     dataCache.shopifyInventory = { lifely: lifelyInv, cushie: cushieInv };
