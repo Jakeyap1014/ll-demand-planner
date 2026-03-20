@@ -271,6 +271,93 @@ async function refreshAllData() {
   }
 }
 
+// ===== SKU NORMALIZATION =====
+// CIN7 tracks multi-box products as SKU-1, SKU-2 etc.
+// Shopify and sales use the base SKU. We need to merge box variants.
+function normalizeCIN7(cin7Raw) {
+  const result = {};
+  const boxPattern = /^(.+)-(\d)$/;
+  const boxGroups = {};
+  
+  for (const [sku, data] of Object.entries(cin7Raw)) {
+    const match = sku.match(boxPattern);
+    if (match) {
+      const base = match[1];
+      if (!boxGroups[base]) boxGroups[base] = [];
+      boxGroups[base].push(data);
+    } else {
+      // Non-box SKU — keep as-is
+      result[sku] = data;
+    }
+  }
+  
+  // For box-split products, buildable = min across all boxes
+  for (const [base, boxes] of Object.entries(boxGroups)) {
+    const soh = Math.min(...boxes.map(b => typeof b === 'object' ? b.soh : b));
+    const available = Math.min(...boxes.map(b => typeof b === 'object' ? (b.available || b.soh) : b));
+    result[base] = { soh, available };
+  }
+  
+  return result;
+}
+
+// Radiant: map component SKUs to set SKUs
+// Shopify sells: RDNT-{size}-{type}-SET (e.g. RDNT-Q-MF-SET)
+// CIN7 tracks: RDNT-{size}-{type} (e.g. RDNT-Q-MF) + RDNT-{size}-BASE
+// A SET = BASE + topper. Buildable = min(BASE, topper)
+function normalizeRadiant(cin7, shopifySkus) {
+  const result = {};
+  const sizes = ['D', 'K', 'Q'];
+  const types = ['S', 'MF', 'F'];
+  
+  for (const size of sizes) {
+    const baseKey = 'RDNT-' + size + '-BASE';
+    const baseSoh = cin7[baseKey]?.soh || cin7[baseKey] || 0;
+    
+    for (const type of types) {
+      const compKey = 'RDNT-' + size + '-' + type;
+      const setKey = compKey + '-SET';
+      const compSoh = cin7[compKey]?.soh || cin7[compKey] || 0;
+      
+      // Single topper set
+      result[setKey] = { soh: Math.min(baseSoh, compSoh), available: Math.min(baseSoh, compSoh) };
+      
+      // Multi-topper combos (e.g. RDNT-Q-S-MF-SET = BASE + S + MF)
+      for (const type2 of types) {
+        if (type2 <= type) continue; // avoid duplicates
+        const comp2Key = 'RDNT-' + size + '-' + type2;
+        const comboSetKey = 'RDNT-' + size + '-' + type + '-' + type2 + '-SET';
+        const comp2Soh = cin7[comp2Key]?.soh || cin7[comp2Key] || 0;
+        result[comboSetKey] = { soh: Math.min(baseSoh, compSoh, comp2Soh), available: Math.min(baseSoh, compSoh, comp2Soh) };
+      }
+    }
+    
+    // Protector
+    const protKey = 'RDNT-PROT-' + size;
+    if (cin7[protKey]) {
+      result[protKey] = cin7[protKey];
+    }
+  }
+  
+  return result;
+}
+
+// Cushie: normalize AU SKUs
+// CIN7: CUSB-Q-LTGN-1, CUSB-Q-LTGN-2 (box split) + CUSB-ARST-SET-LTGN (armrest sets)
+// Shopify: CUSB-Q-LTGN-SET, CUSB-D-LTGN-SET etc.
+function normalizeCushie(cin7Normalized) {
+  const result = {};
+  for (const [sku, data] of Object.entries(cin7Normalized)) {
+    // Map CUSB-Q-LTGN -> CUSB-Q-LTGN-SET for Shopify matching
+    if (sku.match(/^CUSB-(TW|D|Q|K)-(LTGN|DNM|TBRN|TWHT)$/) && !sku.includes('-SET')) {
+      result[sku + '-SET'] = data;
+    }
+    result[sku] = data;
+  }
+  return result;
+}
+
+
 // ===== BUILD CK DATA FROM CACHE =====
 function buildCKData(ckId) {
   const def = CK_DEFS[ckId];
@@ -281,15 +368,27 @@ function buildCKData(ckId) {
   const filter = def.filter || (() => true);
   const excludeCV = def.excludeCV || false;
   
-  // CIN7 stock
-  const cin7 = {};
+  // CIN7 stock — first collect raw, then normalize
+  const cin7Raw = {};
   for (const [sku, data] of Object.entries(dataCache.cin7Products)) {
     if (sku.startsWith(prefix) && filter(sku)) {
-      if (excludeCV && sku.includes('-CV')) continue; // Skip covers
-      if (sku.includes('-CS-')) continue; // Skip colour swatches
-      if (sku.includes('-FRM')) continue; // Skip frames
-      cin7[sku] = data.soh;
+      if (excludeCV && sku.includes('-CV')) continue;
+      if (sku.includes('-CS-')) continue;
+      if (sku.includes('-FRM')) continue;
+      cin7Raw[sku] = data;
     }
+  }
+  
+  // Normalize: merge box-splits, map components to sets
+  let cin7Normalized = normalizeCIN7(cin7Raw);
+  
+  // Special handling per CK
+  if (ckId.startsWith('rdnt')) cin7Normalized = normalizeRadiant(cin7Normalized, Object.keys(dataCache.shopifyInventory[storeKey] || {}));
+  if (ckId.startsWith('cusb')) cin7Normalized = normalizeCushie(cin7Normalized);
+  
+  const cin7 = {};
+  for (const [sku, data] of Object.entries(cin7Normalized)) {
+    cin7[sku] = typeof data === 'object' ? data.soh : data;
   }
   
   // Shopify inventory
