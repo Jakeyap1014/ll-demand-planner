@@ -105,11 +105,13 @@ async function fetchCin7AllProducts() {
   const results = {};
   for (let page = 1; page <= 10; page++) {
     try {
-      const { body } = await apiRequest({
+      console.log('CIN7 Products: fetching page ' + page);
+      const { body, status } = await apiRequest({
         hostname: 'api.cin7.com',
         path: `/api/v1/Products?page=${page}&rows=250`,
         headers: { 'Authorization': `Basic ${auth}` }
       });
+      console.log('CIN7 Products page ' + page + ': status=' + status + ' isArray=' + Array.isArray(body) + ' length=' + (Array.isArray(body) ? body.length : 'N/A'));
       if (!Array.isArray(body) || body.length === 0) break;
       for (const product of body) {
         const variants = product.productOptions || [];
