@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lifely Shipment Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--bg:#F6F8F4;--card:#FFF;--teal:#2C474B;--accent:#3A5A5E;--text:#282828;--dim:#758068;--border:#DDE3D5;--green:#5BAB31;--red:#C33252;--yellow:#D4930D;--blue:#2C474B}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden}
+.sidebar{width:360px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-header{background:var(--teal);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between}
+.sidebar-header h1{font-size:16px;font-weight:700}
+.sidebar-header a{color:#A8C5C8;font-size:12px;text-decoration:none}
+.sidebar-header a:hover{color:#fff}
+.summary-bar{display:flex;gap:0;border-bottom:1px solid var(--border)}
+.summary-item{flex:1;padding:12px;text-align:center;border-right:1px solid var(--border)}
+.summary-item:last-child{border-right:none}
+.summary-item .num{font-size:20px;font-weight:700}
+.summary-item .lbl{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px}
+.shipment-list{flex:1;overflow-y:auto;padding:8px}
+.shipment-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px;cursor:pointer;transition:all 0.15s}
+.shipment-card:hover{border-color:var(--teal);box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+.shipment-card.active{border-color:var(--teal);background:#f0f5f5}
+.sc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sc-ref{font-weight:700;font-size:13px}
+.sc-status{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px}
+.sc-status.production{background:#fff3cd;color:#856404}
+.sc-status.in_transit{background:#d4edda;color:#155724}
+.sc-status.arrived{background:rgba(44,71,75,0.1);color:var(--teal)}
+.sc-status.unknown{background:#f0f0f0;color:#888}
+.sc-supplier{font-size:11px;color:var(--dim);margin-bottom:6px}
+.sc-route{font-size:11px;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.sc-route .arrow{color:var(--dim)}
+.sc-meta{display:flex;gap:12px;font-size:11px;color:var(--dim)}
+.sc-meta strong{color:var(--text)}
+.sc-progress{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.sc-progress-fill{height:100%;border-radius:2px;transition:width 0.3s}
+.sc-eta{font-size:12px;font-weight:600;margin-top:6px}
+.sc-eta.overdue{color:var(--red)}
+.sc-eta.soon{color:var(--yellow)}
+.sc-eta.ok{color:var(--green)}
+.map-container{flex:1;position:relative}
+#map{width:100%;height:100%}
+.popup-content{font-size:12px;line-height:1.6}
+.popup-content h3{font-size:14px;margin-bottom:8px;color:var(--teal)}
+.popup-content table{font-size:11px;border-collapse:collapse;width:100%;margin-top:8px}
+.popup-content td{padding:2px 6px;border-bottom:1px solid #eee}
+.popup-content td:first-child{font-weight:600;color:var(--dim);white-space:nowrap}
+.back-link{position:absolute;top:12px;left:12px;z-index:1000;background:var(--card);padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;color:var(--teal);text-decoration:none;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+.back-link:hover{background:var(--teal);color:#fff}
+@media(max-width:800px){.sidebar{width:100%;height:40vh;border-right:none;border-bottom:1px solid var(--border)}.map-container{height:60vh}body{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>🚢 Shipment Tracker</h1>
+    <a href="/">← Demand Planner</a>
+  </div>
+  <div class="summary-bar" id="summaryBar">
+    <div class="summary-item"><div class="num" id="totalShipments">-</div><div class="lbl">Active</div></div>
+    <div class="summary-item"><div class="num" id="inTransit">-</div><div class="lbl">In Transit</div></div>
+    <div class="summary-item"><div class="num" id="totalUnits">-</div><div class="lbl">Units</div></div>
+    <div class="summary-item"><div class="num" id="totalValue">-</div><div class="lbl">Value</div></div>
+  </div>
+  <div class="shipment-list" id="shipmentList">
+    <div style="padding:40px;text-align:center;color:var(--dim)">Loading shipments...</div>
+  </div>
+</div>
+<div class="map-container">
+  <div id="map"></div>
+</div>
+<script>
+const SESSION=sessionStorage.getItem('session');
+if(!SESSION)window.location.href='/login';
+const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
+
+// Init map
+const map=L.map('map',{center:[5,80],zoom:3,zoomControl:true,attributionControl:false});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
+
+// Custom icons
+function shipIcon(status){
+  const colors={in_transit:'#5BAB31',production:'#D4930D',arrived:'#2C474B',unknown:'#999'};
+  const color=colors[status]||'#999';
+  return L.divIcon({className:'',html:`<div style="font-size:20px;filter:drop-shadow(1px 1px 2px rgba(0,0,0,0.3))">${status==='in_transit'?'🚢':status==='production'?'🏭':'📦'}</div>`,iconSize:[24,24],iconAnchor:[12,12]});
+}
+
+function originIcon(){return L.divIcon({className:'',html:'<div style="width:10px;height:10px;background:#D4930D;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>',iconSize:[10,10],iconAnchor:[5,5]})}
+function destIcon(){return L.divIcon({className:'',html:'<div style="width:12px;height:12px;background:#2C474B;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>',iconSize:[12,12],iconAnchor:[6,6]})}
+
+let markers=[];
+let routeLines=[];
+let shipments=[];
+let selectedRef=null;
+
+async function loadShipments(){
+  try{
+    const r=await fetch('/api/shipments',{headers:H()});
+    if(r.status===401)return window.location.href='/login';
+    const d=await r.json();
+    shipments=d.shipments||[];
+    renderSidebar();
+    renderMap();
+  }catch(e){document.getElementById('shipmentList').innerHTML=`<div style="padding:20px;color:#C33252">Error: ${e.message}</div>`}
+}
+
+function renderSidebar(){
+  const active=shipments.filter(s=>s.shipmentStatus!=='arrived');
+  const transit=shipments.filter(s=>s.shipmentStatus==='in_transit');
+  const units=active.reduce((t,s)=>t+s.totalUnits,0);
+  const value=active.reduce((t,s)=>t+s.total,0);
+  
+  document.getElementById('totalShipments').textContent=active.length;
+  document.getElementById('inTransit').textContent=transit.length;
+  document.getElementById('totalUnits').textContent=units.toLocaleString();
+  document.getElementById('totalValue').textContent='$'+Math.round(value/1000)+'K';
+  
+  const list=document.getElementById('shipmentList');
+  if(shipments.length===0){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--dim)">No active shipments</div>';return}
+  
+  list.innerHTML=shipments.map(s=>{
+    const statusLabel={production:'In Production',in_transit:'In Transit',arrived:'Arrived',unknown:'Unknown'}[s.shipmentStatus]||'Unknown';
+    const etaText=s.daysUntil!==null?(s.daysUntil>0?s.daysUntil+' days':'Overdue by '+Math.abs(s.daysUntil)+'d'):'No ETA';
+    const etaClass=s.daysUntil===null?'':s.daysUntil<0?'overdue':s.daysUntil<=7?'soon':'ok';
+    const progressColor=s.shipmentStatus==='in_transit'?'var(--green)':s.shipmentStatus==='production'?'var(--yellow)':'var(--teal)';
+    
+    return`<div class="shipment-card ${selectedRef===s.reference?'active':''}" onclick="selectShipment('${s.reference}')">
+      <div class="sc-header"><span class="sc-ref">${s.reference}</span><span class="sc-status ${s.shipmentStatus}">${statusLabel}</span></div>
+      <div class="sc-supplier">${s.supplier.substring(0,40)}</div>
+      <div class="sc-route"><span>${s.origin.port||s.origin.city}</span><span class="arrow">→</span><span>${s.destination.port}</span></div>
+      <div class="sc-meta"><span><strong>${s.totalUnits}</strong> units</span><span><strong>${s.skuCount}</strong> SKUs</span><span><strong>$${s.total.toLocaleString()}</strong></span></div>
+      <div class="sc-progress"><div class="sc-progress-fill" style="width:${Math.round(s.progress*100)}%;background:${progressColor}"></div></div>
+      <div class="sc-eta ${etaClass}">${s.eta?'ETA: '+new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+' ('+etaText+')':'No ETA set'}</div>
+    </div>`
+  }).join('');
+}
+
+function renderMap(){
+  markers.forEach(m=>map.removeLayer(m));
+  routeLines.forEach(l=>map.removeLayer(l));
+  markers=[];routeLines=[];
+  
+  // Destination marker (Melbourne)
+  const destM=L.marker([-37.81,144.96],{icon:destIcon()}).addTo(map);
+  destM.bindPopup('<b>Melbourne, Australia</b><br>Warehouse: Laverton North');
+  markers.push(destM);
+  
+  // Group origins to avoid duplicate markers
+  const origins={};
+  
+  shipments.forEach(s=>{
+    const oKey=s.origin.lat+','+s.origin.lng;
+    if(!origins[oKey]){
+      origins[oKey]={lat:s.origin.lat,lng:s.origin.lng,city:s.origin.city,port:s.origin.port,count:0};
+    }
+    origins[oKey].count++;
+    
+    // Route line
+    const routePoints=getRoutePoints(s.origin,s.destination);
+    const line=L.polyline(routePoints,{color:s.shipmentStatus==='in_transit'?'#5BAB31':'#DDE3D5',weight:s.shipmentStatus==='in_transit'?2.5:1.5,opacity:s.shipmentStatus==='in_transit'?0.8:0.4,dashArray:s.shipmentStatus==='in_transit'?null:'8 6'}).addTo(map);
+    routeLines.push(line);
+    
+    // Ship marker along route
+    if(s.progress>0&&s.progress<1){
+      const pos=getPointAlongRoute(routePoints,s.progress);
+      const sm=L.marker(pos,{icon:shipIcon(s.shipmentStatus)}).addTo(map);
+      sm.bindPopup(buildPopup(s));
+      markers.push(sm);
+    }else if(s.shipmentStatus==='production'){
+      // Show factory icon at origin
+      const fm=L.marker([s.origin.lat+Math.random()*0.5-0.25,s.origin.lng+Math.random()*0.5-0.25],{icon:shipIcon('production')}).addTo(map);
+      fm.bindPopup(buildPopup(s));
+      markers.push(fm);
+    }
+  });
+  
+  // Origin port markers
+  for(const[key,o]of Object.entries(origins)){
+    const om=L.marker([o.lat,o.lng],{icon:originIcon()}).addTo(map);
+    om.bindPopup(`<b>${o.port||o.city}, ${o.city}</b><br>${o.count} shipment(s)`);
+    markers.push(om);
+  }
+}
+
+function getRoutePoints(origin,dest){
+  // Create a curved route through sea lanes
+  const points=[];
+  const steps=20;
+  for(let i=0;i<=steps;i++){
+    const t=i/steps;
+    let lat=origin.lat+(dest.lat-origin.lat)*t;
+    let lng=origin.lng+(dest.lng-origin.lng)*t;
+    // Add curve through South China Sea / Indian Ocean
+    const bulge=Math.sin(t*Math.PI)*15;
+    lng+=bulge*(origin.lng>100?-1:1)*0.3;
+    lat-=bulge*0.5;
+    // Keep route over water (avoid going over land)
+    if(t>0.2&&t<0.6){lat=Math.max(lat,-15);lng=Math.min(lng,130)}
+    points.push([lat,lng]);
+  }
+  return points;
+}
+
+function getPointAlongRoute(points,progress){
+  const idx=Math.floor(progress*(points.length-1));
+  const frac=progress*(points.length-1)-idx;
+  if(idx>=points.length-1)return points[points.length-1];
+  return[points[idx][0]+(points[idx+1][0]-points[idx][0])*frac,points[idx][1]+(points[idx+1][1]-points[idx][1])*frac];
+}
+
+function buildPopup(s){
+  const items=Object.entries(s.items||{}).slice(0,8).map(([sku,qty])=>`<tr><td>${sku}</td><td>${qty}</td></tr>`).join('');
+  const moreItems=Object.keys(s.items||{}).length>8?`<tr><td colspan="2" style="color:var(--dim)">+${Object.keys(s.items).length-8} more...</td></tr>`:'';
+  return`<div class="popup-content">
+    <h3>${s.reference}</h3>
+    <table>
+      <tr><td>Supplier</td><td>${s.supplier.substring(0,35)}</td></tr>
+      <tr><td>From</td><td>${s.origin.port||s.origin.city}, ${s.origin.country}</td></tr>
+      <tr><td>To</td><td>${s.destination.port}, Australia</td></tr>
+      ${s.eta?`<tr><td>ETA</td><td>${new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}${s.daysUntil!==null?' ('+s.daysUntil+'d)':''}</td></tr>`:''}
+      <tr><td>Units</td><td>${s.totalUnits} across ${s.skuCount} SKUs</td></tr>
+      <tr><td>Value</td><td>$${s.total.toLocaleString()} ${s.currency}</td></tr>
+    </table>
+    ${items?'<table style="margin-top:8px"><tr><td><b>SKU</b></td><td><b>Qty</b></td></tr>'+items+moreItems+'</table>':''}
+  </div>`;
+}
+
+function selectShipment(ref){
+  selectedRef=ref===selectedRef?null:ref;
+  renderSidebar();
+  const s=shipments.find(x=>x.reference===ref);
+  if(s){
+    const routePoints=getRoutePoints(s.origin,s.destination);
+    const pos=s.progress>0&&s.progress<1?getPointAlongRoute(routePoints,s.progress):[s.origin.lat,s.origin.lng];
+    map.flyTo(pos,5,{duration:1});
+    // Open popup
+    markers.forEach(m=>{
+      if(m.getPopup&&m.getPopup()&&m.getPopup().getContent().includes(ref)){m.openPopup()}
+    });
+  }
+}
+
+loadShipments();
+// Refresh every 5 min
+setInterval(loadShipments,5*60*1000);
+</script>
+</body>
+</html>

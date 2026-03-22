@@ -154,7 +154,15 @@ async function fetchCin7POs() {
             reference: po.reference,
             status: po.status,
             stage: po.stage || '',
-            arrival: po.estimatedDeliveryDate || po.customFields?.orders_1000 || null,
+            arrival: po.estimatedDeliveryDate || null,
+            customFields: po.customFields || {},
+            company: po.company || '',
+            total: po.total || 0,
+            currencyCode: po.currencyCode || 'USD',
+            deliveryCountry: po.deliveryCountry || '',
+            deliveryCity: po.deliveryCity || '',
+            trackingCode: po.trackingCode || '',
+            internalComments: po.internalComments || '',
             items
           });
         }
@@ -532,6 +540,132 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     res.json({ reply: `Error: ${e.message}` });
   }
 });
+
+// ===== SHIPMENT TRACKER =====
+
+// Supplier → origin mapping
+const SUPPLIER_ORIGINS = {
+  'GUANGDONG EONJOY': { city: 'Guangzhou', country: 'China', lat: 23.13, lng: 113.26, port: 'Nansha' },
+  'EON Technology': { city: 'Foshan', country: 'China', lat: 23.02, lng: 113.12, port: 'Nansha' },
+  'FOSHAN EON': { city: 'Foshan', country: 'China', lat: 23.02, lng: 113.12, port: 'Nansha' },
+  'Aibang': { city: 'Dongguan', country: 'China', lat: 23.04, lng: 113.72, port: 'Yantian' },
+  'Dongguan Aibang': { city: 'Dongguan', country: 'China', lat: 23.04, lng: 113.72, port: 'Yantian' },
+  'NOVA FURNITURE': { city: 'Guangzhou', country: 'China', lat: 23.13, lng: 113.26, port: 'Nansha' },
+  'GUANGDONG NOVA': { city: 'Guangzhou', country: 'China', lat: 23.13, lng: 113.26, port: 'Nansha' },
+  'Nobel Home': { city: 'Shenzhen', country: 'China', lat: 22.54, lng: 114.06, port: 'Yantian' },
+  'Nisco': { city: 'Jiangsu', country: 'China', lat: 32.06, lng: 118.77, port: 'Shanghai' },
+  'Shenzhen Ouluo': { city: 'Shenzhen', country: 'China', lat: 22.54, lng: 114.06, port: 'Yantian' },
+  'VISTATECH': { city: 'Huizhou', country: 'China', lat: 23.11, lng: 114.42, port: 'Yantian' },
+  'VISTA CHEN': { city: 'Huizhou', country: 'China', lat: 23.11, lng: 114.42, port: 'Yantian' },
+  'Caoxian': { city: 'Heze', country: 'China', lat: 35.24, lng: 115.44, port: 'Qingdao' },
+  'Junqi': { city: 'Ganzhou', country: 'China', lat: 25.83, lng: 114.93, port: 'Nansha' },
+  'SHIJIAZHUANG': { city: 'Shijiazhuang', country: 'China', lat: 38.04, lng: 114.51, port: 'Tianjin' },
+  'Shaoxing': { city: 'Shaoxing', country: 'China', lat: 30.00, lng: 120.58, port: 'Ningbo' },
+  'Foshan Jinruili': { city: 'Foshan', country: 'China', lat: 23.02, lng: 113.12, port: 'Nansha' },
+  'Windo Living': { city: 'Bangkok', country: 'Thailand', lat: 13.76, lng: 100.50, port: 'Laem Chabang' },
+  'CIMC': { city: 'Shenzhen', country: 'China', lat: 22.54, lng: 114.06, port: 'Yantian' },
+  'makesense': { city: 'Shenzhen', country: 'China', lat: 22.54, lng: 114.06, port: 'Yantian' },
+};
+
+const DESTINATIONS = {
+  'Australia': { city: 'Melbourne', lat: -37.81, lng: 144.96, port: 'Melbourne' },
+  'default': { city: 'Melbourne', lat: -37.81, lng: 144.96, port: 'Melbourne' }
+};
+
+function getSupplierOrigin(company) {
+  if (!company) return { city: 'Unknown', country: 'China', lat: 23.13, lng: 113.26, port: 'Nansha' };
+  for (const [key, origin] of Object.entries(SUPPLIER_ORIGINS)) {
+    if (company.toLowerCase().includes(key.toLowerCase())) return origin;
+  }
+  return { city: 'Unknown', country: 'China', lat: 23.13, lng: 113.26, port: 'Nansha' };
+}
+
+function buildShipmentData() {
+  const shipments = [];
+  const now = new Date();
+  
+  for (const po of dataCache.cin7POs) {
+    // Include active POs (we already filter out Received in fetchCin7POs)
+    const origin = getSupplierOrigin(po.company || '');
+    const dest = DESTINATIONS[po.deliveryCountry || 'default'] || DESTINATIONS['default'];
+    
+    // Parse ETA
+    let eta = null;
+    if (po.arrival) {
+      eta = new Date(po.arrival);
+    } else if (po.customFields?.orders_1000) {
+      // Try parsing custom field date
+      const cf = po.customFields.orders_1000;
+      const parsed = new Date(cf);
+      if (!isNaN(parsed.getTime())) eta = parsed;
+    }
+    
+    // Estimate ETD (typically 4-6 weeks before ETA for sea freight)
+    let etd = null;
+    if (eta) {
+      etd = new Date(eta.getTime() - 35 * 24 * 60 * 60 * 1000); // ~5 weeks before ETA
+    }
+    
+    // Calculate progress (0-1)
+    let progress = 0;
+    let status = 'production';
+    if (etd && eta) {
+      const totalDays = (eta - etd) / (24 * 60 * 60 * 1000);
+      const elapsedDays = (now - etd) / (24 * 60 * 60 * 1000);
+      if (elapsedDays < 0) {
+        progress = 0;
+        status = 'production';
+      } else if (elapsedDays >= totalDays) {
+        progress = 1;
+        status = 'arrived';
+      } else {
+        progress = elapsedDays / totalDays;
+        status = 'in_transit';
+      }
+    }
+    
+    // Count items
+    const totalUnits = Object.values(po.items || {}).reduce((a, b) => a + b, 0);
+    const skuCount = Object.keys(po.items || {}).length;
+    
+    // Days until arrival
+    const daysUntil = eta ? Math.ceil((eta - now) / (24 * 60 * 60 * 1000)) : null;
+    
+    shipments.push({
+      reference: po.reference,
+      supplier: po.company || 'Unknown',
+      status: po.status,
+      stage: po.stage || '',
+      origin,
+      destination: dest,
+      etd: etd ? etd.toISOString() : null,
+      eta: eta ? eta.toISOString() : null,
+      daysUntil,
+      progress,
+      shipmentStatus: status,
+      totalUnits,
+      skuCount,
+      total: po.total || 0,
+      currency: po.currencyCode || 'USD',
+      items: po.items || {},
+      trackingCode: po.trackingCode || null,
+      internalComments: po.internalComments || null
+    });
+  }
+  
+  return shipments.sort((a, b) => {
+    if (!a.eta) return 1;
+    if (!b.eta) return -1;
+    return new Date(a.eta) - new Date(b.eta);
+  });
+}
+
+app.get('/api/shipments', requireAuth, (req, res) => {
+  res.json({ shipments: buildShipmentData(), lastRefresh: dataCache.lastRefresh });
+});
+
+// Serve shipment tracker page
+app.get('/tracker', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'tracker.html')));
 
 // Main app
 app.get('/', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
