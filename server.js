@@ -593,29 +593,38 @@ function buildShipmentData() {
     const origin = getSupplierOrigin(po.company || '');
     const dest = DESTINATIONS[po.deliveryCountry || 'default'] || DESTINATIONS['default'];
     
-    // Parse ETA
-    let eta = null;
+    // ETD = estimatedDeliveryDate (departure from China)
+    let etd = null;
     if (po.arrival) {
-      eta = new Date(po.arrival);
-    } else if (po.estimatedArrivalDate) {
-      eta = new Date(po.estimatedArrivalDate);
-    } else if (po.customFields?.orders_1000) {
-      const cf = po.customFields.orders_1000;
-      const parsed = new Date(cf);
-      if (!isNaN(parsed.getTime())) eta = parsed;
+      etd = new Date(po.arrival);
     }
     
-    // Actual received date (for arrived shipments)
+    // ETA = customFields.orders_1000 (Original ETA Date)
+    let eta = null;
+    if (po.customFields?.orders_1000) {
+      const cf = po.customFields.orders_1000;
+      // Handle various date formats: "2-3-2026", "16-Mar-2026", "5-5-2026"
+      const parsed = new Date(cf.replace(/(\d+)-(\d+)-(\d+)/, (m, d, mo, y) => {
+        return y + '-' + mo.padStart(2,'0') + '-' + d.padStart(2,'0');
+      }));
+      if (!isNaN(parsed.getTime())) eta = parsed;
+      // If that didn't work, try direct parse (handles "16-Mar-2026")
+      if (!eta || isNaN(eta.getTime())) {
+        const direct = new Date(cf);
+        if (!isNaN(direct.getTime())) eta = direct;
+      }
+    }
+    if (!eta && po.estimatedArrivalDate) {
+      eta = new Date(po.estimatedArrivalDate);
+    }
+    
+    // Actual received date
     let receivedDate = null;
     if (po.fullyReceivedDate) {
       receivedDate = new Date(po.fullyReceivedDate);
     }
     
-    // Estimate ETD (typically 4-6 weeks before ETA for sea freight)
-    let etd = null;
-    if (eta) {
-      etd = new Date(eta.getTime() - 35 * 24 * 60 * 60 * 1000); // ~5 weeks before ETA
-    }
+    // ETD already parsed above from estimatedDeliveryDate
     
     // Calculate progress (0-1)
     let progress = 0;
