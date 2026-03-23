@@ -665,7 +665,7 @@ app.get('/api/shipments', requireAuth, (req, res) => {
 });
 
 // Serve shipment tracker page
-app.get('/tracker', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'tracker.html')));
+app.get('/tracker', (req, res) => res.sendFile(path.join(__dirname, 'public', 'tracker.html')));
 
 // Main app
 app.get('/', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
