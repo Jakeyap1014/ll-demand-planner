@@ -209,52 +209,67 @@ function renderMap(){
 }
 
 function getRoutePoints(origin,dest){
-  // Route via actual sea lane waypoints to avoid going over land
-  // China/Thailand → South China Sea → Strait of Malacca → Indian Ocean → Southern Australia → Melbourne
+  // Real maritime route: China → South China Sea → Strait of Malacca → Indian Ocean → Bass Strait → Melbourne
+  // Key: routes must pass WEST of Sumatra (through Malacca Strait), never through Indonesia
   const waypoints = [];
   
-  // Origin
   waypoints.push([origin.lat, origin.lng]);
   
-  // Route depends on origin location
-  if (origin.lng > 100) {
-    // East/South China origins → South China Sea
-    if (origin.lat > 30) {
-      // Northern China (Qingdao, Tianjin, Shanghai, Ningbo)
-      waypoints.push([25, origin.lng]);  // Head south along coast
-      waypoints.push([18, 114]);         // South China Sea
-    } else {
-      // Southern China (Guangzhou, Shenzhen, Yantian)
-      waypoints.push([15, 112]);         // South China Sea
-    }
-    
-    // Through or near Strait of Malacca
-    waypoints.push([5, 104]);            // South of Vietnam
-    waypoints.push([1, 104]);            // Singapore Strait
-    waypoints.push([-5, 95]);            // Into Indian Ocean
+  if (origin.lat > 33) {
+    // Northern China (Qingdao lat:36, Tianjin lat:39)
+    waypoints.push([31, 122]);           // Off Shanghai coast
+    waypoints.push([25, 119]);           // Taiwan Strait
+    waypoints.push([20, 116]);           // South China Sea north
+    waypoints.push([12, 112]);           // South China Sea central (east of Vietnam)
+    waypoints.push([5, 106]);            // South China Sea south
+  } else if (origin.lat > 28) {
+    // Central China (Shanghai lat:31, Ningbo lat:30)
+    waypoints.push([25, 120]);           // Off Fujian coast
+    waypoints.push([18, 115]);           // South China Sea
+    waypoints.push([10, 110]);           // Central SCS
+    waypoints.push([5, 106]);            // Southern SCS
   } else {
-    // Thailand (Laem Chabang)
-    waypoints.push([5, 100]);            // Gulf of Thailand exit
-    waypoints.push([1, 98]);             // Near Strait of Malacca
-    waypoints.push([-5, 95]);            // Into Indian Ocean
+    // Southern China (Guangzhou, Shenzhen, Foshan, Dongguan, Huizhou lat:22-23)
+    waypoints.push([18, 114]);           // South China Sea
+    waypoints.push([10, 109]);           // Central SCS (east of Vietnam)
+    waypoints.push([5, 105]);            // Southern SCS
   }
   
-  // Indian Ocean crossing
-  waypoints.push([-15, 85]);             // Central Indian Ocean
-  waypoints.push([-25, 95]);             // Eastern Indian Ocean
-  waypoints.push([-32, 110]);            // Approaching Australia
-  waypoints.push([-35, 125]);            // Great Australian Bight
-  waypoints.push([-38, 140]);            // Near Melbourne
+  // Thailand origins join here
+  if (origin.lng < 102) {
+    // Thailand (Laem Chabang) — exit Gulf of Thailand
+    waypoints.length = 1; // Reset to just origin
+    waypoints.push([10, 102]);           // Gulf of Thailand
+    waypoints.push([5, 103]);            // Approach Singapore
+  }
   
-  // Destination
+  // Strait of Malacca — THE critical waypoint
+  // Ships pass between Malaysia (north) and Sumatra/Indonesia (south)
+  waypoints.push([1.3, 104]);            // Singapore Strait
+  waypoints.push([0.5, 102]);            // Malacca Strait east
+  waypoints.push([-1, 100]);             // Malacca Strait mid
+  waypoints.push([-3, 97]);              // Exit Malacca Strait (west of Sumatra tip)
+  
+  // Indian Ocean — heading southeast to Australia
+  waypoints.push([-8, 90]);              // Open Indian Ocean (well west of Sumatra)
+  waypoints.push([-15, 88]);             // Central Indian Ocean
+  waypoints.push([-22, 93]);             // Eastern Indian Ocean
+  waypoints.push([-28, 100]);            // Approaching Western Australia
+  waypoints.push([-33, 115]);            // Off Perth / SW Australia
+  waypoints.push([-35, 125]);            // Great Australian Bight west
+  waypoints.push([-37, 135]);            // Great Australian Bight east
+  waypoints.push([-39, 143]);            // Approach Bass Strait
+  waypoints.push([-38.5, 144.5]);        // Bass Strait / Port Phillip entrance
+  
   waypoints.push([dest.lat, dest.lng]);
   
-  // Interpolate between waypoints for smooth curve
+  // Smooth interpolation between waypoints
   const points = [];
   for (let i = 0; i < waypoints.length - 1; i++) {
     const [lat1, lng1] = waypoints[i];
     const [lat2, lng2] = waypoints[i + 1];
-    const segs = 5;
+    const dist = Math.sqrt((lat2-lat1)**2 + (lng2-lng1)**2);
+    const segs = Math.max(3, Math.round(dist / 3));
     for (let j = 0; j < segs; j++) {
       const t = j / segs;
       points.push([lat1 + (lat2 - lat1) * t, lng1 + (lng2 - lng1) * t]);
