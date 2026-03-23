@@ -92,7 +92,7 @@ function apiRequest(options, postData) {
       });
     });
     req.on('error', reject);
-    req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout')); });
+    req.setTimeout(60000, () => { req.destroy(); reject(new Error('Timeout')); });
     if (postData) req.write(postData);
     req.end();
   });
@@ -106,11 +106,23 @@ async function fetchCin7AllProducts() {
   for (let page = 1; page <= 10; page++) {
     try {
       console.log('CIN7 Products: fetching page ' + page);
-      const { body, status } = await apiRequest({
-        hostname: 'api.cin7.com',
-        path: `/api/v1/Products?page=${page}&rows=250`,
-        headers: { 'Authorization': `Basic ${auth}` }
-      });
+      let body, status;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const resp = await apiRequest({
+            hostname: 'api.cin7.com',
+            path: `/api/v1/Products?page=${page}&rows=250`,
+            headers: { 'Authorization': `Basic ${auth}` }
+          });
+          body = resp.body;
+          status = resp.status;
+          break;
+        } catch (retryErr) {
+          console.error(`CIN7 page ${page} attempt ${attempt} failed:`, retryErr.message);
+          if (attempt === 2) throw retryErr;
+          await new Promise(r => setTimeout(r, 2000)); // Wait 2s before retry
+        }
+      }
       console.log('CIN7 Products page ' + page + ': status=' + status + ' isArray=' + Array.isArray(body) + ' length=' + (Array.isArray(body) ? body.length : 'N/A'));
       if (!Array.isArray(body) || body.length === 0) break;
       for (const product of body) {
@@ -125,7 +137,7 @@ async function fetchCin7AllProducts() {
           results[product.styleCode] = { soh: product.stockOnHand, available: product.stockAvailable || 0 };
         }
       }
-    } catch (e) { console.error(`CIN7 Products page ${page} error:`, e.message); break; }
+    } catch (e) { console.error(`CIN7 Products page ${page} error:`, e.message); continue; }
   }
   return results;
 }
