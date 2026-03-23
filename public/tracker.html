@@ -66,6 +66,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="summary-item"><div class="num" id="totalUnits">-</div><div class="lbl">Units</div></div>
     <div class="summary-item"><div class="num" id="totalValue">-</div><div class="lbl">Value</div></div>
   </div>
+  <div class="filter-bar" style="display:flex;gap:0;border-bottom:1px solid var(--border)">
+    <button class="filter-tab active" onclick="setFilter('active',this)" style="flex:1;padding:10px;border:none;background:var(--teal);color:#fff;cursor:pointer;font-size:12px;font-weight:600">Active</button>
+    <button class="filter-tab" onclick="setFilter('in_transit',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">In Transit</button>
+    <button class="filter-tab" onclick="setFilter('production',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">Production</button>
+    <button class="filter-tab" onclick="setFilter('arrived',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">Arrived</button>
+  </div>
   <div class="shipment-list" id="shipmentList">
     <div style="padding:40px;text-align:center;color:var(--dim)">Loading shipments...</div>
   </div>
@@ -93,6 +99,21 @@ function originIcon(){return L.divIcon({className:'',html:'<div style="width:10p
 function destIcon(){return L.divIcon({className:'',html:'<div style="width:12px;height:12px;background:#2C474B;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>',iconSize:[12,12],iconAnchor:[6,6]})}
 
 let markers=[];
+let currentFilter='active';
+
+function setFilter(filter, btn) {
+  currentFilter=filter;
+  document.querySelectorAll('.filter-tab').forEach(b=>{b.style.background='var(--card)';b.style.color='var(--dim)'});
+  btn.style.background='var(--teal)';btn.style.color='#fff';
+  renderSidebar();
+  renderMap();
+}
+
+function getFilteredShipments() {
+  if (currentFilter==='active') return shipments.filter(s=>s.shipmentStatus!=='arrived');
+  if (currentFilter==='arrived') return shipments.filter(s=>s.shipmentStatus==='arrived');
+  return shipments.filter(s=>s.shipmentStatus===currentFilter);
+}
 let routeLines=[];
 let shipments=[];
 let selectedRef=null;
@@ -120,9 +141,11 @@ function renderSidebar(){
   document.getElementById('totalValue').textContent='$'+Math.round(value/1000)+'K';
   
   const list=document.getElementById('shipmentList');
-  if(shipments.length===0){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--dim)">No active shipments</div>';return}
+  if(filtered.length===0&&currentFilter!=='active'){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--dim)">No active shipments</div>';return}
   
-  list.innerHTML=shipments.map(s=>{
+  const filtered=getFilteredShipments();
+  if(filtered.length===0){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--dim)">No shipments in this category</div>';return}
+  list.innerHTML=filtered.map(s=>{
     const statusLabel={production:'In Production',in_transit:'In Transit',arrived:'Arrived',unknown:'Unknown'}[s.shipmentStatus]||'Unknown';
     const etaText=s.daysUntil!==null?(s.daysUntil>0?s.daysUntil+' days':'Overdue by '+Math.abs(s.daysUntil)+'d'):'No ETA';
     const etaClass=s.daysUntil===null?'':s.daysUntil<0?'overdue':s.daysUntil<=7?'soon':'ok';
@@ -152,7 +175,7 @@ function renderMap(){
   // Group origins to avoid duplicate markers
   const origins={};
   
-  shipments.forEach(s=>{
+  getFilteredShipments().forEach(s=>{
     const oKey=s.origin.lat+','+s.origin.lng;
     if(!origins[oKey]){
       origins[oKey]={lat:s.origin.lat,lng:s.origin.lng,city:s.origin.city,port:s.origin.port,count:0};
@@ -187,21 +210,59 @@ function renderMap(){
 }
 
 function getRoutePoints(origin,dest){
-  // Create a curved route through sea lanes
-  const points=[];
-  const steps=20;
-  for(let i=0;i<=steps;i++){
-    const t=i/steps;
-    let lat=origin.lat+(dest.lat-origin.lat)*t;
-    let lng=origin.lng+(dest.lng-origin.lng)*t;
-    // Add curve through South China Sea / Indian Ocean
-    const bulge=Math.sin(t*Math.PI)*15;
-    lng+=bulge*(origin.lng>100?-1:1)*0.3;
-    lat-=bulge*0.5;
-    // Keep route over water (avoid going over land)
-    if(t>0.2&&t<0.6){lat=Math.max(lat,-15);lng=Math.min(lng,130)}
-    points.push([lat,lng]);
+  // Route via actual sea lane waypoints to avoid going over land
+  // China/Thailand → South China Sea → Strait of Malacca → Indian Ocean → Southern Australia → Melbourne
+  const waypoints = [];
+  
+  // Origin
+  waypoints.push([origin.lat, origin.lng]);
+  
+  // Route depends on origin location
+  if (origin.lng > 100) {
+    // East/South China origins → South China Sea
+    if (origin.lat > 30) {
+      // Northern China (Qingdao, Tianjin, Shanghai, Ningbo)
+      waypoints.push([25, origin.lng]);  // Head south along coast
+      waypoints.push([18, 114]);         // South China Sea
+    } else {
+      // Southern China (Guangzhou, Shenzhen, Yantian)
+      waypoints.push([15, 112]);         // South China Sea
+    }
+    
+    // Through or near Strait of Malacca
+    waypoints.push([5, 104]);            // South of Vietnam
+    waypoints.push([1, 104]);            // Singapore Strait
+    waypoints.push([-5, 95]);            // Into Indian Ocean
+  } else {
+    // Thailand (Laem Chabang)
+    waypoints.push([5, 100]);            // Gulf of Thailand exit
+    waypoints.push([1, 98]);             // Near Strait of Malacca
+    waypoints.push([-5, 95]);            // Into Indian Ocean
   }
+  
+  // Indian Ocean crossing
+  waypoints.push([-15, 85]);             // Central Indian Ocean
+  waypoints.push([-25, 95]);             // Eastern Indian Ocean
+  waypoints.push([-32, 110]);            // Approaching Australia
+  waypoints.push([-35, 125]);            // Great Australian Bight
+  waypoints.push([-38, 140]);            // Near Melbourne
+  
+  // Destination
+  waypoints.push([dest.lat, dest.lng]);
+  
+  // Interpolate between waypoints for smooth curve
+  const points = [];
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const [lat1, lng1] = waypoints[i];
+    const [lat2, lng2] = waypoints[i + 1];
+    const segs = 5;
+    for (let j = 0; j < segs; j++) {
+      const t = j / segs;
+      points.push([lat1 + (lat2 - lat1) * t, lng1 + (lng2 - lng1) * t]);
+    }
+  }
+  points.push(waypoints[waypoints.length - 1]);
+  
   return points;
 }
 
