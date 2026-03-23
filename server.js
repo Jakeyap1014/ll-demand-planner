@@ -267,11 +267,12 @@ async function fetchShopifyInventory(storeKey) {
 
 // ===== FULL DATA REFRESH =====
 // Load CIN7 fallback data from bundled JSON
+const fs = require('fs');
 let cin7Fallback = null;
 try {
-  cin7Fallback = require('./cin7-fallback.json');
+  cin7Fallback = JSON.parse(fs.readFileSync(path.join(__dirname, 'cin7-fallback.json'), 'utf8'));
   console.log('CIN7 fallback loaded: ' + Object.keys(cin7Fallback.products || {}).length + ' products, generated: ' + cin7Fallback.generated);
-} catch(e) { console.log('No CIN7 fallback file available'); }
+} catch(e) { console.log('No CIN7 fallback file: ' + e.message); }
 
 async function refreshAllData() {
   console.log('Starting full data refresh...');
