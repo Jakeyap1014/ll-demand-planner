@@ -125,6 +125,10 @@ async function fetchCin7AllProducts() {
       }
       console.log('CIN7 Products page ' + page + ': status=' + status + ' isArray=' + Array.isArray(body) + ' length=' + (Array.isArray(body) ? body.length : 'N/A'));
       if (!Array.isArray(body) || body.length === 0) break;
+      // Rate limit: CIN7 allows 3 req/sec, add delay between pages
+      await new Promise(r => setTimeout(r, 1500));
+      // Rate limit: CIN7 allows 3 req/sec, add delay between pages
+      await new Promise(r => setTimeout(r, 1500));
       for (const product of body) {
         const variants = product.productOptions || [];
         for (const v of variants) {
@@ -266,9 +270,6 @@ async function fetchShopifyInventory(storeKey) {
 }
 
 // ===== FULL DATA REFRESH =====
-const CIN7_FALLBACK = require('./cin7data.js');
-console.log('CIN7 fallback loaded: ' + Object.keys(CIN7_FALLBACK).length + ' products');
-
 async function refreshAllData() {
   console.log('Starting full data refresh...');
   const start = Date.now();
@@ -283,8 +284,7 @@ async function refreshAllData() {
       fetchShopifyInventory('cushie')
     ]);
     
-    dataCache.cin7Products = Object.keys(cin7Products).length > 0 ? cin7Products : CIN7_FALLBACK;
-    if (Object.keys(cin7Products).length === 0) console.log('Using CIN7 fallback data');
+    dataCache.cin7Products = cin7Products;
 
     dataCache.cin7POs = cin7POs;
     dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
