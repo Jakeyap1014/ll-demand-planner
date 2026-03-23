@@ -156,7 +156,7 @@ async function fetchCin7POs() {
       });
       if (!Array.isArray(body) || body.length === 0) break;
       for (const po of body) {
-        if (po.stage === 'Received' || po.isVoid) continue; // Skip received/void
+        if (po.isVoid) continue; // Skip void POs only — keep Received for shipment tracker
         const items = {};
         for (const li of (po.lineItems || [])) {
           if (li.code && li.qty > 0) items[li.code] = (items[li.code] || 0) + li.qty;
@@ -442,6 +442,7 @@ function buildCKData(ckId) {
   // Purchase Orders
   const pos = [];
   for (const po of dataCache.cin7POs) {
+    if (po.stage === 'Received') continue; // Don't count received POs as incoming stock
     const relevantItems = {};
     for (const [sku, qty] of Object.entries(po.items)) {
       if (sku.startsWith(prefix) && filter(sku)) {
