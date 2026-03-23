@@ -155,6 +155,8 @@ async function fetchCin7POs() {
             status: po.status,
             stage: po.stage || '',
             arrival: po.estimatedDeliveryDate || null,
+            estimatedArrivalDate: po.estimatedArrivalDate || null,
+            fullyReceivedDate: po.fullyReceivedDate || null,
             customFields: po.customFields || {},
             company: po.company || '',
             total: po.total || 0,
@@ -162,6 +164,8 @@ async function fetchCin7POs() {
             deliveryCountry: po.deliveryCountry || '',
             deliveryCity: po.deliveryCity || '',
             trackingCode: po.trackingCode || '',
+            port: po.port || '',
+            logisticsCarrier: po.logisticsCarrier || '',
             internalComments: po.internalComments || '',
             items
           });
@@ -593,11 +597,18 @@ function buildShipmentData() {
     let eta = null;
     if (po.arrival) {
       eta = new Date(po.arrival);
+    } else if (po.estimatedArrivalDate) {
+      eta = new Date(po.estimatedArrivalDate);
     } else if (po.customFields?.orders_1000) {
-      // Try parsing custom field date
       const cf = po.customFields.orders_1000;
       const parsed = new Date(cf);
       if (!isNaN(parsed.getTime())) eta = parsed;
+    }
+    
+    // Actual received date (for arrived shipments)
+    let receivedDate = null;
+    if (po.fullyReceivedDate) {
+      receivedDate = new Date(po.fullyReceivedDate);
     }
     
     // Estimate ETD (typically 4-6 weeks before ETA for sea freight)
@@ -640,6 +651,7 @@ function buildShipmentData() {
       destination: dest,
       etd: etd ? etd.toISOString() : null,
       eta: eta ? eta.toISOString() : null,
+      receivedDate: receivedDate ? receivedDate.toISOString() : null,
       daysUntil,
       progress,
       shipmentStatus: status,
@@ -649,6 +661,7 @@ function buildShipmentData() {
       currency: po.currencyCode || 'USD',
       items: po.items || {},
       trackingCode: po.trackingCode || null,
+      port: po.port || null,
       internalComments: po.internalComments || null
     });
   }
