@@ -243,17 +243,20 @@ function getRoutePoints(origin,dest){
     waypoints.push([5, 103]);            // Approach Singapore
   }
   
-  // Strait of Malacca — THE critical waypoint
-  // Ships pass between Malaysia (north) and Sumatra/Indonesia (south)
+  // Strait of Malacca — runs NORTHWEST from Singapore
+  // Ships go: Singapore → northwest through strait → exit near Aceh → Indian Ocean
   waypoints.push([1.3, 104]);            // Singapore Strait
-  waypoints.push([0.5, 102]);            // Malacca Strait east
-  waypoints.push([-1, 100]);             // Malacca Strait mid
-  waypoints.push([-3, 97]);              // Exit Malacca Strait (west of Sumatra tip)
+  waypoints.push([2.5, 101.5]);          // Malacca Strait (between Malaysia & Sumatra)
+  waypoints.push([4, 99.5]);             // Malacca Strait middle
+  waypoints.push([5.5, 97]);             // Near Penang
+  waypoints.push([6, 95]);              // Exit Malacca Strait near Aceh
   
-  // Indian Ocean — heading southeast to Australia
-  waypoints.push([-8, 90]);              // Open Indian Ocean (well west of Sumatra)
-  waypoints.push([-15, 88]);             // Central Indian Ocean
-  waypoints.push([-22, 93]);             // Eastern Indian Ocean
+  // Indian Ocean — arc south then southeast to Australia
+  // Must stay well west of Sumatra (Sumatra west coast is ~lng 95-100)
+  waypoints.push([2, 87]);               // Open Indian Ocean, heading south
+  waypoints.push([-5, 82]);              // Central Indian Ocean (well west of Sumatra)
+  waypoints.push([-15, 82]);             // Southern Indian Ocean
+  waypoints.push([-22, 88]);             // Turning southeast
   waypoints.push([-28, 100]);            // Approaching Western Australia
   waypoints.push([-33, 115]);            // Off Perth / SW Australia
   waypoints.push([-35, 125]);            // Great Australian Bight west
