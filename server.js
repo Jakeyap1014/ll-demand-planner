@@ -266,6 +266,13 @@ async function fetchShopifyInventory(storeKey) {
 }
 
 // ===== FULL DATA REFRESH =====
+// Load CIN7 fallback data from bundled JSON
+let cin7Fallback = null;
+try {
+  cin7Fallback = require('./cin7-fallback.json');
+  console.log('CIN7 fallback loaded: ' + Object.keys(cin7Fallback.products || {}).length + ' products, generated: ' + cin7Fallback.generated);
+} catch(e) { console.log('No CIN7 fallback file available'); }
+
 async function refreshAllData() {
   console.log('Starting full data refresh...');
   const start = Date.now();
@@ -280,9 +287,25 @@ async function refreshAllData() {
       fetchShopifyInventory('cushie')
     ]);
     
-    dataCache.cin7Products = cin7Products;
+    // Use live CIN7 data if available, otherwise fall back to bundled data
+    if (Object.keys(cin7Products).length > 0) {
+      dataCache.cin7Products = cin7Products;
+      console.log('Using LIVE CIN7 data: ' + Object.keys(cin7Products).length + ' SKUs');
+    } else if (cin7Fallback) {
+      dataCache.cin7Products = cin7Fallback.products || {};
+      console.log('CIN7 API returned empty — using FALLBACK data (' + Object.keys(dataCache.cin7Products).length + ' SKUs, from ' + cin7Fallback.generated + ')');
+    } else {
+      dataCache.cin7Products = cin7Products; // empty, but nothing we can do
+    }
 
-    dataCache.cin7POs = cin7POs;
+    if (cin7POs.length > 0) {
+      dataCache.cin7POs = cin7POs;
+    } else if (cin7Fallback && cin7Fallback.pos) {
+      dataCache.cin7POs = cin7Fallback.pos;
+      console.log('CIN7 POs empty — using fallback (' + cin7Fallback.pos.length + ' POs)');
+    } else {
+      dataCache.cin7POs = cin7POs;
+    }
     dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
     dataCache.shopifyInventory = { lifely: lifelyInv, cushie: cushieInv };
     dataCache.lastRefresh = new Date().toISOString();
