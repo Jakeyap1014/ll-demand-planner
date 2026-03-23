@@ -99,6 +99,7 @@ function originIcon(){return L.divIcon({className:'',html:'<div style="width:10p
 function destIcon(){return L.divIcon({className:'',html:'<div style="width:12px;height:12px;background:#2C474B;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>',iconSize:[12,12],iconAnchor:[6,6]})}
 
 let markers=[];
+let shipments=[];
 let currentFilter='active';
 
 function setFilter(filter, btn) {
@@ -115,7 +116,6 @@ function getFilteredShipments() {
   return shipments.filter(s=>s.shipmentStatus===currentFilter);
 }
 let routeLines=[];
-let shipments=[];
 let selectedRef=null;
 
 async function loadShipments(){
@@ -141,7 +141,6 @@ function renderSidebar(){
   document.getElementById('totalValue').textContent='$'+Math.round(value/1000)+'K';
   
   const list=document.getElementById('shipmentList');
-  if(filtered.length===0&&currentFilter!=='active'){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--dim)">No active shipments</div>';return}
   
   const filtered=getFilteredShipments();
   if(filtered.length===0){list.innerHTML='<div style="padding:40px;text-align:center;color:var(--dim)">No shipments in this category</div>';return}
