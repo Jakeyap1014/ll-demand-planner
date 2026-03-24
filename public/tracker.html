@@ -61,10 +61,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <a href="/">← Demand Planner</a>
   </div>
   <div class="summary-bar" id="summaryBar">
-    <div class="summary-item"><div class="num" id="totalShipments">-</div><div class="lbl">Active</div></div>
-    <div class="summary-item"><div class="num" id="inTransit">-</div><div class="lbl">In Transit</div></div>
-    <div class="summary-item"><div class="num" id="totalUnits">-</div><div class="lbl">Units</div></div>
-    <div class="summary-item"><div class="num" id="totalValue">-</div><div class="lbl">Value</div></div>
+    <div class="summary-item"><div class="num" id="prodUnits">-</div><div class="lbl">Production Units</div></div>
+    <div class="summary-item"><div class="num" id="prodValue">-</div><div class="lbl">Production Value</div></div>
+    <div class="summary-item"><div class="num" id="transitUnits">-</div><div class="lbl">In Transit Units</div></div>
+    <div class="summary-item"><div class="num" id="transitValue">-</div><div class="lbl">In Transit Value</div></div>
   </div>
   <div class="filter-bar" style="display:flex;gap:0;border-bottom:1px solid var(--border)">
     <button class="filter-tab active" onclick="setFilter('active',this)" style="flex:1;padding:10px;border:none;background:var(--teal);color:#fff;cursor:pointer;font-size:12px;font-weight:600">Active</button>
@@ -130,15 +130,17 @@ async function loadShipments(){
 }
 
 function renderSidebar(){
-  const active=shipments.filter(s=>s.shipmentStatus!=='arrived');
+  const production=shipments.filter(s=>s.shipmentStatus==='production');
   const transit=shipments.filter(s=>s.shipmentStatus==='in_transit');
-  const units=active.reduce((t,s)=>t+s.totalUnits,0);
-  const value=active.reduce((t,s)=>t+s.total,0);
+  const prodUnits=production.reduce((t,s)=>t+s.totalUnits,0);
+  const prodVal=production.reduce((t,s)=>t+s.total,0);
+  const transitUnits=transit.reduce((t,s)=>t+s.totalUnits,0);
+  const transitVal=transit.reduce((t,s)=>t+s.total,0);
   
-  document.getElementById('totalShipments').textContent=active.length;
-  document.getElementById('inTransit').textContent=transit.length;
-  document.getElementById('totalUnits').textContent=units.toLocaleString();
-  document.getElementById('totalValue').textContent='$'+Math.round(value/1000)+'K';
+  document.getElementById('prodUnits').textContent=prodUnits.toLocaleString();
+  document.getElementById('prodValue').textContent='$'+Math.round(prodVal/1000)+'K';
+  document.getElementById('transitUnits').textContent=transitUnits.toLocaleString();
+  document.getElementById('transitValue').textContent='$'+Math.round(transitVal/1000)+'K';
   
   const list=document.getElementById('shipmentList');
   
