@@ -521,17 +521,33 @@ function buildCKData(ckId) {
     names[sku] = sku; // Default to SKU code; frontend can prettify
   }
   
-  // BOM explosion for combos
+  // BOM explosion for combos — component-level planning
   let bomData = null;
   if (ckId === 'llau-cbcf') {
     bomData = {};
     const allCin7 = dataCache.cin7Products;
+    const lifelyShopify = dataCache.shopifyInventory?.lifely || {};
+    const lifelyVelocity = dataCache.shopifyVelocity?.lifely || {};
     
     // Get all combo SKUs
     const comboSkus = [...new Set([...Object.keys(velocity), ...Object.keys(cin7)])];
     
     // Component-level aggregation
-    const components = {}; // componentSku -> {soh, demand, incoming, combos:[]}
+    const components = {};
+    
+    // Get incoming POs for components
+    const componentIncoming = {};
+    for (const po of dataCache.cin7POs) {
+      if (po.stage === 'Received') continue;
+      for (const [sku, qty] of Object.entries(po.items || {})) {
+        if (sku.startsWith('LLAU-CB-') && !sku.includes('CBCF')) {
+          componentIncoming[sku] = (componentIncoming[sku] || 0) + qty;
+        }
+        if (sku.startsWith('DD-21')) {
+          componentIncoming[sku] = (componentIncoming[sku] || 0) + qty;
+        }
+      }
+    }
     
     for (const comboSku of comboSkus) {
       const bom = explodeComboBOM(comboSku);
@@ -543,48 +559,92 @@ function buildCKData(ckId) {
       if (!components[bom.bed]) {
         const bedData = allCin7[bom.bed] || {};
         const bedSoh = typeof bedData === 'object' ? (bedData.soh || 0) : (bedData || 0);
-        // Standalone bed demand (from LL AU Beds velocity)
-        const standaloneVel = (dataCache.shopifyVelocity?.lifely?.[bom.bed]) || 0;
-        components[bom.bed] = { soh: bedSoh, standaloneDemand: standaloneVel, comboDemand: 0, totalDemand: standaloneVel, incoming: 0, combos: [], type: 'bed' };
+        const standaloneVel = lifelyVelocity[bom.bed] || 0;
+        const shopifyInv = lifelyShopify[bom.bed] || 0;
+        // Decompose oversold: standalone oversold from Shopify
+        const standaloneOversold = Math.min(shopifyInv, 0);
+        components[bom.bed] = {
+          soh: bedSoh,
+          standaloneDemand: standaloneVel,
+          comboDemand: 0,
+          totalDemand: standaloneVel,
+          incoming: componentIncoming[bom.bed] || 0,
+          shopifyInv: shopifyInv,
+          standaloneOversold: standaloneOversold,
+          comboOversold: 0,
+          combos: [],
+          type: 'bed',
+          size: getComboSize(comboSku)
+        };
       }
       components[bom.bed].comboDemand += comboVel * bom.bedQty;
       components[bom.bed].totalDemand = components[bom.bed].standaloneDemand + components[bom.bed].comboDemand;
+      // Combo oversold: from combo Shopify inventory
+      const comboShopifyInv = lifelyShopify[comboSku] || 0;
+      if (comboShopifyInv < 0) {
+        components[bom.bed].comboOversold += comboShopifyInv;
+      }
       components[bom.bed].combos.push(comboSku);
       
-      // Mattress component
+      // Mattress component (dedicated to combos — 0 standalone demand)
       if (!components[bom.mattress]) {
         const mattData = allCin7[bom.mattress] || {};
         const mattSoh = typeof mattData === 'object' ? (mattData.soh || 0) : (mattData || 0);
-        const standaloneVel = (dataCache.shopifyVelocity?.lifely?.[bom.mattress]) || 0;
-        components[bom.mattress] = { soh: mattSoh, standaloneDemand: standaloneVel, comboDemand: 0, totalDemand: standaloneVel, incoming: 0, combos: [], type: 'mattress' };
+        components[bom.mattress] = {
+          soh: mattSoh,
+          standaloneDemand: 0, // Never sold standalone
+          comboDemand: 0,
+          totalDemand: 0,
+          incoming: componentIncoming[bom.mattress] || 0,
+          shopifyInv: lifelyShopify[bom.mattress] || 0,
+          standaloneOversold: 0,
+          comboOversold: 0,
+          combos: [],
+          type: 'mattress',
+          size: getComboSize(comboSku)
+        };
       }
       components[bom.mattress].comboDemand += comboVel * bom.mattressQty;
-      components[bom.mattress].totalDemand = components[bom.mattress].standaloneDemand + components[bom.mattress].comboDemand;
+      components[bom.mattress].totalDemand = components[bom.mattress].comboDemand; // 100% combo
       components[bom.mattress].combos.push(comboSku);
+    }
+    
+    // Calculate per-size bundle ATP and binding constraints
+    const sizeData = {}; // S, KS, D
+    for (const size of ['S', 'KS', 'D']) {
+      const mattressSku = COMBO_BOM.mattress[size];
+      const matt = components[mattressSku];
+      const beds = Object.entries(components).filter(([k,v]) => v.type === 'bed' && v.size === size);
       
-      // Bundle ATP = min(bed ATP, mattress ATP)
-      const bedComp = components[bom.bed];
-      const mattComp = components[bom.mattress];
-      const bedATP = bedComp.totalDemand > 0 ? bedComp.soh / bedComp.totalDemand : 99;
-      const mattATP = mattComp.totalDemand > 0 ? mattComp.soh / mattComp.totalDemand : 99;
-      const bundleATP = Math.min(bedATP, mattATP);
-      const constraint = bedATP <= mattATP ? bom.bed : bom.mattress;
+      // Total bed available for this size = sum of all colour bed SOH
+      const totalBedSOH = beds.reduce((t, [k,v]) => t + v.soh, 0);
+      const totalBedIncoming = beds.reduce((t, [k,v]) => t + v.incoming, 0);
+      const totalBedDemand = beds.reduce((t, [k,v]) => t + v.totalDemand, 0);
+      const totalBedOversold = beds.reduce((t, [k,v]) => t + v.standaloneOversold + v.comboOversold, 0);
       
-      bomData[comboSku] = {
-        bom: bom,
-        comboVelocity: comboVel,
-        bedSOH: bedComp.soh,
-        mattressSOH: mattComp.soh,
-        bedTotalDemand: bedComp.totalDemand,
-        mattressTotalDemand: mattComp.totalDemand,
-        bundleATPWeeks: Math.round(bundleATP * 10) / 10,
-        bindingConstraint: constraint,
-        bindingType: bedATP <= mattATP ? 'bed' : 'mattress'
+      const mattSOH = matt ? matt.soh : 0;
+      const mattIncoming = matt ? matt.incoming : 0;
+      const mattDemand = matt ? matt.totalDemand : 0;
+      
+      const bedWks = totalBedDemand > 0 ? totalBedSOH / totalBedDemand : 99;
+      const mattWks = mattDemand > 0 ? mattSOH / mattDemand : 99;
+      const comboATP = Math.min(totalBedSOH, mattSOH);
+      const constraint = bedWks <= mattWks ? 'bed' : 'mattress';
+      
+      sizeData[size] = {
+        totalBedSOH, totalBedIncoming, totalBedDemand, totalBedOversold,
+        mattSOH, mattIncoming, mattDemand, mattressSku,
+        bedWks: Math.round(bedWks * 10) / 10,
+        mattWks: Math.round(mattWks * 10) / 10,
+        comboATP,
+        constraint,
+        beds: Object.fromEntries(beds)
       };
     }
     
-    // Add component summary
     bomData._components = components;
+    bomData._sizeData = sizeData;
+    bomData._componentIncoming = componentIncoming;
   }
 
   return {
