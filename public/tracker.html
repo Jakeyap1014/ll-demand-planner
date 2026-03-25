@@ -46,6 +46,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .sc-eta.noeta{color:var(--red)}
 .map-container{flex:1;position:relative}
 #map{width:100%;height:100%}
+.leaflet-fade-anim .leaflet-popup{transition:opacity 0.2s linear}
+.leaflet-zoom-anim .leaflet-zoom-animated{transition:transform 0.25s cubic-bezier(0,0,0.25,1)}
 .popup-content{font-size:12px;line-height:1.6}
 .popup-content h3{font-size:14px;margin-bottom:8px;color:var(--teal)}
 .popup-content table{font-size:11px;border-collapse:collapse;width:100%;margin-top:8px}
@@ -87,7 +89,7 @@ if(!SESSION)window.location.href='/login';
 const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
 
 // Init map
-const map=L.map('map',{center:[5,80],zoom:3,zoomControl:true,attributionControl:false});
+const map=L.map('map',{center:[5,80],zoom:3,zoomControl:true,attributionControl:false,zoomSnap:0.5,zoomDelta:0.5,wheelDebounceTime:80,wheelPxPerZoomLevel:120,zoomAnimation:true,markerZoomAnimation:true});
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
 
 // Custom icons
