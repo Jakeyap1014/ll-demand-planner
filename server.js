@@ -133,7 +133,7 @@ async function fetchCin7AllProducts() {
   if (!CIN7_USER || !CIN7_KEY) { console.log('CIN7 SKIPPED: no credentials. USER=' + (CIN7_USER ? 'set' : 'empty') + ' KEY=' + (CIN7_KEY ? 'set' : 'empty')); return {}; }
   const auth = Buffer.from(`${CIN7_USER}:${CIN7_KEY}`).toString('base64');
   const results = {};
-  for (let page = 1; page <= 10; page++) {
+  for (let page = 1; page <= 20; page++) {
     try {
       console.log('CIN7 Products: fetching page ' + page);
       let body, status;
@@ -274,7 +274,7 @@ async function fetchShopifyInventory(storeKey) {
   const inventory = {};
   let url = `/admin/api/2026-01/products.json?limit=250&fields=variants`;
   
-  for (let page = 1; page <= 10; page++) {
+  for (let page = 1; page <= 20; page++) {
     try {
       const { body, headers } = await apiRequest({
         hostname: store.domain,
