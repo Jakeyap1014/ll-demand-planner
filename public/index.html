@@ -181,70 +181,88 @@ function renderBOM() {
   if (!DATA.bomData || !DATA.bomData._components) return;
   const comps = DATA.bomData._components;
   const sizeData = DATA.bomData._sizeData || {};
-  const sizes = ['S', 'KS', 'D'];
-  const sizeLabels = {'S':'Single','KS':'King Single','D':'Double'};
   
-  // Summary cards — per size with binding constraint
-  let constrainedCount = 0;
-  sizes.forEach(sz => { if (sizeData[sz] && Math.min(sizeData[sz].bedWks, sizeData[sz].mattWks) < 4) constrainedCount++; });
+  // Build component-level data arrays for standard dashboard format
+  const compEntries = Object.entries(comps);
   
-  document.getElementById('summary-cards').innerHTML = sizes.map(sz => {
-    const d = sizeData[sz];
-    if (!d) return '';
-    const atp = Math.min(d.bedWks, d.mattWks);
-    const color = atp <= 2 ? 'red' : atp <= 4 ? 'yellow' : atp <= 8 ? 'blue' : 'green';
-    const icon = d.constraint === 'bed' ? '🛏️' : '🛌';
-    return '<div class="card '+color+'"><div class="label">'+sizeLabels[sz]+' Combo ATP</div><div class="value">'+atp.toFixed(1)+' wks</div><div class="sub">'+icon+' Bottleneck: '+d.constraint+' (Bed:'+d.bedWks+'wk Matt:'+d.mattWks+'wk)</div></div>';
-  }).join('') + '<div class="card '+(constrainedCount>0?'red':'green')+'"><div class="label">Constrained Sizes</div><div class="value">'+constrainedCount+'/3</div><div class="sub">&lt;4 weeks ATP</div></div>';
+  // Summary cards — same layout as standard dashboard
+  let totalSOH = 0, totalIncoming = 0, totalOversold = 0, totalVel = 0;
+  compEntries.forEach(([sku, c]) => {
+    totalSOH += c.soh;
+    totalIncoming += c.incoming;
+    totalOversold += (c.standaloneOversold || 0) + (c.comboOversold || 0);
+    totalVel += c.totalDemand;
+  });
+  let avgWks = totalVel > 0 ? Math.round(totalSOH / totalVel) : 99;
   
-  // Filters area — size binding constraint chart
-  document.getElementById('dash-filters').innerHTML = '';
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="card green"><div class="label">CIN7 SOH</div><div class="value">${Math.round(totalSOH).toLocaleString()}</div><div class="sub">Component physical stock</div></div>
+    <div class="card blue"><div class="label">Incoming</div><div class="value">${Math.round(totalIncoming).toLocaleString()}</div><div class="sub">POs for components</div></div>
+    <div class="card red"><div class="label">Oversold</div><div class="value">${Math.round(totalOversold).toLocaleString()}</div><div class="sub">Standalone + Combo pre-orders</div></div>
+    <div class="card yellow"><div class="label">Avg Wks Stock</div><div class="value">${avgWks}</div><div class="sub">At combined velocity</div></div>`;
   
-  // Chart: per-size bed vs mattress weeks side by side
+  // Size filters
+  const sizeKeys = ['All', ...new Set(compEntries.map(([k,v]) => v.type === 'bed' ? ({'S':'Single','KS':'King Single','D':'Double'}[v.size] || 'Other') : 'Mattress'))];
+  if (!window._bomFilter) window._bomFilter = 'All';
+  document.getElementById('dash-filters').innerHTML = sizeKeys.map(s =>
+    '<button class="filter-btn '+(window._bomFilter===s?'active':'')+'" onclick="window._bomFilter=\''+s+'\';renderBOM()">'+s+'</button>'
+  ).join('');
+  
+  // Filter components
+  let filtered = compEntries;
+  if (window._bomFilter !== 'All') {
+    filtered = compEntries.filter(([k,v]) => {
+      if (window._bomFilter === 'Mattress') return v.type === 'mattress';
+      const sizeMap = {'Single':'S','King Single':'KS','Double':'D'};
+      return v.size === sizeMap[window._bomFilter];
+    });
+  }
+  
+  // Stock Position chart — SOH + Incoming + Oversold + Net per component
+  let chartComps = filtered.filter(([k,v]) => v.soh > 0 || v.incoming > 0 || (v.standaloneOversold + v.comboOversold) < 0);
   if (charts.stock) charts.stock.destroy();
   charts.stock = new Chart(document.getElementById('stockChart'), {
     type: 'bar',
     data: {
-      labels: sizes.map(sz => sizeLabels[sz]),
+      labels: chartComps.map(([k,v]) => k),
       datasets: [
-        { label: 'Bed Frame (wks)', data: sizes.map(sz => sizeData[sz]?.bedWks || 0), backgroundColor: '#2C474B', barPercentage: 0.4, categoryPercentage: 0.8 },
-        { label: 'Mattress (wks)', data: sizes.map(sz => sizeData[sz]?.mattWks || 0), backgroundColor: '#D4930D', barPercentage: 0.4, categoryPercentage: 0.8 }
+        { label: 'SOH', data: chartComps.map(([k,v]) => Math.round(v.soh)), backgroundColor: '#5BAB31' },
+        { label: 'Incoming', data: chartComps.map(([k,v]) => v.incoming), backgroundColor: '#2C474B' },
+        { label: 'Oversold', data: chartComps.map(([k,v]) => Math.round((v.standaloneOversold||0) + (v.comboOversold||0))), backgroundColor: '#C33252' },
+        { label: 'Net', data: chartComps.map(([k,v]) => Math.round(v.soh + v.incoming + (v.standaloneOversold||0) + (v.comboOversold||0))), type: 'line', borderColor: '#D4930D', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, tension: 0.3, order: 0 }
       ]
     },
     options: {
       responsive: true,
-      plugins: {
-        legend: { labels: { color: '#282828', font: { size: 11 } } },
-        title: { display: true, text: 'Combo ATP by Size — shorter bar = binding constraint', color: '#282828', font: { size: 13 } }
-      },
+      plugins: { legend: { labels: { color: '#282828', font: { size: 10 } } } },
       scales: {
-        x: { ticks: { color: '#282828', font: { size: 12, weight: 'bold' } } },
-        y: { ticks: { color: '#758068' }, grid: { color: '#DDE3D5' }, title: { display: true, text: 'Weeks of Stock', color: '#758068' } }
+        x: { stacked: true, ticks: { color: '#758068', maxRotation: 45, font: { size: 9 } } },
+        y: { stacked: true, ticks: { color: '#758068' }, grid: { color: '#DDE3D5' } }
       }
     }
   });
   
-  // Component table — every component with full detail
-  let compRows = Object.entries(comps).sort((a,b) => {
+  // Table — component-level with all demand streams
+  let tableRows = filtered.sort((a,b) => {
     let aWks = a[1].totalDemand > 0 ? a[1].soh / a[1].totalDemand : 99;
     let bWks = b[1].totalDemand > 0 ? b[1].soh / b[1].totalDemand : 99;
     return aWks - bWks;
   });
   
-  let thead = '<tr><th>Component</th><th>Type</th><th>SOH</th><th>Incoming</th><th>Oversold (Standalone)</th><th>Oversold (Combo)</th><th>Standalone/wk</th><th>Combo/wk</th><th>Total/wk</th><th>Wks Left</th><th>Status</th></tr>';
-  let tbody = compRows.map(([sku, c]) => {
-    let net = c.soh + Math.min(c.standaloneOversold + c.comboOversold, 0);
+  document.querySelector('#stockTable thead').innerHTML = '<tr><th>Component</th><th>Type</th><th>CIN7 SOH</th><th>Incoming</th><th>Oversold</th><th>Standalone/wk</th><th>Combo/wk</th><th>Total/wk</th><th>Wks Left</th><th>Constraint</th><th>Status</th></tr>';
+  document.querySelector('#stockTable tbody').innerHTML = tableRows.map(([sku, c]) => {
     let wks = c.totalDemand > 0 ? Math.round(c.soh / c.totalDemand) : 99;
+    let oversold = Math.round((c.standaloneOversold||0) + (c.comboOversold||0));
     let badge = wks <= 0 ? '<span class="badge stockout">STOCKOUT</span>' : wks <= 2 ? '<span class="badge critical">CRITICAL</span>' : wks <= 4 ? '<span class="badge low">LOW</span>' : wks <= 8 ? '<span class="badge ok">OK</span>' : '<span class="badge healthy">HEALTHY</span>';
-    let typeIcon = c.type === 'bed' ? '🛏️ Bed' : '🛌 Mattress';
-    let soStandalone = c.standaloneOversold < 0 ? '<span class="neg">'+c.standaloneOversold+'</span>' : '0';
-    let soCombo = c.comboOversold < 0 ? '<span class="neg">'+Math.round(c.comboOversold)+'</span>' : '0';
-    return '<tr><td style="font-family:monospace;font-size:10px">'+sku+'</td><td>'+typeIcon+'</td><td>'+Math.round(c.soh)+'</td><td>'+c.incoming+'</td><td>'+soStandalone+'</td><td>'+soCombo+'</td><td>'+c.standaloneDemand.toFixed(1)+'</td><td>'+c.comboDemand.toFixed(1)+'</td><td><b>'+c.totalDemand.toFixed(1)+'</b></td><td>'+wks+'</td><td>'+badge+'</td></tr>';
+    let typeLabel = c.type === 'bed' ? '🛏️ Bed' : '🛌 Mattress';
+    let constraintLabel = '';
+    if (c.size && sizeData[c.size]) {
+      constraintLabel = sizeData[c.size].constraint === c.type ? '🔒 Bottleneck' : '';
+    }
+    return '<tr><td style="font-family:monospace;font-size:10px">'+sku+'</td><td>'+typeLabel+'</td><td>'+Math.round(c.soh)+'</td><td>'+c.incoming+'</td><td>'+(oversold<0?'<span class="neg">'+oversold+'</span>':'0')+'</td><td>'+c.standaloneDemand.toFixed(1)+'</td><td>'+c.comboDemand.toFixed(1)+'</td><td><b>'+c.totalDemand.toFixed(1)+'</b></td><td>'+wks+'</td><td>'+constraintLabel+'</td><td>'+badge+'</td></tr>';
   }).join('');
-  
-  document.querySelector('#stockTable thead').innerHTML = thead;
-  document.querySelector('#stockTable tbody').innerHTML = tbody;
 }
+
 
 function renderDashboard(){
   const skus=getSkus();let tSOH=0,tInc=0,tOver=0,tVel=0;
