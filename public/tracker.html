@@ -39,9 +39,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .sc-progress{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
 .sc-progress-fill{height:100%;border-radius:2px;transition:width 0.3s}
 .sc-eta{font-size:12px;font-weight:600;margin-top:6px}
-.sc-eta.overdue{color:var(--red)}
+.sc-eta.received{color:var(--green)}
+.sc-eta.eta{color:var(--yellow)}
 .sc-eta.soon{color:var(--yellow)}
-.sc-eta.ok{color:var(--green)}
+.sc-eta.overdue{color:var(--red)}
+.sc-eta.noeta{color:var(--red)}
 .map-container{flex:1;position:relative}
 #map{width:100%;height:100%}
 .popup-content{font-size:12px;line-height:1.6}
@@ -138,9 +140,9 @@ function renderSidebar(){
   const transitVal=transit.reduce((t,s)=>t+s.total,0);
   
   document.getElementById('prodUnits').textContent=prodUnits.toLocaleString();
-  document.getElementById('prodValue').textContent='$'+Math.round(prodVal/1000)+'K';
+  document.getElementById('prodValue').textContent=prodVal>=1000000?'$'+(prodVal/1000000).toFixed(1)+'M':'$'+Math.round(prodVal/1000)+'K';
   document.getElementById('transitUnits').textContent=transitUnits.toLocaleString();
-  document.getElementById('transitValue').textContent='$'+Math.round(transitVal/1000)+'K';
+  document.getElementById('transitValue').textContent=transitVal>=1000000?'$'+(transitVal/1000000).toFixed(1)+'M':'$'+Math.round(transitVal/1000)+'K';
   
   const list=document.getElementById('shipmentList');
   
@@ -149,14 +151,14 @@ function renderSidebar(){
   list.innerHTML=filtered.map(s=>{
     const statusLabel={production:'In Production',in_transit:'In Transit',arrived:'Arrived',unknown:'Unknown'}[s.shipmentStatus]||'Unknown';
     const etaText=s.daysUntil!==null?(s.daysUntil>0?s.daysUntil+' days':'Overdue by '+Math.abs(s.daysUntil)+'d'):'No ETA';
-    const etaClass=s.daysUntil===null?'':s.daysUntil<0?'overdue':s.daysUntil<=7?'soon':'ok';
+    const etaClass=s.receivedDate?'received':s.daysUntil===null?'noeta':s.daysUntil<0?'overdue':s.daysUntil<=7?'soon':'eta';
     const progressColor=s.shipmentStatus==='in_transit'?'var(--green)':s.shipmentStatus==='production'?'var(--yellow)':'var(--teal)';
     
     return`<div class="shipment-card ${selectedRef===s.reference?'active':''}" onclick="selectShipment('${s.reference}')">
       <div class="sc-header"><span class="sc-ref">${s.reference}</span><span class="sc-status ${s.shipmentStatus}">${statusLabel}</span></div>
       <div class="sc-supplier">${s.supplier.substring(0,40)}</div>
       <div class="sc-route"><span>${s.origin.port||s.origin.city}</span><span class="arrow">→</span><span>${s.destination.port}</span></div>
-      <div class="sc-meta"><span><strong>${s.totalUnits}</strong> units</span><span><strong>${s.skuCount}</strong> SKUs</span><span><strong>$${s.total.toLocaleString()}</strong></span></div>
+      <div class="sc-meta"><span><strong>${s.totalUnits}</strong> units</span><span><strong>${s.skuCount}</strong> SKUs</span><span><strong>${s.total>=1000000?'$'+(s.total/1000000).toFixed(1)+'M':'$'+s.total.toLocaleString()}</strong></span></div>
       <div class="sc-progress"><div class="sc-progress-fill" style="width:${Math.round(s.progress*100)}%;background:${progressColor}"></div></div>
       <div class="sc-eta ${etaClass}">${s.receivedDate?'Received: '+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):s.eta?'ETA: '+new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+' ('+etaText+')':'No ETA set'}</div>
     </div>`
