@@ -177,6 +177,68 @@ async function selectCK(ckId){
   document.querySelector('.tab.active')?.classList.remove('active');document.querySelector('[data-view="dashboard"]').classList.add('active');
   renderDashboard();renderBOM(d.bomData)}catch(e){document.getElementById('loadingScreen').innerHTML=`<div style="color:var(--alert)">Error: ${e.message}</div>`}}
 
+function renderBOM() {
+  if (!DATA.bomData || !DATA.bomData._components) return;
+  const comps = DATA.bomData._components;
+  const combos = Object.entries(DATA.bomData).filter(([k,v]) => k !== '_components');
+  
+  // Component summary cards
+  let bedComps = Object.entries(comps).filter(([k,v]) => v.type==='bed');
+  let mattComps = Object.entries(comps).filter(([k,v]) => v.type==='mattress');
+  
+  // Summary cards
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="card blue"><div class="label">Combo SKUs</div><div class="value">${combos.length}</div><div class="sub">Bundle products</div></div>
+    <div class="card green"><div class="label">Bed Components</div><div class="value">${bedComps.length}</div><div class="sub">Unique bed frames needed</div></div>
+    <div class="card yellow"><div class="label">Mattress Components</div><div class="value">${mattComps.length}</div><div class="sub">DD 21cm Comfort Foam</div></div>
+    <div class="card red"><div class="label">Constrained</div><div class="value">${combos.filter(([k,v])=>v.bundleATPWeeks<4).length}</div><div class="sub">Combos with &lt;4 wks ATP</div></div>`;
+  
+  // Component-level table
+  document.getElementById('dash-filters').innerHTML = '<h3 style="font-size:14px;margin-bottom:8px">📦 Component Stock (Bed + Mattress demand combined)</h3>';
+  
+  let compRows = Object.entries(comps).sort((a,b) => {
+    let aWks = a[1].totalDemand > 0 ? a[1].soh / a[1].totalDemand : 99;
+    let bWks = b[1].totalDemand > 0 ? b[1].soh / b[1].totalDemand : 99;
+    return aWks - bWks;
+  });
+  
+  let compThead = '<tr><th>Component SKU</th><th>Type</th><th>SOH</th><th>Standalone/wk</th><th>Combo/wk</th><th>Total/wk</th><th>Wks Left</th><th>Status</th></tr>';
+  let compTbody = compRows.map(([sku, c]) => {
+    let wks = c.totalDemand > 0 ? Math.round(c.soh / c.totalDemand) : 99;
+    let badge = wks <= 0 ? '<span class="badge stockout">STOCKOUT</span>' : wks <= 2 ? '<span class="badge critical">CRITICAL</span>' : wks <= 4 ? '<span class="badge low">LOW</span>' : wks <= 8 ? '<span class="badge ok">OK</span>' : '<span class="badge healthy">HEALTHY</span>';
+    return '<tr><td style="font-family:monospace;font-size:10px">' + sku + '</td><td>' + (c.type==='bed'?'🛏️ Bed':'🛌 Mattress') + '</td><td>' + Math.round(c.soh) + '</td><td>' + c.standaloneDemand.toFixed(1) + '</td><td>' + c.comboDemand.toFixed(1) + '</td><td><b>' + c.totalDemand.toFixed(1) + '</b></td><td>' + wks + '</td><td>' + badge + '</td></tr>';
+  }).join('');
+  
+  // Replace stock table with component table
+  document.querySelector('#stockTable thead').innerHTML = compThead;
+  document.querySelector('#stockTable tbody').innerHTML = compTbody;
+  
+  // Bundle ATP chart - show each combo with binding constraint
+  let chartSkus = combos.sort((a,b) => a[1].bundleATPWeeks - b[1].bundleATPWeeks);
+  if (charts.stock) charts.stock.destroy();
+  charts.stock = new Chart(document.getElementById('stockChart'), {
+    type: 'bar',
+    data: {
+      labels: chartSkus.map(([k,v]) => k.replace('LLAU-CBCF-','')),
+      datasets: [
+        { label: 'Bed Wks', data: chartSkus.map(([k,v]) => v.bedTotalDemand > 0 ? Math.round(v.bedSOH / v.bedTotalDemand) : 99), backgroundColor: '#2C474B' },
+        { label: 'Mattress Wks', data: chartSkus.map(([k,v]) => v.mattressTotalDemand > 0 ? Math.round(v.mattressSOH / v.mattressTotalDemand) : 99), backgroundColor: '#D4930D' },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#282828', font: { size: 10 } } },
+        title: { display: true, text: 'Bundle ATP by Combo (weeks) — lower bar = binding constraint', color: '#282828', font: { size: 12 } }
+      },
+      scales: {
+        x: { ticks: { color: '#758068', font: { size: 10 } } },
+        y: { ticks: { color: '#758068' }, grid: { color: '#DDE3D5' }, title: { display: true, text: 'Weeks of Stock', color: '#758068' } }
+      }
+    }
+  });
+}
+
 function renderDashboard(){
   const skus=getSkus();let tSOH=0,tInc=0,tOver=0,tVel=0;
   skus.forEach(s=>{tSOH+=(DATA.cin7[s]||0);tInc+=getIncoming(s);let sh=DATA.shopify[s]||0;if(sh<0)tOver+=sh;tVel+=getVel(s)});
