@@ -175,7 +175,7 @@ async function selectCK(ckId){
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};dashFilter.size='All';
   document.getElementById('loadingScreen').style.display='none';document.getElementById('dashboard').classList.add('active');
   document.querySelector('.tab.active')?.classList.remove('active');document.querySelector('[data-view="dashboard"]').classList.add('active');
-  renderDashboard();if(DATA.bomData)renderBOM()}catch(e){document.getElementById('loadingScreen').innerHTML=`<div style="color:var(--alert)">Error: ${e.message}</div>`}}
+  renderDashboard();if(DATA.bomData){try{renderBOM()}catch(e){console.error('BOM error:',e);document.getElementById('summary-cards').innerHTML='<div class="card red"><div class="label">BOM Error</div><div class="value">'+e.message+'</div></div>'}}}catch(e){document.getElementById('loadingScreen').innerHTML=`<div style="color:var(--alert)">Error: ${e.message}</div>`}}
 
 function renderBOM() {
   if (!DATA.bomData || !DATA.bomData._components) return;
