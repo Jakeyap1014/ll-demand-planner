@@ -96,7 +96,14 @@ tbody td{padding:8px 14px;border-bottom:1px solid var(--border);white-space:nowr
       <div class="cards" id="summary-cards"></div>
       <div class="filters" id="dash-filters"></div>
       <div class="chart-container"><h3>Stock Position by SKU</h3><canvas id="stockChart"></canvas></div>
-      <div class="table-wrap"><table id="stockTable"><thead></thead><tbody></tbody></table></div>
+      <div id="bomSection" style="display:none">
+      <h3 style="font-size:15px;margin-bottom:16px">🔧 Component Planning (BOM Explosion)</h3>
+      <div class="cards" id="bomSummaryCards"></div>
+      <div class="table-wrap" style="margin-bottom:24px"><table id="bomTable"><thead></thead><tbody></tbody></table></div>
+      <h3 style="font-size:14px;margin-bottom:12px">📦 Bundle ATP & Binding Constraints</h3>
+      <div class="table-wrap"><table id="bundleTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+    <div class="table-wrap"><table id="stockTable"><thead></thead><tbody></tbody></table></div>
     </div>
     <div id="stockout" class="view">
       <div id="stockoutCharts"></div>
@@ -168,7 +175,7 @@ async function selectCK(ckId){
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};dashFilter.size='All';
   document.getElementById('loadingScreen').style.display='none';document.getElementById('dashboard').classList.add('active');
   document.querySelector('.tab.active')?.classList.remove('active');document.querySelector('[data-view="dashboard"]').classList.add('active');
-  renderDashboard()}catch(e){document.getElementById('loadingScreen').innerHTML=`<div style="color:var(--alert)">Error: ${e.message}</div>`}}
+  renderDashboard();renderBOM(d.bomData)}catch(e){document.getElementById('loadingScreen').innerHTML=`<div style="color:var(--alert)">Error: ${e.message}</div>`}}
 
 function renderDashboard(){
   const skus=getSkus();let tSOH=0,tInc=0,tOver=0,tVel=0;
@@ -243,6 +250,46 @@ ms.innerHTML+=`<div class="chat-msg user">${escapeHtml(m)}</div><div class="chat
 try{const r=await fetch('/api/chat',{method:'POST',headers:H(),body:JSON.stringify({message:m,history:chatHistory.slice(-10),ckId:currentCK})});const d=await r.json();document.getElementById('typing')?.remove();
 ms.innerHTML+=`<div class="chat-msg bot">${d.reply||'Error'}</div>`;chatHistory.push({role:'assistant',text:d.reply})}catch(e){document.getElementById('typing')?.remove();ms.innerHTML+=`<div class="chat-msg bot">Connection error.</div>`}ms.scrollTop=ms.scrollHeight}
 async function manualRefresh(){document.getElementById('refreshBtn').textContent='⏳...';try{await fetch('/api/refresh',{method:'POST',headers:H()});if(currentCK)await selectCK(currentCK);loadSidebar()}catch(e){}document.getElementById('refreshBtn').textContent='🔄 Refresh'}
+function renderBOM(bomData){
+  const section=document.getElementById('bomSection');
+  if(!bomData||!bomData._components){section.style.display='none';return}
+  section.style.display='block';
+  
+  const comps=bomData._components;
+  const compKeys=Object.keys(comps).filter(k=>k!=='_components');
+  
+  // Summary cards
+  const beds=compKeys.filter(k=>comps[k].type==='bed');
+  const matts=compKeys.filter(k=>comps[k].type==='mattress');
+  const worstBed=beds.reduce((w,k)=>{const wks=comps[k].totalDemand>0?comps[k].soh/comps[k].totalDemand:99;return wks<w.wks?{k,wks}:w},{k:'',wks:99});
+  const worstMatt=matts.reduce((w,k)=>{const wks=comps[k].totalDemand>0?comps[k].soh/comps[k].totalDemand:99;return wks<w.wks?{k,wks}:w},{k:'',wks:99});
+  
+  document.getElementById('bomSummaryCards').innerHTML=`
+    <div class="card"><div class="label">Bed Components</div><div class="value">${beds.length}</div><div class="sub">Worst: ${worstBed.k.split('-').slice(-2).join(' ')} (${worstBed.wks.toFixed(1)}wk)</div></div>
+    <div class="card"><div class="label">Mattress Components</div><div class="value">${matts.length}</div><div class="sub">Worst: ${worstMatt.k} (${worstMatt.wks.toFixed(1)}wk)</div></div>
+    <div class="card yellow"><div class="label">Binding Constraints</div><div class="value">${Object.values(bomData).filter(v=>v.bindingType==='mattress').length}/${Object.keys(bomData).filter(k=>k!=='_components').length}</div><div class="sub">combos limited by mattress</div></div>`;
+  
+  // Component table
+  document.querySelector('#bomTable thead').innerHTML='<tr><th>Component</th><th>Type</th><th>CIN7 SOH</th><th>Standalone Demand/wk</th><th>Combo Demand/wk</th><th>Total Demand/wk</th><th>Weeks of Stock</th><th>Status</th></tr>';
+  const rows=compKeys.map(k=>{
+    const c=comps[k];const wks=c.totalDemand>0?c.soh/c.totalDemand:99;
+    const badge=wks<=0?'<span class="badge stockout">STOCKOUT</span>':wks<=2?'<span class="badge critical">CRITICAL</span>':wks<=4?'<span class="badge low">LOW</span>':wks<=8?'<span class="badge ok">OK</span>':'<span class="badge healthy">HEALTHY</span>';
+    return{k,wks,html:`<tr><td style="font-family:monospace;font-size:10px">${k}</td><td>${c.type==='bed'?'🛏️ Bed':'🛌 Mattress'}</td><td>${c.soh}</td><td>${c.standaloneDemand.toFixed(1)}</td><td>${c.comboDemand.toFixed(1)}</td><td><strong>${c.totalDemand.toFixed(1)}</strong></td><td>${wks>=99?'99+':wks.toFixed(1)}</td><td>${badge}</td></tr>`}
+  }).sort((a,b)=>a.wks-b.wks);
+  document.querySelector('#bomTable tbody').innerHTML=rows.map(r=>r.html).join('');
+  
+  // Bundle ATP table
+  const bundleKeys=Object.keys(bomData).filter(k=>k!=='_components');
+  document.querySelector('#bundleTable thead').innerHTML='<tr><th>Combo SKU</th><th>Size</th><th>Velocity/wk</th><th>Bed SOH</th><th>Mattress SOH</th><th>Bed Demand</th><th>Matt Demand</th><th>Bundle ATP (wks)</th><th>🔒 Binding Constraint</th></tr>';
+  document.querySelector('#bundleTable tbody').innerHTML=bundleKeys.map(k=>{
+    const b=bomData[k];if(!b.bom)return'';
+    const colour=k.split('-').pop();const size=k.includes('-S-')?'Single':k.includes('-KS-')?'King Single':'Double';
+    const constraintLabel=b.bindingType==='bed'?'🛏️ '+b.bom.bed:'🛌 '+b.bom.mattress;
+    const atpClass=b.bundleATPWeeks<=2?'neg':b.bundleATPWeeks<=4?'':b.bundleATPWeeks>8?'pos':'';
+    return`<tr><td style="font-family:monospace;font-size:10px">${k}</td><td>${size} ${colour}</td><td>${b.comboVelocity.toFixed(1)}</td><td>${b.bedSOH}</td><td>${b.mattressSOH}</td><td>${b.bedTotalDemand.toFixed(1)}</td><td>${b.mattressTotalDemand.toFixed(1)}</td><td class="${atpClass}"><strong>${b.bundleATPWeeks>=99?'99+':b.bundleATPWeeks}</strong></td><td style="font-size:10px">${constraintLabel}</td></tr>`
+  }).join('');
+}
+
 function toggleMobileMenu(){
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('mobileOverlay').classList.toggle('open');

@@ -49,6 +49,36 @@ const CK_DEFS = {
   'lifely-sofa': { name: 'Modular Sofa',        prefix: 'LIFELY', logo: 'lifely-sofa.png',   store: 'lifely', sizes: {} }
 };
 
+// ===== COMBO BOM (Bill of Materials) =====
+const COMBO_BOM = {
+  // LLAU-CBCF-{size}-{colour} = 1× LLAU-CB-{size}-{colour} + 1× DD mattress
+  mattress: { 'S': 'DD-21915CF', 'KS': 'DD-21107CF', 'D': 'DD-21137CF' }
+};
+
+function getComboSize(sku) {
+  if (sku.includes('-S-')) return 'S';
+  if (sku.includes('-KS-')) return 'KS';
+  if (sku.includes('-D-')) return 'D';
+  return null;
+}
+
+function getComboColour(sku) {
+  const parts = sku.split('-');
+  return parts[parts.length - 1]; // Last segment is colour
+}
+
+function explodeComboBOM(comboSku) {
+  const size = getComboSize(comboSku);
+  const colour = getComboColour(comboSku);
+  if (!size || !colour) return null;
+  return {
+    bed: 'LLAU-CB-' + size + '-' + colour,
+    mattress: COMBO_BOM.mattress[size],
+    bedQty: 1,
+    mattressQty: 1
+  };
+}
+
 // ===== SESSION STORE =====
 const sessions = new Map();
 function createSession() {
@@ -491,6 +521,72 @@ function buildCKData(ckId) {
     names[sku] = sku; // Default to SKU code; frontend can prettify
   }
   
+  // BOM explosion for combos
+  let bomData = null;
+  if (ckId === 'llau-cbcf') {
+    bomData = {};
+    const allCin7 = dataCache.cin7Products;
+    
+    // Get all combo SKUs
+    const comboSkus = [...new Set([...Object.keys(velocity), ...Object.keys(cin7)])];
+    
+    // Component-level aggregation
+    const components = {}; // componentSku -> {soh, demand, incoming, combos:[]}
+    
+    for (const comboSku of comboSkus) {
+      const bom = explodeComboBOM(comboSku);
+      if (!bom) continue;
+      
+      const comboVel = velocity[comboSku] || 0;
+      
+      // Bed component
+      if (!components[bom.bed]) {
+        const bedData = allCin7[bom.bed] || {};
+        const bedSoh = typeof bedData === 'object' ? (bedData.soh || 0) : (bedData || 0);
+        // Standalone bed demand (from LL AU Beds velocity)
+        const standaloneVel = (dataCache.shopifyVelocity?.lifely?.[bom.bed]) || 0;
+        components[bom.bed] = { soh: bedSoh, standaloneDemand: standaloneVel, comboDemand: 0, totalDemand: standaloneVel, incoming: 0, combos: [], type: 'bed' };
+      }
+      components[bom.bed].comboDemand += comboVel * bom.bedQty;
+      components[bom.bed].totalDemand = components[bom.bed].standaloneDemand + components[bom.bed].comboDemand;
+      components[bom.bed].combos.push(comboSku);
+      
+      // Mattress component
+      if (!components[bom.mattress]) {
+        const mattData = allCin7[bom.mattress] || {};
+        const mattSoh = typeof mattData === 'object' ? (mattData.soh || 0) : (mattData || 0);
+        const standaloneVel = (dataCache.shopifyVelocity?.lifely?.[bom.mattress]) || 0;
+        components[bom.mattress] = { soh: mattSoh, standaloneDemand: standaloneVel, comboDemand: 0, totalDemand: standaloneVel, incoming: 0, combos: [], type: 'mattress' };
+      }
+      components[bom.mattress].comboDemand += comboVel * bom.mattressQty;
+      components[bom.mattress].totalDemand = components[bom.mattress].standaloneDemand + components[bom.mattress].comboDemand;
+      components[bom.mattress].combos.push(comboSku);
+      
+      // Bundle ATP = min(bed ATP, mattress ATP)
+      const bedComp = components[bom.bed];
+      const mattComp = components[bom.mattress];
+      const bedATP = bedComp.totalDemand > 0 ? bedComp.soh / bedComp.totalDemand : 99;
+      const mattATP = mattComp.totalDemand > 0 ? mattComp.soh / mattComp.totalDemand : 99;
+      const bundleATP = Math.min(bedATP, mattATP);
+      const constraint = bedATP <= mattATP ? bom.bed : bom.mattress;
+      
+      bomData[comboSku] = {
+        bom: bom,
+        comboVelocity: comboVel,
+        bedSOH: bedComp.soh,
+        mattressSOH: mattComp.soh,
+        bedTotalDemand: bedComp.totalDemand,
+        mattressTotalDemand: mattComp.totalDemand,
+        bundleATPWeeks: Math.round(bundleATP * 10) / 10,
+        bindingConstraint: constraint,
+        bindingType: bedATP <= mattATP ? 'bed' : 'mattress'
+      };
+    }
+    
+    // Add component summary
+    bomData._components = components;
+  }
+
   return {
     ck: def,
     cin7,
@@ -499,6 +595,7 @@ function buildCKData(ckId) {
     pos,
     names,
     sizes: def.sizes,
+    bomData,
     lastRefresh: dataCache.lastRefresh
   };
 }
