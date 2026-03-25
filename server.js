@@ -671,7 +671,12 @@ function buildShipmentData() {
     // Calculate progress (0-1)
     let progress = 0;
     let status = 'production';
-    if (etd && eta) {
+    
+    // If it has a received date OR stage is "Received", it's arrived — regardless of other fields
+    if (receivedDate || po.stage === 'Received') {
+      progress = 1;
+      status = 'arrived';
+    } else if (etd && eta) {
       const totalDays = (eta - etd) / (24 * 60 * 60 * 1000);
       const elapsedDays = (now - etd) / (24 * 60 * 60 * 1000);
       if (elapsedDays < 0) {
