@@ -89,8 +89,8 @@ if(!SESSION)window.location.href='/login';
 const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
 
 // Init map
-const map=L.map('map',{center:[5,80],zoom:3,zoomControl:true,attributionControl:false,zoomSnap:0.5,zoomDelta:0.5,wheelDebounceTime:80,wheelPxPerZoomLevel:120,zoomAnimation:true,markerZoomAnimation:true});
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
+const map=L.map('map',{center:[5,80],zoom:3,zoomControl:true,attributionControl:false,zoomSnap:0,zoomDelta:0.25,wheelDebounceTime:40,wheelPxPerZoomLevel:200,zoomAnimation:true,markerZoomAnimation:true,fadeAnimation:true});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18,updateWhenZooming:false,updateWhenIdle:true,keepBuffer:8}).addTo(map);
 
 // Custom icons
 function shipIcon(status){
