@@ -190,8 +190,8 @@ function renderBOM() {
   document.getElementById('summary-cards').innerHTML = `
     <div class="card blue"><div class="label">Combo SKUs</div><div class="value">${combos.length}</div><div class="sub">Bundle products</div></div>
     <div class="card green"><div class="label">Bed Components</div><div class="value">${bedComps.length}</div><div class="sub">Unique bed frames needed</div></div>
-    <div class="card yellow"><div class="label">Mattress Components</div><div class="value">${mattComps.length}</div><div class="sub">DD 21cm Comfort Foam</div></div>
-    <div class="card red"><div class="label">Constrained</div><div class="value">${combos.filter(([k,v])=>v.bundleATPWeeks<4).length}</div><div class="sub">Combos with &lt;4 wks ATP</div></div>`;
+    <div class="card yellow"><div class="label">Mattress Components</div><div class="value">${mattComps.length}</div><div class="sub">⚠️ DD 21cm CF — not tracked in CIN7</div></div>
+    <div class="card red"><div class="label">Bed Constrained</div><div class="value">${combos.filter(([k,v])=>v.bindingType==='bed'&&v.bedTotalDemand>0&&(v.bedSOH/v.bedTotalDemand)<4).length}</div><div class="sub">Combos with bed &lt;4 wks</div></div>`;
   
   // Component-level table
   document.getElementById('dash-filters').innerHTML = '<h3 style="font-size:14px;margin-bottom:8px">📦 Component Stock (Bed + Mattress demand combined)</h3>';
@@ -206,7 +206,10 @@ function renderBOM() {
   let compTbody = compRows.map(([sku, c]) => {
     let wks = c.totalDemand > 0 ? Math.round(c.soh / c.totalDemand) : 99;
     let badge = wks <= 0 ? '<span class="badge stockout">STOCKOUT</span>' : wks <= 2 ? '<span class="badge critical">CRITICAL</span>' : wks <= 4 ? '<span class="badge low">LOW</span>' : wks <= 8 ? '<span class="badge ok">OK</span>' : '<span class="badge healthy">HEALTHY</span>';
-    return '<tr><td style="font-family:monospace;font-size:10px">' + sku + '</td><td>' + (c.type==='bed'?'🛏️ Bed':'🛌 Mattress') + '</td><td>' + Math.round(c.soh) + '</td><td>' + c.standaloneDemand.toFixed(1) + '</td><td>' + c.comboDemand.toFixed(1) + '</td><td><b>' + c.totalDemand.toFixed(1) + '</b></td><td>' + wks + '</td><td>' + badge + '</td></tr>';
+    let sohDisplay = c.type==='mattress' && c.soh===0 ? '<span style="color:var(--yellow)">⚠️ Not tracked</span>' : Math.round(c.soh);
+    let wksDisplay = c.type==='mattress' && c.soh===0 ? '<span style="color:var(--yellow)">N/A</span>' : wks;
+    let badgeDisplay = c.type==='mattress' && c.soh===0 ? '<span class="badge low" style="background:rgba(212,147,13,0.15)">NO CIN7 DATA</span>' : badge;
+    return '<tr><td style="font-family:monospace;font-size:10px">' + sku + '</td><td>' + (c.type==='bed'?'🛏️ Bed':'🛌 Mattress') + '</td><td>' + sohDisplay + '</td><td>' + c.standaloneDemand.toFixed(1) + '</td><td>' + c.comboDemand.toFixed(1) + '</td><td><b>' + c.totalDemand.toFixed(1) + '</b></td><td>' + wksDisplay + '</td><td>' + badgeDisplay + '</td></tr>';
   }).join('');
   
   // Replace stock table with component table
@@ -222,14 +225,14 @@ function renderBOM() {
       labels: chartSkus.map(([k,v]) => k.replace('LLAU-CBCF-','')),
       datasets: [
         { label: 'Bed Wks', data: chartSkus.map(([k,v]) => v.bedTotalDemand > 0 ? Math.round(v.bedSOH / v.bedTotalDemand) : 99), backgroundColor: '#2C474B' },
-        { label: 'Mattress Wks', data: chartSkus.map(([k,v]) => v.mattressTotalDemand > 0 ? Math.round(v.mattressSOH / v.mattressTotalDemand) : 99), backgroundColor: '#D4930D' },
+        { label: 'Mattress Wks', data: chartSkus.map(([k,v]) => v.mattressSOH === 0 ? null : (v.mattressTotalDemand > 0 ? Math.round(v.mattressSOH / v.mattressTotalDemand) : 99)), backgroundColor: '#D4930D' },
       ]
     },
     options: {
       responsive: true,
       plugins: {
         legend: { labels: { color: '#282828', font: { size: 10 } } },
-        title: { display: true, text: 'Bundle ATP by Combo (weeks) — lower bar = binding constraint', color: '#282828', font: { size: 12 } }
+        title: { display: true, text: 'Bed weeks of stock per Combo (mattress not tracked in CIN7)', color: '#282828', font: { size: 12 } }
       },
       scales: {
         x: { ticks: { color: '#758068', font: { size: 10 } } },
