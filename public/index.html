@@ -216,15 +216,22 @@ function renderBOM() {
   
   // Chart — all components (beds + mattresses) for restocking visibility
   let chartComps = filteredAll.filter(([k,v]) => v.soh > 0 || v.incoming > 0 || ((v.standaloneOversold||0) + (v.comboOversold||0)) < 0);
+  // Sort: mattresses first (S→KS→D), then beds (S→KS→D) using SKU for reliable size detection
+  const skuSizeOrder = (sku) => {
+    if (sku.includes('915') || sku.includes('-S-')) return 0;
+    if (sku.includes('107') || sku.includes('-KS-')) return 1;
+    if (sku.includes('137') || sku.includes('-D-')) return 2;
+    return 9;
+  };
+  chartComps.sort((a,b) => {
+    if (a[1].type !== b[1].type) return a[1].type==='mattress'?-1:1;
+    return skuSizeOrder(a[0]) - skuSizeOrder(b[0]);
+  });
   if (charts.stock) charts.stock.destroy();
   charts.stock = new Chart(document.getElementById('stockChart'), {
     type: 'bar',
     data: {
-      labels: chartComps.sort((a,b) => {
-      const sizeOrder = {'S':0,'KS':1,'D':2};
-      if (a[1].type !== b[1].type) return a[1].type==='mattress'?-1:1;
-      return (sizeOrder[a[1].size]||9) - (sizeOrder[b[1].size]||9);
-    }).map(([k,v]) => (v.type==='bed'?'🛏️ ':'🛌 ') + k.replace('LLAU-CB-','').replace('DD-','')),
+      labels: chartComps.map(([k,v]) => (v.type==='bed'?'🛏️ ':'🛌 ') + k.replace('LLAU-CB-','').replace('DD-','')),
       datasets: [
         { label: 'SOH', data: chartComps.map(([k,v]) => Math.round(v.soh)), backgroundColor: chartComps.map(([k,v]) => v.type==='bed'?'#5BAB31':'#4A9026') },
         { label: 'Incoming', data: chartComps.map(([k,v]) => v.incoming), backgroundColor: '#2C474B' },
@@ -248,7 +255,8 @@ function renderBOM() {
     if (a[1].type !== b[1].type) return a[1].type === 'mattress' ? -1 : 1;
     // Within same type, sort by size: Single → KS → Double
     const sizeOrd = {'S':0,'KS':1,'D':2};
-    if (a[1].size !== b[1].size) return (sizeOrd[a[1].size]||9) - (sizeOrd[b[1].size]||9);
+    const skuSz = (sku) => { if(sku.includes('915')||sku.includes('-S-'))return 0; if(sku.includes('107')||sku.includes('-KS-'))return 1; if(sku.includes('137')||sku.includes('-D-'))return 2; return 9; };
+    if (skuSz(a[0]) !== skuSz(b[0])) return skuSz(a[0]) - skuSz(b[0]);
     let aWks = a[1].totalDemand > 0 ? a[1].soh / a[1].totalDemand : 99;
     let bWks = b[1].totalDemand > 0 ? b[1].soh / b[1].totalDemand : 99;
     return aWks - bWks;
