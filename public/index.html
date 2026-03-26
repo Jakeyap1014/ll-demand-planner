@@ -57,6 +57,7 @@ tbody td{padding:8px 14px;border-bottom:1px solid var(--border);white-space:nowr
 .chat-input{display:flex;padding:10px;gap:8px;border-top:1px solid var(--border)}
 .chat-input input{flex:1;background:#F6F8F4;border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:10px;font-size:12px;outline:none}
 .chat-input button{background:var(--blue);border:none;color:#fff;padding:9px 14px;border-radius:10px;cursor:pointer;font-weight:600;font-size:12px}
+th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';font-size:9px;opacity:0.5}th[data-tip]:hover .tip{display:block}.tip{display:none;position:absolute;top:100%;left:0;min-width:220px;max-width:300px;background:#2C474B;color:#F6F8F4;padding:10px 12px;border-radius:8px;font-size:11px;font-weight:400;line-height:1.5;z-index:100;box-shadow:0 4px 16px rgba(0,0,0,0.18);white-space:normal;pointer-events:none}
 .neg{color:var(--alert)}.pos{color:var(--green)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 @media(max-width:900px){
@@ -262,14 +263,14 @@ function renderBOM() {
     return aWks - bWks;
   });
   
-  document.querySelector('#stockTable thead').innerHTML = '<tr><th>Component</th><th>Type</th><th>Size</th><th>CIN7 SOH</th><th>Incoming</th><th>Oversold</th><th>Standalone/wk</th><th>Combo/wk</th><th>Total/wk</th><th>Wks Left</th><th>Status</th></tr>';
+  document.querySelector('#stockTable thead').innerHTML = '<tr><th>Component</th><th>Type</th><th>Size</th><th data-tip>CIN7 SOH<span class="tip">Physical stock in warehouse</span></th><th data-tip>Incoming<span class="tip">Units from open POs</span></th><th data-tip>Oversold<span class="tip">Pre-order commitments (standalone + combo)</span></th><th data-tip>Standalone/wk<span class="tip">Weekly velocity from bed-only sales (not combo)</span></th><th data-tip>Combo/wk<span class="tip">Weekly velocity consumed by combo sales</span></th><th data-tip>Total/wk<span class="tip">Combined demand: standalone + combo. Used for reorder calculations</span></th><th data-tip>Wks Left<span class="tip">SOH ÷ Total velocity</span></th><th>Status</th></tr>';
   document.querySelector('#stockTable tbody').innerHTML = sorted.map(([sku, c]) => {
     let wks = c.totalDemand > 0 ? Math.round(c.soh / c.totalDemand) : 99;
     let oversold = Math.round((c.standaloneOversold||0) + (c.comboOversold||0));
     let badge = wks <= 0 ? '<span class="badge stockout">STOCKOUT</span>' : wks <= 2 ? '<span class="badge critical">CRITICAL</span>' : wks <= 4 ? '<span class="badge low">LOW</span>' : wks <= 8 ? '<span class="badge ok">OK</span>' : '<span class="badge healthy">HEALTHY</span>';
     let typeLabel = c.type === 'bed' ? '🛏️ Bed' : '🛌 Mattress';
     let sizeLabel = {'S':'Single','KS':'King Single','D':'Double'}[c.size] || '';
-    return '<tr><td style="font-family:monospace;font-size:10px">'+sku+'</td><td>'+typeLabel+'</td><td>'+sizeLabel+'</td><td>'+Math.round(c.soh)+'</td><td>'+c.incoming+'</td><td>'+(oversold<0?'<span class="neg">'+oversold+'</span>':'0')+'</td><td>'+c.standaloneDemand.toFixed(1)+'</td><td>'+c.comboDemand.toFixed(1)+'</td><td><b>'+c.totalDemand.toFixed(1)+'</b></td><td>'+wks+'</td><td>'+badge+'</td></tr>';
+    return '<tr><td style="font-family:monospace;font-size:10px">'+sku+'</td><td>'+typeLabel+'</td><td>'+sizeLabel+'</td><td>'+Math.round(c.soh)+'</td><td>'+c.incoming+'</td><td>'+(oversold<0?'<span class="neg">'+oversold+'</span>':'0')+'</td><td>'+c.standaloneDemand.toFixed(1)+'</td><td>'+c.comboDemand.toFixed(1)+'</td><td><b>'+c.totalDemand.toFixed(1)+'</b></td><td>'+wks+'</td><td>'+badge+(wks>=50?' <span style="color:var(--yellow);font-size:10px" title="Over 50 weeks — push this SKU">⚠️ OVERSTOCK</span>':'')+'</td></tr>';
   }).join('');
 }
 
@@ -285,10 +286,10 @@ function renderDashboard(){
     <div class="card yellow"><div class="label">Avg Wks Stock</div><div class="value">${wksT}</div><div class="sub">At current velocity</div></div>`;
   document.getElementById('dash-filters').innerHTML=getSizeKeys().map(s=>`<button class="filter-btn ${dashFilter.size===s?'active':''}" onclick="dashFilter.size='${s}';renderDashboard()">${s}</button>`).join('');
   let filtered=skus.filter(s=>dashFilter.size==='All'||getSize(s)===dashFilter.size);
-  document.querySelector('#stockTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th>CIN7 SOH</th><th>Shopify</th><th>Net</th><th>Incoming</th><th>Units/wk</th><th>Wks Left</th><th>Status</th></tr>';
+  document.querySelector('#stockTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th data-tip>CIN7 SOH<span class="tip">Stock On Hand — physical units in the warehouse from CIN7</span></th><th data-tip>Shopify<span class="tip">Shopify inventory level. Negative = pre-orders/oversold units waiting to be fulfilled</span></th><th data-tip>Net<span class="tip">Effective available stock. CIN7 SOH + min(Shopify, 0). Accounts for pre-order commitments</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders not yet received</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over the last 90 days from Shopify orders</span></th><th data-tip>Wks Left<span class="tip">Weeks of stock remaining at current velocity. Net SOH ÷ Units/wk</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th></tr>';
   document.querySelector('#stockTable tbody').innerHTML=filtered.map(s=>{
     let soh=DATA.cin7[s]||0,sh=DATA.shopify[s]||0,net=getNet(s),inc=getIncoming(s),vel=getVel(s),wks=vel>0?Math.round(net/vel):99;
-    return`<tr><td style="font-family:monospace;font-size:10px">${s}</td><td>${getSize(s)}</td><td>${fmt(soh)}</td><td>${fmt(sh)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}</td><td>${wks}</td><td>${statusBadge(wks)}</td></tr>`}).join('');
+    return`<tr><td style="font-family:monospace;font-size:10px">${s}</td><td>${getSize(s)}</td><td>${fmt(soh)}</td><td>${fmt(sh)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}</td><td>${wks>=50?'⚠️ '+wks:wks}</td><td>${statusBadge(wks)}${wks>=50?' <span style="color:var(--yellow);font-size:10px" title="Over 50 weeks — consider pushing this SKU">⚠️ OVERSTOCK</span>':''}</td></tr>`}).join('');
   let cs=filtered.filter(s=>(DATA.cin7[s]||0)>0||getIncoming(s)>0).slice(0,30);
   if(charts.stock)charts.stock.destroy();
   charts.stock=new Chart(document.getElementById('stockChart'),{type:'bar',data:{labels:cs.map(s=>s),datasets:[
