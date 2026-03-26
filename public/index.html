@@ -180,65 +180,79 @@ async function selectCK(ckId){
 function renderBOM() {
   if (!DATA.bomData || !DATA.bomData._components) return;
   const comps = DATA.bomData._components;
+  const allEntries = Object.entries(comps);
+  const mattEntries = allEntries.filter(([k,v]) => v.type === 'mattress');
+  const bedEntries = allEntries.filter(([k,v]) => v.type === 'bed');
   
-  // Only mattress components
-  const mattEntries = Object.entries(comps).filter(([k,v]) => v.type === 'mattress');
-  
-  // Summary cards
-  let totalSOH = 0, totalIncoming = 0, totalOversold = 0, totalVel = 0;
+  // Summary cards — mattress data only (the bottleneck)
+  let mattSOH = 0, mattIncoming = 0, mattOversold = 0, mattVel = 0;
   mattEntries.forEach(([sku, c]) => {
-    totalSOH += c.soh;
-    totalIncoming += c.incoming;
-    totalOversold += (c.standaloneOversold || 0) + (c.comboOversold || 0);
-    totalVel += c.totalDemand;
+    mattSOH += c.soh;
+    mattIncoming += c.incoming;
+    mattOversold += (c.standaloneOversold || 0) + (c.comboOversold || 0);
+    mattVel += c.totalDemand;
   });
-  let avgWks = totalVel > 0 ? Math.round(totalSOH / totalVel) : 99;
+  let mattWks = mattVel > 0 ? Math.round(mattSOH / mattVel) : 99;
   
   document.getElementById('summary-cards').innerHTML = `
-    <div class="card green"><div class="label">Mattress SOH</div><div class="value">${Math.round(totalSOH).toLocaleString()}</div><div class="sub">DD 21cm Comfort Foam</div></div>
-    <div class="card blue"><div class="label">Incoming</div><div class="value">${Math.round(totalIncoming).toLocaleString()}</div><div class="sub">Mattress POs</div></div>
-    <div class="card red"><div class="label">Oversold</div><div class="value">${Math.round(totalOversold).toLocaleString()}</div><div class="sub">Combo pre-orders</div></div>
-    <div class="card yellow"><div class="label">Avg Wks Stock</div><div class="value">${avgWks}</div><div class="sub">At combo velocity</div></div>`;
+    <div class="card green"><div class="label">Combo SOH</div><div class="value">${Math.round(mattSOH).toLocaleString()}</div><div class="sub">Mattress stock (binding constraint)</div></div>
+    <div class="card blue"><div class="label">Incoming</div><div class="value">${Math.round(mattIncoming).toLocaleString()}</div><div class="sub">Mattress POs</div></div>
+    <div class="card red"><div class="label">Oversold</div><div class="value">${Math.round(mattOversold).toLocaleString()}</div><div class="sub">Combo pre-orders</div></div>
+    <div class="card yellow"><div class="label">Avg Wks Stock</div><div class="value">${mattWks}</div><div class="sub">At combo velocity</div></div>`;
   
-  document.getElementById('dash-filters').innerHTML = '';
+  // Filters
+  const sizeKeys = ['All', 'Single', 'King Single', 'Double'];
+  if (!window._bomFilter) window._bomFilter = 'All';
+  document.getElementById('dash-filters').innerHTML = sizeKeys.map(s =>
+    '<button class="filter-btn '+(window._bomFilter===s?'active':'')+'" onclick="window._bomFilter=\''+s+'\';renderBOM()">'+s+'</button>'
+  ).join('');
   
-  // Chart — mattress components only
+  // Filter
+  const sizeMap = {'Single':'S','King Single':'KS','Double':'D'};
+  let filteredAll = allEntries;
+  if (window._bomFilter !== 'All') {
+    filteredAll = allEntries.filter(([k,v]) => v.size === sizeMap[window._bomFilter]);
+  }
+  
+  // Chart — all components (beds + mattresses) for restocking visibility
+  let chartComps = filteredAll.filter(([k,v]) => v.soh > 0 || v.incoming > 0 || ((v.standaloneOversold||0) + (v.comboOversold||0)) < 0);
   if (charts.stock) charts.stock.destroy();
   charts.stock = new Chart(document.getElementById('stockChart'), {
     type: 'bar',
     data: {
-      labels: mattEntries.map(([k]) => k.replace('DD-','') ),
+      labels: chartComps.map(([k,v]) => (v.type==='bed'?'🛏️ ':'🛌 ') + k.replace('LLAU-CB-','').replace('DD-','')),
       datasets: [
-        { label: 'SOH', data: mattEntries.map(([k,v]) => Math.round(v.soh)), backgroundColor: '#5BAB31' },
-        { label: 'Incoming', data: mattEntries.map(([k,v]) => v.incoming), backgroundColor: '#2C474B' },
-        { label: 'Oversold', data: mattEntries.map(([k,v]) => Math.round((v.standaloneOversold||0) + (v.comboOversold||0))), backgroundColor: '#C33252' },
-        { label: 'Net', data: mattEntries.map(([k,v]) => Math.round(v.soh + v.incoming + (v.standaloneOversold||0) + (v.comboOversold||0))), type: 'line', borderColor: '#D4930D', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, pointBackgroundColor: '#D4930D', tension: 0.3, order: 0 }
+        { label: 'SOH', data: chartComps.map(([k,v]) => Math.round(v.soh)), backgroundColor: chartComps.map(([k,v]) => v.type==='bed'?'#5BAB31':'#4A9026') },
+        { label: 'Incoming', data: chartComps.map(([k,v]) => v.incoming), backgroundColor: '#2C474B' },
+        { label: 'Oversold', data: chartComps.map(([k,v]) => Math.round((v.standaloneOversold||0) + (v.comboOversold||0))), backgroundColor: '#C33252' },
+        { label: 'Net', data: chartComps.map(([k,v]) => Math.round(v.soh + v.incoming + (v.standaloneOversold||0) + (v.comboOversold||0))), type: 'line', borderColor: '#D4930D', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 2, tension: 0.3, order: 0 }
       ]
     },
     options: {
       responsive: true,
       plugins: { legend: { labels: { color: '#282828', font: { size: 10 } } } },
       scales: {
-        x: { stacked: true, ticks: { color: '#758068', font: { size: 11 } } },
+        x: { stacked: true, ticks: { color: '#758068', maxRotation: 45, font: { size: 9 } } },
         y: { stacked: true, ticks: { color: '#758068' }, grid: { color: '#DDE3D5' } }
       }
     }
   });
   
-  // Table — mattress only
-  let sorted = mattEntries.sort((a,b) => {
+  // Table — ALL components (beds + mattresses) for restocking
+  let sorted = filteredAll.sort((a,b) => {
     let aWks = a[1].totalDemand > 0 ? a[1].soh / a[1].totalDemand : 99;
     let bWks = b[1].totalDemand > 0 ? b[1].soh / b[1].totalDemand : 99;
     return aWks - bWks;
   });
   
-  document.querySelector('#stockTable thead').innerHTML = '<tr><th>Mattress SKU</th><th>Size</th><th>CIN7 SOH</th><th>Incoming</th><th>Oversold</th><th>Combo Vel/wk</th><th>Wks Left</th><th>Status</th></tr>';
+  document.querySelector('#stockTable thead').innerHTML = '<tr><th>Component</th><th>Type</th><th>Size</th><th>CIN7 SOH</th><th>Incoming</th><th>Oversold</th><th>Standalone/wk</th><th>Combo/wk</th><th>Total/wk</th><th>Wks Left</th><th>Status</th></tr>';
   document.querySelector('#stockTable tbody').innerHTML = sorted.map(([sku, c]) => {
     let wks = c.totalDemand > 0 ? Math.round(c.soh / c.totalDemand) : 99;
     let oversold = Math.round((c.standaloneOversold||0) + (c.comboOversold||0));
     let badge = wks <= 0 ? '<span class="badge stockout">STOCKOUT</span>' : wks <= 2 ? '<span class="badge critical">CRITICAL</span>' : wks <= 4 ? '<span class="badge low">LOW</span>' : wks <= 8 ? '<span class="badge ok">OK</span>' : '<span class="badge healthy">HEALTHY</span>';
-    let sizeLabel = {'S':'Single','KS':'King Single','D':'Double'}[c.size] || c.size;
-    return '<tr><td style="font-family:monospace;font-size:10px">'+sku+'</td><td>'+sizeLabel+'</td><td>'+Math.round(c.soh)+'</td><td>'+c.incoming+'</td><td>'+(oversold<0?'<span class="neg">'+oversold+'</span>':'0')+'</td><td><b>'+c.totalDemand.toFixed(1)+'</b></td><td>'+wks+'</td><td>'+badge+'</td></tr>';
+    let typeLabel = c.type === 'bed' ? '🛏️ Bed' : '🛌 Mattress';
+    let sizeLabel = {'S':'Single','KS':'King Single','D':'Double'}[c.size] || '';
+    return '<tr><td style="font-family:monospace;font-size:10px">'+sku+'</td><td>'+typeLabel+'</td><td>'+sizeLabel+'</td><td>'+Math.round(c.soh)+'</td><td>'+c.incoming+'</td><td>'+(oversold<0?'<span class="neg">'+oversold+'</span>':'0')+'</td><td>'+c.standaloneDemand.toFixed(1)+'</td><td>'+c.comboDemand.toFixed(1)+'</td><td><b>'+c.totalDemand.toFixed(1)+'</b></td><td>'+wks+'</td><td>'+badge+'</td></tr>';
   }).join('');
 }
 
