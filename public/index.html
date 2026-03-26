@@ -220,7 +220,11 @@ function renderBOM() {
   charts.stock = new Chart(document.getElementById('stockChart'), {
     type: 'bar',
     data: {
-      labels: chartComps.sort((a,b) => a[1].type==='mattress'?-1:b[1].type==='mattress'?1:0).map(([k,v]) => (v.type==='bed'?'🛏️ ':'🛌 ') + k.replace('LLAU-CB-','').replace('DD-','')),
+      labels: chartComps.sort((a,b) => {
+      const sizeOrder = {'S':0,'KS':1,'D':2};
+      if (a[1].type !== b[1].type) return a[1].type==='mattress'?-1:1;
+      return (sizeOrder[a[1].size]||9) - (sizeOrder[b[1].size]||9);
+    }).map(([k,v]) => (v.type==='bed'?'🛏️ ':'🛌 ') + k.replace('LLAU-CB-','').replace('DD-','')),
       datasets: [
         { label: 'SOH', data: chartComps.map(([k,v]) => Math.round(v.soh)), backgroundColor: chartComps.map(([k,v]) => v.type==='bed'?'#5BAB31':'#4A9026') },
         { label: 'Incoming', data: chartComps.map(([k,v]) => v.incoming), backgroundColor: '#2C474B' },
@@ -242,7 +246,9 @@ function renderBOM() {
   let sorted = filteredAll.sort((a,b) => {
     // Mattresses first, then beds
     if (a[1].type !== b[1].type) return a[1].type === 'mattress' ? -1 : 1;
-    // Within same type, sort by weeks left (worst first)
+    // Within same type, sort by size: Single → KS → Double
+    const sizeOrd = {'S':0,'KS':1,'D':2};
+    if (a[1].size !== b[1].size) return (sizeOrd[a[1].size]||9) - (sizeOrd[b[1].size]||9);
     let aWks = a[1].totalDemand > 0 ? a[1].soh / a[1].totalDemand : 99;
     let bWks = b[1].totalDemand > 0 ? b[1].soh / b[1].totalDemand : 99;
     return aWks - bWks;
