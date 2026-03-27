@@ -196,7 +196,7 @@ function renderBOM() {
     mattOversold += (c.standaloneOversold || 0) + (c.comboOversold || 0);
     mattVel += c.totalDemand;
   });
-  let mattWks = mattVel > 0 ? Math.round(mattSOH / mattVel) : 99;
+  let mattWks = mattVel > 0 ? Math.max(0, Math.round(mattSOH / mattVel)) : 99;
   
   document.getElementById('summary-cards').innerHTML = `
     <div class="card green"><div class="label">Combo SOH</div><div class="value">${Math.round(mattSOH).toLocaleString()}</div><div class="sub">Mattress stock (binding constraint)</div></div>
@@ -268,7 +268,7 @@ function renderBOM() {
   
   document.querySelector('#stockTable thead').innerHTML = '<tr><th>Component</th><th>Type</th><th>Size</th><th data-tip>CIN7 SOH<span class="tip">Physical stock in warehouse</span></th><th data-tip>Incoming<span class="tip">Units from open POs</span></th><th data-tip>Oversold<span class="tip">Pre-order commitments (standalone + combo)</span></th><th data-tip>Standalone/wk<span class="tip">Weekly velocity from bed-only sales (not combo)</span></th><th data-tip>Combo/wk<span class="tip">Weekly velocity consumed by combo sales</span></th><th data-tip>Total/wk<span class="tip">Combined demand: standalone + combo. Used for reorder calculations</span></th><th data-tip>Wks Left<span class="tip">SOH ÷ Total velocity</span></th><th>Status</th></tr>';
   document.querySelector('#stockTable tbody').innerHTML = sorted.map(([sku, c]) => {
-    let wks = c.totalDemand > 0 ? Math.round(c.soh / c.totalDemand) : 99;
+    let wks = c.totalDemand > 0 ? Math.max(0, Math.round(c.soh / c.totalDemand)) : 99;
     let oversold = Math.round((c.standaloneOversold||0) + (c.comboOversold||0));
     let badge = wks <= 0 ? '<span class="badge stockout">STOCKOUT</span>' : wks <= 2 ? '<span class="badge critical">CRITICAL</span>' : wks <= 4 ? '<span class="badge low">LOW</span>' : wks <= 8 ? '<span class="badge ok">OK</span>' : '<span class="badge healthy">HEALTHY</span>';
     let typeLabel = c.type === 'bed' ? '🛏️ Bed' : '🛌 Mattress';
@@ -291,7 +291,7 @@ function renderDashboard(){
   let filtered=skus.filter(s=>dashFilter.size==='All'||getSize(s)===dashFilter.size);
   document.querySelector('#stockTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th data-tip>CIN7 SOH<span class="tip">Stock On Hand — physical units in the warehouse from CIN7</span></th><th data-tip>Shopify<span class="tip">Shopify inventory level. Negative = pre-orders/oversold units waiting to be fulfilled</span></th><th data-tip>Net<span class="tip">Effective available stock. CIN7 SOH + min(Shopify, 0). Accounts for pre-order commitments</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders not yet received</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over the last 90 days from Shopify orders</span></th><th data-tip>Wks Left<span class="tip">Weeks of stock remaining at current velocity. Net SOH ÷ Units/wk</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th></tr>';
   document.querySelector('#stockTable tbody').innerHTML=filtered.map(s=>{
-    let soh=DATA.cin7[s]||0,sh=DATA.shopify[s]||0,net=getNet(s),inc=getIncoming(s),vel=getVel(s),wks=vel>0?Math.round(net/vel):99;
+    let soh=DATA.cin7[s]||0,sh=DATA.shopify[s]||0,net=getNet(s),inc=getIncoming(s),vel=getVel(s),wks=vel>0?Math.max(0,Math.round(net/vel)):99;
     return`<tr><td style="font-family:monospace;font-size:10px">${s}</td><td>${getSize(s)}</td><td>${fmt(soh)}</td><td>${fmt(sh)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}</td><td>${wks>=25?'⚠️ '+wks:wks}</td><td>${statusBadge(wks)}${wks>=25?' <span style="color:var(--yellow);font-size:10px" title="Over 25 weeks — consider pushing this SKU">⚠️ OVERSTOCK</span>':''}</td></tr>`}).join('');
   let cs=filtered.filter(s=>(DATA.cin7[s]||0)>0||getIncoming(s)>0).slice(0,30);
   if(charts.stock)charts.stock.destroy();
@@ -336,7 +336,7 @@ function renderReorder(){
   let rows=skus.map(sku=>{let net=getNet(sku),vel=getVel(sku),inc=getIncoming(sku);
   let adjNet=incToggle?net+inc:net;
   let p=project(sku,weeks),sw2=p.findIndex(x=>x.close<=0),wl=sw2>=0?sw2:99;
-  let adjWl=incToggle&&vel>0?Math.round(adjNet/vel):wl;
+  let adjWl=incToggle&&vel>0?Math.max(0,Math.round(adjNet/vel)):wl;
   if(adjWl<0)adjWl=0;if(adjWl>99)adjWl=99;
   let displayWl=incToggle?adjWl:wl;
   let sd=displayWl>=99?'Beyond forecast':new Date(TODAY.getTime()+displayWl*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
