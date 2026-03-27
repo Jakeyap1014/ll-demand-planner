@@ -299,25 +299,77 @@ async function fetchShopifyInventory(storeKey) {
   return inventory;
 }
 
+// ===== SHOPIFY: FETCH HISTORICAL WEEKLY SALES (52 weeks) =====
+async function fetchShopifyWeeklySales(storeKey) {
+  const store = SHOPIFY_STORES[storeKey];
+  if (!store || !store.token) return {};
+  
+  const skuWeeks = {}; // sku -> { '2025-W13': units, ... }
+  const now = new Date();
+  const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+  const since = oneYearAgo.toISOString();
+  let url = '/admin/api/2026-01/orders.json?status=any&limit=250&created_at_min=' + since + '&fields=id,created_at,line_items,financial_status';
+  
+  for (let page = 1; page <= 150; page++) {
+    try {
+      const { body, headers } = await apiRequest({
+        hostname: store.domain,
+        path: url,
+        headers: { 'X-Shopify-Access-Token': store.token }
+      });
+      const orders = body.orders || [];
+      if (orders.length === 0) break;
+      
+      for (const o of orders) {
+        if (o.financial_status === 'refunded' || o.financial_status === 'voided') continue;
+        const dt = new Date(o.created_at);
+        // ISO week calculation
+        const jan4 = new Date(dt.getFullYear(), 0, 4);
+        const dayOfYear = Math.floor((dt - new Date(dt.getFullYear(), 0, 1)) / 86400000);
+        const weekNum = Math.ceil((dayOfYear + jan4.getDay() + 1) / 7);
+        const weekKey = dt.getFullYear() + '-W' + String(weekNum).padStart(2, '0');
+        
+        for (const li of (o.line_items || [])) {
+          if (li.sku) {
+            if (!skuWeeks[li.sku]) skuWeeks[li.sku] = {};
+            skuWeeks[li.sku][weekKey] = (skuWeeks[li.sku][weekKey] || 0) + (li.quantity || 0);
+          }
+        }
+      }
+      
+      // Get next page
+      const link = headers.link || '';
+      const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
+      if (!nextMatch) break;
+      url = new URL(nextMatch[1]).pathname + new URL(nextMatch[1]).search;
+    } catch (e) { console.error('Historical sales page ' + page + ' error:', e.message); break; }
+  }
+  
+  console.log('Historical sales: ' + Object.keys(skuWeeks).length + ' SKUs with weekly data');
+  return skuWeeks;
+}
+
 // ===== FULL DATA REFRESH =====
 async function refreshAllData() {
   console.log('Starting full data refresh...');
   const start = Date.now();
   
   try {
-    const [cin7Products, cin7POs, lifelyVel, cushieVel, lifelyInv, cushieInv] = await Promise.all([
+    const [cin7Products, cin7POs, lifelyVel, cushieVel, lifelyInv, cushieInv, lifelyHistorical] = await Promise.all([
       fetchCin7AllProducts(),
       fetchCin7POs(),
       fetchShopifyVelocity('lifely'),
       fetchShopifyVelocity('cushie'),
       fetchShopifyInventory('lifely'),
-      fetchShopifyInventory('cushie')
+      fetchShopifyInventory('cushie'),
+      fetchShopifyWeeklySales('lifely')
     ]);
     
     dataCache.cin7Products = cin7Products;
 
     dataCache.cin7POs = cin7POs;
     dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
+    dataCache.shopifyHistorical = { lifely: lifelyHistorical };
     dataCache.shopifyInventory = { lifely: lifelyInv, cushie: cushieInv };
     dataCache.lastRefresh = new Date().toISOString();
     
@@ -656,6 +708,15 @@ function buildCKData(ckId) {
     names,
     sizes: def.sizes,
     bomData,
+    historicalWeeks: (() => {
+      const hist = dataCache.shopifyHistorical?.[storeKey] || {};
+      const result = {};
+      const allSkus = [...new Set([...Object.keys(cin7), ...Object.keys(velocity)])];
+      for (const sku of allSkus) {
+        if (hist[sku]) result[sku] = hist[sku];
+      }
+      return Object.keys(result).length > 0 ? result : null;
+    })(),
     lastRefresh: dataCache.lastRefresh
   };
 }

@@ -172,7 +172,7 @@ async function selectCK(ckId){
   currentCK=ckId;document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.ck===ckId));
   document.getElementById('loadingScreen').style.display='block';document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   try{const r=await fetch(`/api/ck/${ckId}`,{headers:H()});if(r.status===401)return window.location.href='/login';const d=await r.json();
-  DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null};
+  DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,historicalWeeks:d.historicalWeeks||null};
   document.getElementById('headerTitle').innerHTML=`<img src="/logos/${d.ck.logo}" style="height:32px;filter:brightness(0) invert(1)"> ${d.ck.name}`;
   document.getElementById('headerSub').textContent=`${Object.keys(DATA.cin7).length} CIN7 SKUs · ${Object.keys(DATA.velocity).length} with velocity · ${DATA.pos.length} open POs`;
   document.getElementById('headerMeta').textContent=d.lastRefresh?'Last refresh: '+new Date(d.lastRefresh).toLocaleString():'';
@@ -289,7 +289,7 @@ function renderDashboard(){
     <div class="card yellow"><div class="label">Avg Wks Stock</div><div class="value">${wksT}</div><div class="sub">At current velocity</div></div>`;
   document.getElementById('dash-filters').innerHTML=getSizeKeys().map(s=>`<button class="filter-btn ${dashFilter.size===s?'active':''}" onclick="dashFilter.size='${s}';renderDashboard()">${s}</button>`).join('');
   let filtered=skus.filter(s=>dashFilter.size==='All'||getSize(s)===dashFilter.size);
-  document.querySelector('#stockTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th data-tip>CIN7 SOH<span class="tip">Stock On Hand — physical units in the warehouse from CIN7</span></th><th data-tip>Shopify<span class="tip">Shopify inventory level. Negative = pre-orders/oversold units waiting to be fulfilled</span></th><th data-tip>Net<span class="tip">Effective available stock. CIN7 SOH + min(Shopify, 0). Accounts for pre-order commitments</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders not yet received</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over the last 90 days from Shopify orders</span></th><th data-tip>Wks Left<span class="tip">Weeks of stock remaining at current velocity. Net SOH ÷ Units/wk</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th></tr>';
+  document.querySelector('#stockTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th data-tip>CIN7 SOH<span class="tip">Stock On Hand — physical units in the warehouse from CIN7</span></th><th data-tip>Shopify<span class="tip">Shopify inventory level. Negative = pre-orders/oversold units waiting to be fulfilled</span></th><th data-tip>Net<span class="tip">Effective available stock. CIN7 SOH + min(Shopify, 0). Accounts for pre-order commitments</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders not yet received</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over the last 90 days from Shopify orders</span></th><th data-tip>Wks Left<span class="tip">Weeks of stock remaining at current velocity. Net SOH ÷ Units/wk</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th><th data-tip>Season<span class="tip">Seasonality Index: current velocity ÷ same-week-last-year. Green &gt;1.1 (above LY) | Grey 0.9-1.1 (flat) | Red &lt;0.9 (below LY). "—" = no prior year data</span></th></tr>';
   document.querySelector('#stockTable tbody').innerHTML=filtered.map(s=>{
     let soh=DATA.cin7[s]||0,sh=DATA.shopify[s]||0,net=getNet(s),inc=getIncoming(s),vel=getVel(s),wks=vel>0?Math.round(net/vel):99;
     return`<tr><td style="font-family:monospace;font-size:10px">${s}</td><td>${getSize(s)}</td><td>${fmt(soh)}</td><td>${fmt(sh)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}</td><td>${wks>=25?'⚠️ '+wks:wks}</td><td>${statusBadge(wks)}${wks>=25?' <span style="color:var(--yellow);font-size:10px" title="Over 25 weeks — consider pushing this SKU">⚠️ OVERSTOCK</span>':''}</td></tr>`}).join('');
@@ -299,7 +299,16 @@ function renderDashboard(){
     {label:'SOH',data:cs.map(s=>DATA.cin7[s]||0),backgroundColor:'#5BAB31'},
     {label:'Incoming',data:cs.map(s=>getIncoming(s)),backgroundColor:'#2C474B'},
     {label:'Oversold',data:cs.map(s=>Math.min(DATA.shopify[s]||0,0)),backgroundColor:'#C33252'},
-    {label:'Net',data:cs.map(s=>(DATA.cin7[s]||0)+getIncoming(s)+Math.min(DATA.shopify[s]||0,0)),type:'line',borderColor:'#D4930D',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,order:0}
+    {label:'Net',data:cs.map(s=>(DATA.cin7[s]||0)+getIncoming(s)+Math.min(DATA.shopify[s]||0,0)),type:'line',borderColor:'#D4930D',backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:0.3,order:0},
+    ...(DATA.historicalWeeks?[{label:'Prior Year Sales/wk',data:cs.map(s=>{
+      if(!DATA.historicalWeeks||!DATA.historicalWeeks[s])return null;
+      const weeks=DATA.historicalWeeks[s];
+      const now=new Date();const yr=now.getFullYear()-1;const jan4=new Date(yr,0,4);
+      const dayOfYr=Math.floor((new Date(yr,now.getMonth(),now.getDate())-new Date(yr,0,1))/86400000);
+      const wk=Math.ceil((dayOfYr+jan4.getDay()+1)/7);
+      const key=yr+'-W'+String(wk).padStart(2,'0');
+      return weeks[key]||null;
+    }),type:'line',borderColor:'#7BA7C2',borderDash:[6,4],backgroundColor:'transparent',borderWidth:2,pointRadius:3,pointBackgroundColor:'#7BA7C2',tension:0.3,order:0}]:[])
   ]},options:{responsive:true,plugins:{legend:{labels:{color:'#282828',font:{size:10}}}},scales:{x:{stacked:true,ticks:{color:'#758068',maxRotation:45,font:{size:9}}},y:{stacked:true,ticks:{color:'#758068'},grid:{color:'#DDE3D5'}}}}})
 }
 
