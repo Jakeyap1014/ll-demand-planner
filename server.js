@@ -41,10 +41,10 @@ const CK_DEFS = {
   'cocoon':   { name: 'Cocoon Bed',             prefix: 'COCOON', logo: 'cocoon-bed.png',    store: 'lifely', sizes: {'-DOUBLE-':'Double','-QUEEN-':'Queen','-KING-':'King'} },
   'rdnt':     { name: 'Radiant',                prefix: 'RDNT',   logo: 'radiant.png',       store: 'lifely', sizes: {'-D-':'Double','-Q-':'Queen','-K-':'King'} },
   'wfhcr':    { name: 'WFH Chair',              prefix: 'WFHCR',  logo: 'wfh-chair.png',     store: 'lifely', sizes: {} },
-  'cusb-au':  { name: 'Cushie AU',              prefix: 'CUSB',   logo: 'cushie.png',        store: 'lifely', filter: sku => !sku.includes('-UK'), sizes: {'-TW-':'Twin','-D-':'Double','-Q-':'Queen','-K-':'King'} },
-  'cusb-us':  { name: 'Cushie US',              prefix: 'CUSB',   logo: 'cushie.png',        store: 'cushie', filter: sku => !sku.includes('-UK'), sizes: {'-TW-':'Twin','-D-':'Double','-Q-':'Queen','-K-':'King'} },
-  'cusb-uk':  { name: 'Cushie UK',              prefix: 'CUSB',   logo: 'cushie.png',        store: 'lifely', filter: sku => sku.includes('-UK'), sizes: {'-TW-':'Twin','-D-':'Double','-Q-':'Queen','-K-':'King'} },
-  'lfsb':     { name: 'Lifely Sofa Bed',        prefix: 'LFSB',   logo: 'lifely-sofa.png',   store: 'lifely', sizes: {'-TW-':'Twin','-D-':'Double','-Q-':'Queen'} },
+  'cusb-au':  { name: 'Cushie AU',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && !sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
+  'cusb-us':  { name: 'Cushie US',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', filter: sku => sku.startsWith('V2-') || sku.startsWith('V3-'), excludeCV: true, sizes: {'-TB-':'Twin','-DB-':'Full','-QB-':'Queen','-KB-':'King','-CH-':'Chaise','-OS-':'Ottoman','-OB-':'Ottoman Bed','-RMST-':'Armrest','-ARM-':'Armrest'} },
+  'cusb-uk':  { name: 'Cushie UK',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
+  
   'cmss':     { name: 'Modular Sleeper',        prefix: 'CMSS',   logo: 'lifely-sofa.png',   store: 'lifely', sizes: {'-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King'} },
   'lifely-sofa': { name: 'Modular Sofa',        prefix: 'LIFELY', logo: 'lifely-sofa.png',   store: 'lifely', sizes: {} }
 };
@@ -454,7 +454,7 @@ function buildCKData(ckId) {
   // CIN7 stock — first collect raw, then normalize
   const cin7Raw = {};
   for (const [sku, data] of Object.entries(dataCache.cin7Products)) {
-    if (sku.startsWith(prefix) && filter(sku)) {
+    if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
       if (excludeCV && sku.includes('-CV')) continue;
       if (sku.includes('-CS-')) continue;
       if (sku.includes('-FRM')) continue;
@@ -478,7 +478,7 @@ function buildCKData(ckId) {
   const shopify = {};
   const storeInv = dataCache.shopifyInventory[storeKey] || {};
   for (const [sku, qty] of Object.entries(storeInv)) {
-    if (sku.startsWith(prefix) && filter(sku)) {
+    if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
       if (excludeCV && sku.includes('-CV')) continue;
       if (sku.includes('-CS-')) continue;
       if (sku.includes('-FRM')) continue;
@@ -490,7 +490,7 @@ function buildCKData(ckId) {
   const velocity = {};
   const storeVel = dataCache.shopifyVelocity[storeKey] || {};
   for (const [sku, vel] of Object.entries(storeVel)) {
-    if (sku.startsWith(prefix) && filter(sku)) {
+    if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
       if (excludeCV && sku.includes('-CV')) continue;
       if (sku.includes('-CS-')) continue;
       if (sku.includes('-FRM')) continue;
@@ -504,7 +504,7 @@ function buildCKData(ckId) {
     if (po.stage === 'Received') continue; // Don't count received POs as incoming stock
     const relevantItems = {};
     for (const [sku, qty] of Object.entries(po.items)) {
-      if (sku.startsWith(prefix) && filter(sku)) {
+      if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
         if (excludeCV && sku.includes('-CV')) continue;
         relevantItems[sku] = qty;
       }
