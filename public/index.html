@@ -119,7 +119,10 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
     <div id="reorder" class="view">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h2 style="font-size:16px">Reorder Recommendations</h2>
-        <button class="btn btn-primary" onclick="exportCSV()">📥 Export CSV</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card)" onclick="window._incPO=!window._incPO;this.style.background=window._incPO?'#E8EFEF':'var(--bg-card)';this.style.borderColor=window._incPO?'var(--blue)':'var(--border)';this.querySelector('input').checked=window._incPO;renderReorder()"><input type="checkbox" style="accent-color:var(--blue)"> <span>+ Incoming POs</span></label>
+          <button class="btn btn-primary" onclick="exportCSV()">📥 Export CSV</button>
+        </div>
       </div>
       <div class="table-wrap"><table id="reorderTable"><thead></thead><tbody></tbody></table></div>
     </div>
@@ -329,11 +332,17 @@ function renderHeatmap(){
 
 function renderReorder(){
   const skus=getSkus(),weeks=getWeeks(),sw=4,lw=8;
-  let rows=skus.map(sku=>{let net=getNet(sku),vel=getVel(sku),inc=getIncoming(sku),p=project(sku,weeks),sw2=p.findIndex(x=>x.close<=0),wl=sw2>=0?sw2:99;
-  let sd=sw2>=0?new Date(TODAY.getTime()+sw2*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Beyond forecast';
+  let incToggle=window._incPO||false;
+  let rows=skus.map(sku=>{let net=getNet(sku),vel=getVel(sku),inc=getIncoming(sku);
+  let adjNet=incToggle?net+inc:net;
+  let p=project(sku,weeks),sw2=p.findIndex(x=>x.close<=0),wl=sw2>=0?sw2:99;
+  let adjWl=incToggle&&vel>0?Math.round(adjNet/vel):wl;
+  if(adjWl<0)adjWl=0;if(adjWl>99)adjWl=99;
+  let displayWl=incToggle?adjWl:wl;
+  let sd=displayWl>=99?'Beyond forecast':new Date(TODAY.getTime()+displayWl*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
   let su=Math.round(vel*sw),rop=Math.round(vel*lw+su),rq=Math.max(0,Math.round(vel*12+su-net-inc));
-  let obw=Math.max(0,wl-lw-sw),ob=wl<99?new Date(TODAY.getTime()+obw*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Not urgent';
-  return{sku,net,vel,inc,wl,sd,su,rop,rq,ob,size:getSize(sku)}}).sort((a,b)=>a.wl-b.wl);
+  let obw=Math.max(0,displayWl-lw-sw),ob=displayWl<99?new Date(TODAY.getTime()+obw*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Not urgent';
+  return{sku,net:incToggle?adjNet:net,rawNet:getNet(sku),vel,inc,wl:displayWl,sd,su,rop,rq,ob,size:getSize(sku)}}).sort((a,b)=>a.wl-b.wl);
   document.querySelector('#reorderTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th data-tip>Net SOH<span class="tip">Effective stock after pre-order commitments. CIN7 SOH + min(Shopify, 0)</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over last 90 days</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders</span></th><th data-tip>Wks Left<span class="tip">Weeks until stockout. Simulated week-by-week with PO arrivals factored in</span></th><th data-tip>Stockout<span class="tip">Projected date when this SKU runs out of stock</span></th><th data-tip>Safety<span class="tip">Safety stock buffer in units. Velocity × 4 weeks. Minimum stock to keep as buffer against demand spikes or supply delays</span></th><th data-tip>Reorder Pt<span class="tip">Reorder Point — place an order when stock drops to this level. (Velocity × 8wk lead time) + Safety units. Covers demand during lead time + safety buffer</span></th><th data-tip>Order Qty<span class="tip">Recommended order quantity. (Velocity × 12 weeks) + Safety − Net SOH − Incoming. Covers 12 weeks of demand plus safety, minus what you have and what\'s coming</span></th><th data-tip>Order By<span class="tip">Latest date to place order to avoid stockout. Today + max(0, Wks Left − 8wk lead − 4wk safety) × 7 days</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th><th data-tip>STR%<span class="tip">Sell-Through Rate (30-day). Units sold in 30d ÷ (Units sold + SOH). Green >70% | Yellow 41-69% | Red <40%</span></th></tr>';
   document.querySelector('#reorderTable tbody').innerHTML=rows.map(r=>
     `<tr><td style="font-family:monospace;font-size:10px">${r.sku}</td><td>${r.size}</td><td>${fmt(r.net)}</td><td>${r.vel.toFixed(1)}</td><td>${r.inc}</td><td>${r.wl>=99?'99+':r.wl}</td><td>${r.sd}</td><td>${r.su}</td><td>${r.rop}</td><td>${r.rq>0?`<b>${r.rq}</b>`:'—'}</td><td>${r.ob}</td><td>${r.inc>0?statusBadge(r.vel>0?Math.round((r.net+r.inc)/r.vel):99):statusBadge(r.wl)}</td><td style="background:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'rgba(91,171,49,0.1)':s>=41?'rgba(212,147,13,0.1)':'rgba(195,50,82,0.1)'})()};color:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'var(--green)':s>=41?'var(--yellow)':'var(--alert)'})()};font-weight:700;text-align:center">${r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0}%</td></tr>`).join('')}
