@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ll-demand-planner
+    name: ll-demand-planner-ws
     runtime: node
     buildCommand: npm install
     startCommand: node server.js
@@ -13,9 +13,9 @@ services:
         sync: false
       - key: SHOPIFY_TOKEN
         sync: false
-      - key: SHOPIFY_STORE
-        value: lifelystore.myshopify.com
-      - key: DISCORD_WEBHOOK
+      - key: SHOPIFY_TOKEN_CUSHIE
+        sync: false
+      - key: SHOPIFY_TOKEN_LL
         sync: false
       - key: GEMINI_API_KEY
         sync: false
