@@ -228,6 +228,7 @@ async function fetchShopifyVelocity(storeKey) {
   if (!store || !store.token) return {};
   
   const skuUnits = {};
+  const skuWeekly = {};
   const days = 90;
   const since = new Date(Date.now() - days * 86400000).toISOString();
   let url = `/admin/api/2026-01/orders.json?status=any&limit=250&created_at_min=${since}&fields=id,line_items,financial_status`;
@@ -244,8 +245,20 @@ async function fetchShopifyVelocity(storeKey) {
       
       for (const o of orders) {
         if (o.financial_status === 'refunded' || o.financial_status === 'voided') continue;
+        // ISO week calculation
+        const dt = new Date(o.created_at);
+        const jan4 = new Date(dt.getFullYear(), 0, 4);
+        const dayOfYear = Math.floor((dt - new Date(dt.getFullYear(), 0, 1)) / 86400000);
+        const weekNum = Math.ceil((dayOfYear + jan4.getDay() + 1) / 7);
+        const weekKey = dt.getFullYear() + '-W' + String(weekNum).padStart(2, '0');
+        
         for (const li of (o.line_items || [])) {
-          if (li.sku) skuUnits[li.sku] = (skuUnits[li.sku] || 0) + (li.quantity || 0);
+          if (li.sku) {
+            skuUnits[li.sku] = (skuUnits[li.sku] || 0) + (li.quantity || 0);
+            // Weekly breakdown
+            if (!skuWeekly[li.sku]) skuWeekly[li.sku] = {};
+            skuWeekly[li.sku][weekKey] = (skuWeekly[li.sku][weekKey] || 0) + (li.quantity || 0);
+          }
         }
       }
       
@@ -263,6 +276,10 @@ async function fetchShopifyVelocity(storeKey) {
   for (const [sku, units] of Object.entries(skuUnits)) {
     velocity[sku] = Math.round((units / weeks) * 10) / 10;
   }
+  
+  // Also store weekly breakdown for WMAPE calculation
+  velocity._weeklyBreakdown = skuWeekly || {};
+  
   return velocity;
 }
 
@@ -673,6 +690,15 @@ function buildCKData(ckId) {
     names,
     sizes: def.sizes,
     bomData,
+    weeklyData: (() => {
+      const weekly = dataCache.shopifyVelocity?.[storeKey]?._weeklyBreakdown || {};
+      const result = {};
+      const allSkus = [...new Set([...Object.keys(cin7), ...Object.keys(velocity)])];
+      for (const sku of allSkus) {
+        if (weekly[sku]) result[sku] = weekly[sku];
+      }
+      return Object.keys(result).length > 0 ? result : null;
+    })(),
     lastRefresh: dataCache.lastRefresh
   };
 }
