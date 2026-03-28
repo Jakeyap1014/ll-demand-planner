@@ -305,7 +305,7 @@ async function fetchShopifyInventory(storeKey) {
   if (!store || !store.token) return {};
   
   const inventory = {};
-  let url = `/admin/api/2026-01/products.json?limit=250&fields=variants,status`;
+  let url = `/admin/api/2026-01/products.json?limit=250&fields=id,status,variants`;
   
   for (let page = 1; page <= 20; page++) {
     try {
