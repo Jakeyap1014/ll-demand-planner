@@ -957,8 +957,7 @@ function buildShipmentData() {
       total: po.total || 0,
       currency: po.currencyCode || 'USD',
       items: po.items || {},
-      containerNumber: po.trackingCode || null,
-      vesselName: po.logisticsCarrier || null,
+      trackingCode: po.trackingCode || null,
       port: po.port || null,
       internalComments: po.internalComments || null
     });
