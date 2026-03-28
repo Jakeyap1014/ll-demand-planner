@@ -158,6 +158,7 @@ function renderSidebar(){
       <div class="sc-header"><span class="sc-ref">${s.reference}</span><span class="sc-status ${s.shipmentStatus}">${statusLabel}</span></div>
       <div class="sc-supplier">${s.supplier.substring(0,40)}</div>
       <div class="sc-route"><span>${s.origin.port||s.origin.city}</span><span class="arrow">→</span><span>${s.destination.port}</span></div>
+      ${s.containerNumber?'<div style="font-size:10px;color:var(--dim);margin-bottom:4px">📦 '+s.containerNumber+(s.vesselName?' · 🚢 '+s.vesselName:'')+'</div>':''}
       <div class="sc-meta"><span><strong>${s.totalUnits}</strong> units</span><span><strong>${s.skuCount}</strong> SKUs</span><span><strong>${s.total>=1000000?'$'+(s.total/1000000).toFixed(1)+'M':'$'+s.total.toLocaleString()}</strong></span></div>
       <div class="sc-progress"><div class="sc-progress-fill" style="width:${Math.round(s.progress*100)}%;background:${progressColor}"></div></div>
       <div class="sc-eta ${etaClass}">${s.receivedDate?'Received: '+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):s.eta?'ETA: '+new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+' ('+etaText+')':'No ETA set'}</div>
@@ -300,7 +301,9 @@ function buildPopup(s){
       <tr><td>Supplier</td><td>${s.supplier.substring(0,35)}</td></tr>
       <tr><td>From</td><td>${s.origin.port||s.origin.city}, ${s.origin.country}</td></tr>
       <tr><td>To</td><td>${s.destination.port}, Australia</td></tr>
-      ${s.receivedDate?'<tr><td>Received</td><td>'+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+'</td></tr>':''}
+      ${s.containerNumber?'<tr><td>Container</td><td>'+s.containerNumber+'</td></tr>':''}
+      ${s.vesselName?'<tr><td>Vessel</td><td>🚢 '+s.vesselName+'</td></tr>':''}
+      ${s.receivedDate?'<tr><td>Received</td>'<td>'+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+'</td></tr>':''}
       ${s.eta?'<tr><td>ETA</td><td>'+new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+(s.daysUntil!==null?' ('+s.daysUntil+'d)':'')+'</td></tr>':''}
       <tr><td>Units</td><td>${s.totalUnits} across ${s.skuCount} SKUs</td></tr>
       <tr><td>Value</td><td>$${s.total.toLocaleString()} ${s.currency}</td></tr>
@@ -325,6 +328,101 @@ function selectShipment(ref){
 }
 
 loadShipments();
+
+// AIS real-time vessel tracking
+const AIS_KEY = '1456b4c2b5a8c740ff68f39910e3a182d047dafc';
+let aisSocket = null;
+let vesselPositions = {}; // vesselName -> {lat, lng, heading, speed, timestamp}
+let aisMarkers = {};
+
+function connectAIS() {
+  if (!AIS_KEY) return;
+  
+  const activeVessels = shipments
+    .filter(s => s.vesselName && s.shipmentStatus === 'in_transit')
+    .map(s => s.vesselName);
+  
+  if (activeVessels.length === 0) {
+    console.log('No vessels to track via AIS');
+    return;
+  }
+  
+  console.log('Connecting AIS for vessels:', activeVessels);
+  
+  if (aisSocket) aisSocket.close();
+  
+  aisSocket = new WebSocket('wss://stream.aisstream.io/v0/stream');
+  
+  aisSocket.onopen = () => {
+    const msg = {
+      APIKey: AIS_KEY,
+      BoundingBoxes: [[[-45, 70], [30, 155]]],
+      FilterMessageTypes: ['PositionReport']
+    };
+    aisSocket.send(JSON.stringify(msg));
+    console.log('AIS stream connected');
+  };
+  
+  aisSocket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    const meta = data.MetaData || {};
+    const name = (meta.ShipName || '').trim().toUpperCase();
+    
+    // Check if this vessel matches any of our tracked vessels
+    const match = activeVessels.find(v => v && name.includes(v.toUpperCase()) || v.toUpperCase().includes(name));
+    if (match && name) {
+      const pos = {
+        lat: meta.latitude,
+        lng: meta.longitude,
+        heading: data.Message?.PositionReport?.TrueHeading || 0,
+        speed: data.Message?.PositionReport?.Sog || 0,
+        name: meta.ShipName.trim(),
+        timestamp: new Date().toISOString()
+      };
+      vesselPositions[match] = pos;
+      updateVesselMarker(match, pos);
+    }
+  };
+  
+  aisSocket.onerror = (e) => console.error('AIS error:', e);
+  aisSocket.onclose = () => {
+    console.log('AIS disconnected, reconnecting in 30s...');
+    setTimeout(connectAIS, 30000);
+  };
+}
+
+function updateVesselMarker(vesselName, pos) {
+  // Remove old marker
+  if (aisMarkers[vesselName]) {
+    map.removeLayer(aisMarkers[vesselName]);
+  }
+  
+  // Add real-time position marker
+  const icon = L.divIcon({
+    className: '',
+    html: '<div style="font-size:24px;filter:drop-shadow(2px 2px 3px rgba(0,0,0,0.5))">🚢</div>',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
+  
+  const marker = L.marker([pos.lat, pos.lng], {icon: icon}).addTo(map);
+  marker.bindPopup(
+    '<div class="popup-content"><h3>🚢 ' + pos.name + '</h3>' +
+    '<table><tr><td>Position</td><td>' + pos.lat.toFixed(4) + ', ' + pos.lng.toFixed(4) + '</td></tr>' +
+    '<tr><td>Speed</td><td>' + pos.speed.toFixed(1) + ' knots</td></tr>' +
+    '<tr><td>Heading</td><td>' + pos.heading + '°</td></tr>' +
+    '<tr><td>Updated</td><td>LIVE via AIS</td></tr></table></div>'
+  );
+  
+  aisMarkers[vesselName] = marker;
+}
+
+// Connect AIS after shipments load
+const origLoadShipments = loadShipments;
+loadShipments = async function() {
+  await origLoadShipments();
+  setTimeout(connectAIS, 2000);
+};
 // Refresh every 5 min
 setInterval(loadShipments,5*60*1000);
 </script>
