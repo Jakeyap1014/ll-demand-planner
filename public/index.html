@@ -35,6 +35,7 @@
 table{width:100%;border-collapse:collapse;font-size:11px}table td,table th{padding:6px 8px}
 thead th{background:var(--bg-secondary);padding:6px 8px;text-align:left;font-weight:600;white-space:nowrap;border-bottom:2px solid var(--border);color:#F6F8F4;font-size:10px}
 tbody td{padding:5px 8px;border-bottom:1px solid var(--border);white-space:nowrap;font-size:11px}tbody tr:hover{background:rgba(44,71,75,0.05)}
+thead th{cursor:pointer;user-select:none}thead th:hover{background:var(--bg-accent)}thead th .sort-arrow{font-size:8px;margin-left:3px;opacity:0.5}
 .badge{padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;display:inline-block}
 .badge.stockout{background:rgba(195,50,82,0.2);color:var(--alert)}.badge.critical{background:rgba(195,50,82,0.15);color:#C33252}
 .badge.low{background:rgba(212,147,13,0.2);color:var(--yellow)}.badge.ok{background:rgba(91,171,49,0.15);color:var(--green)}.badge.healthy{background:rgba(91,171,49,0.2);color:#5BAB31}
@@ -357,6 +358,61 @@ ms.innerHTML+=`<div class="chat-msg user">${escapeHtml(m)}</div><div class="chat
 try{const r=await fetch('/api/chat',{method:'POST',headers:H(),body:JSON.stringify({message:m,history:chatHistory.slice(-10),ckId:currentCK})});const d=await r.json();document.getElementById('typing')?.remove();
 ms.innerHTML+=`<div class="chat-msg bot">${d.reply||'Error'}</div>`;chatHistory.push({role:'assistant',text:d.reply})}catch(e){document.getElementById('typing')?.remove();ms.innerHTML+=`<div class="chat-msg bot">Connection error.</div>`}ms.scrollTop=ms.scrollHeight}
 async function manualRefresh(){document.getElementById('refreshBtn').textContent='⏳...';try{await fetch('/api/refresh',{method:'POST',headers:H()});if(currentCK)await selectCK(currentCK);loadSidebar()}catch(e){}document.getElementById('refreshBtn').textContent='🔄 Refresh'}
+// Table sorting
+function sortTable(tableId, colIdx, type) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const thead = table.querySelector('thead');
+  
+  // Track sort direction
+  if (!table._sortCol || table._sortCol !== colIdx) {
+    table._sortDir = 'asc';
+    table._sortCol = colIdx;
+  } else {
+    table._sortDir = table._sortDir === 'asc' ? 'desc' : 'asc';
+  }
+  const dir = table._sortDir === 'asc' ? 1 : -1;
+  
+  rows.sort((a, b) => {
+    let aVal = a.cells[colIdx]?.textContent?.trim() || '';
+    let bVal = b.cells[colIdx]?.textContent?.trim() || '';
+    
+    // Strip emojis and symbols for numeric comparison
+    let aNum = parseFloat(aVal.replace(/[^0-9.\-]/g, ''));
+    let bNum = parseFloat(bVal.replace(/[^0-9.\-]/g, ''));
+    
+    if (type === 'num' || (!isNaN(aNum) && !isNaN(bNum) && aVal.match(/[0-9]/))) {
+      aNum = isNaN(aNum) ? -Infinity : aNum;
+      bNum = isNaN(bNum) ? -Infinity : bNum;
+      return (aNum - bNum) * dir;
+    }
+    return aVal.localeCompare(bVal) * dir;
+  });
+  
+  rows.forEach(r => tbody.appendChild(r));
+  
+  // Update sort arrows
+  if (thead) {
+    thead.querySelectorAll('th').forEach((th, i) => {
+      let arrow = th.querySelector('.sort-arrow');
+      if (!arrow) { arrow = document.createElement('span'); arrow.className = 'sort-arrow'; th.appendChild(arrow); }
+      arrow.textContent = i === colIdx ? (table._sortDir === 'asc' ? '▲' : '▼') : '';
+    });
+  }
+}
+
+// Make all table headers sortable
+document.addEventListener('click', function(e) {
+  const th = e.target.closest('th');
+  if (!th) return;
+  const table = th.closest('table');
+  if (!table || !table.id) return;
+  const colIdx = Array.from(th.parentElement.children).indexOf(th);
+  sortTable(table.id, colIdx);
+});
+
 function toggleMobileMenu(){
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('mobileOverlay').classList.toggle('open');
