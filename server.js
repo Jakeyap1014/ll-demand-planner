@@ -444,7 +444,9 @@ function normalizeRadiant(cin7, shopifySkus) {
       const compSoh = cin7[compKey]?.soh || cin7[compKey] || 0;
       
       // Single topper set
-      result[setKey] = { soh: Math.min(baseSoh, compSoh), available: Math.min(baseSoh, compSoh) };
+      const baseCost = cin7[baseKey]?.costAUD || 0;
+      const compCost = cin7[compKey]?.costAUD || 0;
+      result[setKey] = { soh: Math.min(baseSoh, compSoh), available: Math.min(baseSoh, compSoh), costAUD: baseCost + compCost };
       
       // Multi-topper combos (e.g. RDNT-Q-S-MF-SET = BASE + S + MF)
       for (const type2 of types) {
@@ -452,7 +454,8 @@ function normalizeRadiant(cin7, shopifySkus) {
         const comp2Key = 'RDNT-' + size + '-' + type2;
         const comboSetKey = 'RDNT-' + size + '-' + type + '-' + type2 + '-SET';
         const comp2Soh = cin7[comp2Key]?.soh || cin7[comp2Key] || 0;
-        result[comboSetKey] = { soh: Math.min(baseSoh, compSoh, comp2Soh), available: Math.min(baseSoh, compSoh, comp2Soh) };
+        const comp2Cost = cin7[comp2Key]?.costAUD || 0;
+        result[comboSetKey] = { soh: Math.min(baseSoh, compSoh, comp2Soh), available: Math.min(baseSoh, compSoh, comp2Soh), costAUD: baseCost + compCost + comp2Cost };
       }
     }
     
