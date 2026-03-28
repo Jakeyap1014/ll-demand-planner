@@ -272,7 +272,7 @@ async function fetchShopifyInventory(storeKey) {
   if (!store || !store.token) return {};
   
   const inventory = {};
-  let url = `/admin/api/2026-01/products.json?limit=250&fields=variants`;
+  let url = `/admin/api/2026-01/products.json?limit=250&fields=variants,status`;
   
   for (let page = 1; page <= 20; page++) {
     try {
@@ -285,8 +285,16 @@ async function fetchShopifyInventory(storeKey) {
       if (products.length === 0) break;
       
       for (const p of products) {
+        const pStatus = p.status || 'active';
         for (const v of (p.variants || [])) {
-          if (v.sku) inventory[v.sku] = v.inventory_quantity || 0;
+          if (v.sku) {
+            inventory[v.sku] = v.inventory_quantity || 0;
+            // Track inactive SKUs
+            if (pStatus === 'draft' || pStatus === 'archived') {
+              if (!inactiveSkus) inactiveSkus = new Set();
+              inactiveSkus.add(v.sku);
+            }
+          }
         }
       }
       
@@ -645,6 +653,15 @@ function buildCKData(ckId) {
     bomData._components = components;
     bomData._sizeData = sizeData;
     bomData._componentIncoming = componentIncoming;
+  }
+
+  // Remove inactive Shopify SKUs (draft/archived)
+  const storeInvFull = dataCache.shopifyInventory[storeKey] || {};
+  for (const sku of Object.keys(cin7)) {
+    if (storeInvFull['_inactive_' + sku]) { delete cin7[sku]; delete velocity[sku]; delete shopify[sku]; }
+  }
+  for (const sku of Object.keys(velocity)) {
+    if (storeInvFull['_inactive_' + sku]) { delete velocity[sku]; }
   }
 
   return {
