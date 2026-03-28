@@ -120,7 +120,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h2 style="font-size:16px">Reorder Recommendations</h2>
         <div style="display:flex;gap:8px;align-items:center">
-          <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card)" onclick="window._incPO=!window._incPO;this.style.background=window._incPO?'#E8EFEF':'var(--bg-card)';this.style.borderColor=window._incPO?'var(--blue)':'var(--border)';this.querySelector('input').checked=window._incPO;renderReorder()"><input type="checkbox" style="accent-color:var(--blue)"> <span>+ Incoming POs</span></label>
+          <div style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);user-select:none" onclick="window._incPO=!window._incPO;this.style.background=window._incPO?'#E8EFEF':'var(--bg-card)';this.style.borderColor=window._incPO?'var(--blue)':'var(--border)';this.querySelector('input').checked=window._incPO;renderReorder()"><input type="checkbox" style="accent-color:var(--blue);pointer-events:none"> <span>+ Incoming POs</span></div>
           <button class="btn btn-primary" onclick="exportCSV()">📥 Export CSV</button>
         </div>
       </div>
