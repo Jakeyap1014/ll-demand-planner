@@ -694,12 +694,13 @@ function buildCKData(ckId) {
   }
 
   // Remove inactive Shopify SKUs (draft/archived)
-  const storeInvFull = dataCache.shopifyInventory[storeKey] || {};
+  const inactiveList = (dataCache.shopifyInventory?.[storeKey]?.['__inactive__']) || [];
+  const inactiveSet = new Set(inactiveList);
   for (const sku of Object.keys(cin7)) {
-    if (storeInvFull['_inactive_' + sku]) { delete cin7[sku]; delete velocity[sku]; delete shopify[sku]; }
+    if (inactiveSet.has(sku)) { delete cin7[sku]; delete velocity[sku]; delete shopify[sku]; }
   }
   for (const sku of Object.keys(velocity)) {
-    if (storeInvFull['_inactive_' + sku]) { delete velocity[sku]; }
+    if (inactiveSet.has(sku)) { delete velocity[sku]; }
   }
 
   return {
