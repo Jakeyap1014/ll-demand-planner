@@ -324,10 +324,7 @@ async function fetchShopifyInventory(storeKey) {
           if (v.sku) {
             inventory[v.sku] = v.inventory_quantity || 0;
             // Track inactive SKUs
-            if (pStatus === 'draft' || pStatus === 'archived') {
-              if (!inactiveSkus) inactiveSkus = new Set();
-              inactiveSkus.add(v.sku);
-            }
+
           }
         }
       }
