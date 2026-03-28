@@ -307,7 +307,7 @@ function renderDashboard(){
   document.querySelector('#stockTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th data-tip>CIN7 SOH<span class="tip">Stock On Hand — physical units in the warehouse from CIN7</span></th><th data-tip>Shopify<span class="tip">Shopify inventory level. Negative = pre-orders/oversold units waiting to be fulfilled</span></th><th data-tip>Net<span class="tip">Effective available stock. CIN7 SOH + min(Shopify, 0). Accounts for pre-order commitments</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders not yet received</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over the last 90 days from Shopify orders</span></th><th data-tip>Wks Left<span class="tip">Weeks of stock remaining at current velocity. Net SOH ÷ Units/wk</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th></tr>';
   document.querySelector('#stockTable tbody').innerHTML=filtered.map(s=>{
     let soh=DATA.cin7[s]||0,sh=DATA.shopify[s]||0,net=getNet(s),inc=getIncoming(s),vel=getVel(s),wks=vel>0?Math.max(0,Math.round(net/vel)):99;
-    return`<tr><td style="font-family:monospace;font-size:10px">${s}</td><td>${getSize(s)}</td><td>${fmt(soh)}</td><td>${fmt(sh)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}</td><td>${wks>=25?'⚠️ '+wks:wks}</td><td>${statusBadge(wks)}${wks>=25?' <span style="color:var(--yellow);font-size:10px" title="Over 25 weeks — Excess: '+(vel>0?Math.round(soh-(vel*25)):soh)+' units × $'+(DATA.costs[s]||0).toFixed(0)+' = $'+Math.round((vel>0?(soh-(vel*25)):soh)*(DATA.costs[s]||0)).toLocaleString()+' AUD (FOB)">⚠️ OVERSTOCK $'+Math.round((vel>0?(soh-(vel*25)):soh)*(DATA.costs[s]||0)).toLocaleString()+'</span>':''}${vel===0&&soh>0?' <span style="color:var(--alert);font-size:10px;font-weight:700" title="0 sales in last 30+ days with stock on hand">💀 DEAD STOCK</span>':''}</td></tr>`}).join('');
+    return`<tr><td style="font-family:monospace;font-size:10px">${s}</td><td>${getSize(s)}</td><td>${fmt(soh)}</td><td>${fmt(sh)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}${trendIndicator(s)}</td><td>${wks>=25?'⚠️ '+wks:wks}</td><td>${statusBadge(wks)}${wks>=25?' <span style="color:var(--yellow);font-size:10px" title="Over 25 weeks — Excess: '+(vel>0?Math.round(soh-(vel*25)):soh)+' units × $'+(DATA.costs[s]||0).toFixed(0)+' = $'+Math.round((vel>0?(soh-(vel*25)):soh)*(DATA.costs[s]||0)).toLocaleString()+' AUD (FOB)">⚠️ OVERSTOCK $'+Math.round((vel>0?(soh-(vel*25)):soh)*(DATA.costs[s]||0)).toLocaleString()+'</span>':''}${vel===0&&soh>0?' <span style="color:var(--alert);font-size:10px;font-weight:700" title="0 sales in last 30+ days with stock on hand">💀 DEAD STOCK</span>':''}</td></tr>`}).join('');
   let cs=filtered.filter(s=>(DATA.cin7[s]||0)>0||getIncoming(s)>0).slice(0,30);
   if(charts.stock)charts.stock.destroy();
   charts.stock=new Chart(document.getElementById('stockChart'),{type:'bar',data:{labels:cs.map(s=>s),datasets:[
@@ -360,7 +360,7 @@ function renderReorder(){
   return{sku,net:incToggle?adjNet:net,rawNet:getNet(sku),vel,inc,wl:displayWl,sd,su,rop,rq,ob,size:getSize(sku)}}).sort((a,b)=>a.wl-b.wl);
   document.querySelector('#reorderTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th data-tip>Net SOH<span class="tip">Effective stock after pre-order commitments. CIN7 SOH + min(Shopify, 0)</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over last 90 days</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders</span></th><th data-tip>Wks Left<span class="tip">Weeks until stockout. Simulated week-by-week with PO arrivals factored in</span></th><th data-tip>Stockout<span class="tip">Projected date when this SKU runs out of stock</span></th><th data-tip>Safety<span class="tip">Safety stock buffer in units. Velocity × 4 weeks. Minimum stock to keep as buffer against demand spikes or supply delays</span></th><th data-tip>Reorder Pt<span class="tip">Reorder Point — place an order when stock drops to this level. (Velocity × 8wk lead time) + Safety units. Covers demand during lead time + safety buffer</span></th><th data-tip>Order Qty<span class="tip">Recommended order quantity. (Velocity × 12 weeks) + Safety − Net SOH − Incoming. Covers 12 weeks of demand plus safety, minus what you have and what\'s coming</span></th><th data-tip>Order By<span class="tip">Latest date to place order to avoid stockout. Today + max(0, Wks Left − 8wk lead − 4wk safety) × 7 days</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th><th data-tip>STR%<span class="tip">Sell-Through Rate (30-day). Units sold in 30d ÷ (Units sold + SOH). Green >70% | Yellow 41-69% | Red <40%</span></th></tr>';
   document.querySelector('#reorderTable tbody').innerHTML=rows.map(r=>
-    `<tr><td style="font-family:monospace;font-size:10px">${r.sku}</td><td>${r.size}</td><td>${fmt(r.net)}</td><td>${r.vel.toFixed(1)}</td><td>${window._incPO?'<span style="color:var(--green);font-size:10px">Added to Net ✓</span>':r.inc}</td><td>${r.wl>=99?'99+':r.wl}</td><td>${r.sd}</td><td>${r.su}</td><td>${r.rop}</td><td>${r.rq>0?`<b>${r.rq}</b>`:'—'}</td><td>${r.ob}</td><td>${r.inc>0?statusBadge(r.vel>0?Math.round((r.net+r.inc)/r.vel):99):statusBadge(r.wl)}</td><td style="background:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'rgba(91,171,49,0.1)':s>=41?'rgba(212,147,13,0.1)':'rgba(195,50,82,0.1)'})()};color:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'var(--green)':s>=41?'var(--yellow)':'var(--alert)'})()};font-weight:700;text-align:center">${r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0}%${r.vel===0&&r.net>0?' 💀':''}</td></tr>`).join('')}
+    `<tr><td style="font-family:monospace;font-size:10px">${r.sku}</td><td>${r.size}</td><td>${fmt(r.net)}</td><td>${r.vel.toFixed(1)}${trendIndicator(r.sku)}</td><td>${window._incPO?'<span style="color:var(--green);font-size:10px">Added to Net ✓</span>':r.inc}</td><td>${r.wl>=99?'99+':r.wl}</td><td>${r.sd}</td><td>${r.su}</td><td>${r.rop}</td><td>${r.rq>0?`<b>${r.rq}</b>`:'—'}</td><td>${r.ob}</td><td>${r.inc>0?statusBadge(r.vel>0?Math.round((r.net+r.inc)/r.vel):99):statusBadge(r.wl)}</td><td style="background:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'rgba(91,171,49,0.1)':s>=41?'rgba(212,147,13,0.1)':'rgba(195,50,82,0.1)'})()};color:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'var(--green)':s>=41?'var(--yellow)':'var(--alert)'})()};font-weight:700;text-align:center">${r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0}%${r.vel===0&&r.net>0?' 💀':''}</td></tr>`).join('')}
 
 function exportCSV(){let rows=[['SKU','Size','Net SOH','Vel/wk','Incoming','Wks Left','Reorder Qty']];getSkus().forEach(sku=>{let net=getNet(sku),vel=getVel(sku),inc=getIncoming(sku),p=project(sku),sw=p.findIndex(x=>x.close<=0),wl=sw>=0?sw:99,su=Math.round(vel*4),rq=Math.max(0,Math.round(vel*12+su-net-inc));rows.push([sku,getSize(sku),net,vel.toFixed(1),inc,wl,rq])});let csv=rows.map(r=>r.join(',')).join('\n'),b=new Blob([csv],{type:'text/csv'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`demand_${currentCK}_${new Date().toISOString().slice(0,10)}.csv`;a.click()}
 
@@ -494,6 +494,45 @@ function renderForecast() {
     
     return '<tr><td style="font-family:monospace;font-size:10px">'+r.sku+'</td><td>'+r.avgActual+'</td><td>'+r.currentVel.toFixed(1)+'</td><td style="font-weight:700;color:'+color+'">'+(r.wmape !== null ? r.wmape+'%' : '—')+'</td><td>'+r.evalWeeks+'</td><td style="color:'+color+'">'+badge+'</td></tr>';
   }).join('');
+}
+
+// Velocity trend indicator
+function trendIndicator(sku) {
+  const t = DATA.trendData?.[sku];
+  if (!t) return '';
+  
+  const v7 = t.v7, v30 = t.v30;
+  const sparkline = t.sparkline || [];
+  
+  // Both zero = dead
+  if (v7 === 0 && v30 === 0) return '<span style="color:var(--text-dim);font-size:9px"> No sales</span>';
+  
+  // New SKU (< 30 days old)
+  if (t.firstSeen) {
+    const age = (Date.now() - new Date(t.firstSeen).getTime()) / 86400000;
+    if (age < 30) return '<span style="color:var(--blue);font-size:9px" title="Launched '+Math.round(age)+' days ago"> 🆕 New</span>';
+  }
+  
+  // Revival: was dead, now selling
+  if (v30 === 0 && v7 > 0) return '<span style="color:#4A90D9;font-size:11px" title="7d: '+v7+'/wk\n30d: 0/wk\nPreviously dead SKU reactivating!"> 🔵 REVIVAL</span>';
+  
+  // Calculate trend
+  const trend = v30 > 0 ? Math.round(((v7 - v30) / v30) * 100) : 0;
+  
+  // Sparkline (5 bars)
+  const maxSpark = Math.max(...sparkline, 1);
+  const sparkHtml = sparkline.map(v => {
+    const h = Math.max(2, Math.round((v/maxSpark)*14));
+    return '<span style="display:inline-block;width:3px;height:'+h+'px;background:'+
+      (trend>15?'var(--green)':trend<-15?'var(--alert)':'#999')+
+      ';margin:0 0.5px;vertical-align:bottom"></span>';
+  }).join('');
+  
+  const tooltip = '7d: '+v7+'/wk\n30d: '+v30+'/wk\nTrend: '+(trend>=0?'+':'')+trend+'%';
+  
+  if (trend > 15) return '<span style="color:var(--green);cursor:help" title="'+tooltip+'"> ▲'+sparkHtml+'</span>';
+  if (trend < -15) return '<span style="color:var(--alert);cursor:help" title="'+tooltip+'"> ▼'+sparkHtml+'</span>';
+  return '<span style="color:#999;cursor:help" title="'+tooltip+'"> — '+sparkHtml+'</span>';
 }
 
 // Table sorting

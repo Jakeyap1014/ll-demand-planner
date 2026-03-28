@@ -229,6 +229,11 @@ async function fetchShopifyVelocity(storeKey) {
   
   const skuUnits = {};
   const skuWeekly = {};
+  const sku7d = {};
+  const sku30d = {};
+  const skuFirstSeen = {};
+  const now7d = new Date(Date.now() - 7 * 86400000);
+  const now30d = new Date(Date.now() - 30 * 86400000);
   const days = 90;
   const since = new Date(Date.now() - days * 86400000).toISOString();
   let url = `/admin/api/2026-01/orders.json?status=any&limit=250&created_at_min=${since}&fields=id,created_at,line_items,financial_status`;
@@ -255,6 +260,11 @@ async function fetchShopifyVelocity(storeKey) {
         for (const li of (o.line_items || [])) {
           if (li.sku) {
             skuUnits[li.sku] = (skuUnits[li.sku] || 0) + (li.quantity || 0);
+            // 7-day and 30-day velocity tracking
+            if (dt >= now7d) sku7d[li.sku] = (sku7d[li.sku] || 0) + (li.quantity || 0);
+            if (dt >= now30d) sku30d[li.sku] = (sku30d[li.sku] || 0) + (li.quantity || 0);
+            // First seen date
+            if (!skuFirstSeen[li.sku] || dt < skuFirstSeen[li.sku]) skuFirstSeen[li.sku] = dt;
             // Weekly breakdown
             if (!skuWeekly[li.sku]) skuWeekly[li.sku] = {};
             skuWeekly[li.sku][weekKey] = (skuWeekly[li.sku][weekKey] || 0) + (li.quantity || 0);
@@ -279,6 +289,12 @@ async function fetchShopifyVelocity(storeKey) {
   
   // Also store weekly breakdown for WMAPE calculation
   velocity._weeklyBreakdown = skuWeekly || {};
+  velocity._7d = sku7d;
+  velocity._30d = sku30d;
+  velocity._firstSeen = {};
+  for (const [sku, dt] of Object.entries(skuFirstSeen)) {
+    velocity._firstSeen[sku] = dt.toISOString();
+  }
   
   return velocity;
 }
@@ -695,6 +711,25 @@ function buildCKData(ckId) {
     names,
     sizes: def.sizes,
     costs,
+    trendData: (() => {
+      const vel = dataCache.shopifyVelocity?.[storeKey] || {};
+      const d7 = vel._7d || {};
+      const d30 = vel._30d || {};
+      const firstSeen = vel._firstSeen || {};
+      const weekly = vel._weeklyBreakdown || {};
+      const result = {};
+      const allSkus = [...new Set([...Object.keys(cin7), ...Object.keys(velocity)])];
+      for (const sku of allSkus) {
+        const v7 = (d7[sku] || 0) / 7 * 7; // weekly rate from 7d
+        const v30 = (d30[sku] || 0) / 30 * 7; // weekly rate from 30d
+        // Last 5 weeks sparkline
+        const wk = weekly[sku] || {};
+        const weekKeys = Object.keys(wk).sort().slice(-5);
+        const sparkline = weekKeys.map(k => wk[k] || 0);
+        result[sku] = { v7: Math.round(v7*10)/10, v30: Math.round(v30*10)/10, sparkline, firstSeen: firstSeen[sku] || null };
+      }
+      return result;
+    })(),
     bomData,
     weeklyData: (() => {
       const weekly = dataCache.shopifyVelocity?.[storeKey]?._weeklyBreakdown || {};
