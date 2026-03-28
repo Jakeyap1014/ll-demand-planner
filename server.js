@@ -163,7 +163,7 @@ async function fetchCin7AllProducts() {
         const variants = product.productOptions || [];
         for (const v of variants) {
           if (v.code) {
-            results[v.code] = { soh: v.stockOnHand || 0, available: v.stockAvailable || 0 };
+            results[v.code] = { soh: v.stockOnHand || 0, available: v.stockAvailable || 0, costAUD: v.priceColumns?.costAUD || 0 };
           }
         }
         // Also store parent level if it has SOH
@@ -476,6 +476,7 @@ function buildCKData(ckId) {
   const filter = def.filter || (() => true);
   const excludeCV = def.excludeCV || false;
   
+  let costs = {};
   // CIN7 stock — first collect raw, then normalize
   const cin7Raw = {};
   for (const [sku, data] of Object.entries(dataCache.cin7Products)) {
@@ -497,6 +498,10 @@ function buildCKData(ckId) {
   const cin7 = {};
   for (const [sku, data] of Object.entries(cin7Normalized)) {
     cin7[sku] = typeof data === 'object' ? data.soh : data;
+      if (typeof data === 'object' && data.costAUD) {
+        if (!costs) costs = {};
+        costs[sku] = data.costAUD;
+      }
   }
   
   // Shopify inventory
@@ -689,6 +694,7 @@ function buildCKData(ckId) {
     pos,
     names,
     sizes: def.sizes,
+    costs,
     bomData,
     weeklyData: (() => {
       const weekly = dataCache.shopifyVelocity?.[storeKey]?._weeklyBreakdown || {};
