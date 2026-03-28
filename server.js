@@ -302,8 +302,9 @@ async function fetchShopifyVelocity(storeKey) {
 // ===== SHOPIFY: FETCH INVENTORY LEVELS =====
 async function fetchShopifyInventory(storeKey) {
   const store = SHOPIFY_STORES[storeKey];
-  if (!store || !store.token) return {};
+  if (!store || !store.token) { console.log('ShopifyInv: no store/token for ' + storeKey); return {}; }
   
+  console.log('ShopifyInv: fetching from ' + store.domain);
   const inventory = {};
   let url = `/admin/api/2026-01/products.json?limit=250&fields=id,status,variants`;
   
@@ -337,6 +338,8 @@ async function fetchShopifyInventory(storeKey) {
       url = new URL(nextMatch[1]).pathname + new URL(nextMatch[1]).search;
     } catch (e) { console.error(`Shopify inventory ${storeKey} error:`, e.message); break; }
   }
+  const realSkus = Object.keys(inventory).filter(k => !k.startsWith('__'));
+  console.log('ShopifyInv ' + storeKey + ': ' + realSkus.length + ' SKUs fetched');
   return inventory;
 }
 
