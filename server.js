@@ -477,7 +477,10 @@ function normalizeCushie(cin7Normalized) {
   for (const [sku, data] of Object.entries(cin7Normalized)) {
     // Map CUSB-Q-LTGN -> CUSB-Q-LTGN-SET for Shopify matching
     if (sku.match(/^CUSB-(TW|D|Q|K)-(LTGN|DNM|TBRN|TWHT)$/) && !sku.includes('-SET')) {
-      result[sku + '-SET'] = data;
+      // Carry cost from base to SET
+      const setData = typeof data === 'object' ? {...data} : {soh: data, available: data};
+      if (!setData.costAUD && typeof data === 'object') setData.costAUD = data.costAUD || 0;
+      result[sku + '-SET'] = setData;
     }
     result[sku] = data;
   }
