@@ -308,7 +308,7 @@ function renderDashboard(){
   });
   document.getElementById('summary-cards').innerHTML=`
     <div class="card green"><div class="label">CIN7 SOH</div><div class="value">${tSOH.toLocaleString()}</div><div class="sub">Physical stock</div></div>
-    <div class="card blue" style="cursor:pointer" onclick="toggleInboundDrilldown()"><div class="label">Incoming ⓘ</div><div class="value">${tInc.toLocaleString()}</div><div class="sub">${DATA.pos.length} open POs — click for details</div></div>
+    <div class="card blue" style="cursor:pointer;border:2px solid var(--blue);transition:all 0.15s" onclick="toggleInboundDrilldown()" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(44,71,75,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''"><div class="label" style="display:flex;align-items:center;gap:4px">Incoming <span style="font-size:9px;background:var(--blue);color:#fff;padding:1px 6px;border-radius:8px">▼ Details</span></div><div class="value">${tInc.toLocaleString()}</div><div class="sub">${DATA.pos.length} open POs</div></div>
     <div class="card red"><div class="label">Oversold</div><div class="value">${tOver.toLocaleString()}</div><div class="sub">Pre-order commitments</div></div>
     <div class="card ${overstockVal>0?'yellow':'green'}"><div class="label">Overstock Value</div><div class="value">$${overstockVal>=1000000?(overstockVal/1000000).toFixed(1)+'M':Math.round(overstockVal).toLocaleString()}</div><div class="sub">Excess stock × FOB cost (AUD)</div></div>`;
   document.getElementById('dash-filters').innerHTML=getSizeKeys().map(s=>`<button class="filter-btn ${dashFilter.size===s?'active':''}" onclick="dashFilter.size='${s}';renderDashboard()">${s}</button>`).join('');
