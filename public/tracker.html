@@ -158,7 +158,7 @@ function renderSidebar(){
       <div class="sc-header"><span class="sc-ref">${s.reference}</span><span class="sc-status ${s.shipmentStatus}">${statusLabel}</span></div>
       <div class="sc-supplier">${s.supplier.substring(0,40)}</div>
       <div class="sc-route"><span>${s.origin.port||s.origin.city}</span><span class="arrow">→</span><span>${s.destination.port}</span></div>
-      ${s.trackingCode?'<div style="font-size:10px;color:var(--dim);margin-bottom:4px">📦 '+s.trackingCode+(null?' · 🚢 '+null:'')+'</div>':''}
+      ${s.trackingCode?'<div style="font-size:10px;color:var(--dim);margin-bottom:4px">📦 '+s.trackingCode+'</div>':''}
       <div class="sc-meta"><span><strong>${s.totalUnits}</strong> units</span><span><strong>${s.skuCount}</strong> SKUs</span><span><strong>${s.total>=1000000?'$'+(s.total/1000000).toFixed(1)+'M':'$'+s.total.toLocaleString()}</strong></span></div>
       <div class="sc-progress"><div class="sc-progress-fill" style="width:${Math.round(s.progress*100)}%;background:${progressColor}"></div></div>
       <div class="sc-eta ${etaClass}">${s.receivedDate?'Received: '+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):s.eta?'ETA: '+new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+' ('+etaText+')':'No ETA set'}</div>
@@ -302,7 +302,7 @@ function buildPopup(s){
       <tr><td>From</td><td>${s.origin.port||s.origin.city}, ${s.origin.country}</td></tr>
       <tr><td>To</td><td>${s.destination.port}, Australia</td></tr>
       ${s.trackingCode?'<tr><td>Container</td><td>'+s.trackingCode+'</td></tr>':''}
-      ${null?'<tr><td>Vessel</td><td>🚢 '+null+'</td></tr>':''}
+
       ${s.receivedDate?'<tr><td>Received</td>'<td>'+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+'</td></tr>':''}
       ${s.eta?'<tr><td>ETA</td><td>'+new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+(s.daysUntil!==null?' ('+s.daysUntil+'d)':'')+'</td></tr>':''}
       <tr><td>Units</td><td>${s.totalUnits} across ${s.skuCount} SKUs</td></tr>
