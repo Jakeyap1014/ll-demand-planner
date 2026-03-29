@@ -419,7 +419,9 @@ function normalizeCIN7(cin7Raw) {
   for (const [base, boxes] of Object.entries(boxGroups)) {
     const soh = Math.min(...boxes.map(b => typeof b === 'object' ? b.soh : b));
     const available = Math.min(...boxes.map(b => typeof b === 'object' ? (b.available || b.soh) : b));
-    result[base] = { soh, available };
+    // Sum costs across all boxes (each box is a separate shipped piece)
+    const costAUD = boxes.reduce((sum, b) => sum + (typeof b === 'object' ? (b.costAUD || 0) : 0), 0);
+    result[base] = { soh, available, costAUD };
   }
   
   return result;
