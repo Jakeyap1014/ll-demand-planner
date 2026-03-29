@@ -369,7 +369,7 @@ function renderReorder(){
   let displayWl=incToggle?adjWl:wl;
   let sd=displayWl>=99?'Beyond forecast':new Date(TODAY.getTime()+displayWl*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
   let su=Math.round(vel*sw),rop=Math.round(vel*lw+su),rq=Math.max(0,Math.round(vel*12+su-net-inc));
-  let obw=Math.max(0,displayWl-lw-sw),ob=displayWl<99?new Date(TODAY.getTime()+obw*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Not urgent';
+  let obw=Math.max(0,displayWl-lw-sw),obDate=new Date(TODAY.getTime()+obw*7*86400000),ob=displayWl>=99?'Not urgent':(obw<=0?'ASAP':obDate.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}));
   return{sku,net:incToggle?adjNet:net,rawNet:getNet(sku),vel,inc,wl:displayWl,sd,su,rop,rq,ob,size:getSize(sku),trendSd,trendWl,isAccel,isDecel,trendPct}}).sort((a,b)=>{
     // Trend-adjusted urgency: accelerating SKUs ranked higher urgency
     let aAdj=a.isAccel?a.wl*0.7:a.isDecel?a.wl*1.3:a.wl;
