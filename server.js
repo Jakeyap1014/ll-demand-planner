@@ -234,7 +234,7 @@ async function fetchShopifyVelocity(storeKey) {
   const skuFirstSeen = {};
   const now7d = new Date(Date.now() - 7 * 86400000);
   const now30d = new Date(Date.now() - 30 * 86400000);
-  const days = 90;
+  const days = 30;
   const since = new Date(Date.now() - days * 86400000).toISOString();
   let url = `/admin/api/2026-01/orders.json?status=any&limit=250&created_at_min=${since}&fields=id,created_at,line_items,financial_status`;
   
