@@ -395,7 +395,7 @@ async function refreshAllData() {
             console.error('CIN7 retry failed:', e.message);
           }
           dataCache._retrying = false;
-        }, 20000);
+        }, 120000);
       }
     } else if (cin7Count > 0) {
       dataCache._retryCount = 0;
