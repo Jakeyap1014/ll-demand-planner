@@ -735,7 +735,16 @@ function buildCKData(ckId) {
         const wk = weekly[sku] || {};
         const weekKeys = Object.keys(wk).sort().slice(-5);
         const sparkline = weekKeys.map(k => wk[k] || 0);
-        result[sku] = { v7: Math.round(v7*10)/10, v30: Math.round(v30*10)/10, sparkline, firstSeen: firstSeen[sku] || null };
+        // Last in-stock velocity: avg of last 4 weeks that had sales
+        const allWeekKeys = Object.keys(wk).sort();
+        const weeksWithSales = allWeekKeys.filter(k => wk[k] > 0);
+        let lastInStockVel = null;
+        if (weeksWithSales.length >= 2) {
+          const lastActive = weeksWithSales.slice(-4);
+          const avgSales = lastActive.reduce((t, k) => t + wk[k], 0) / lastActive.length;
+          lastInStockVel = Math.round(avgSales * 10) / 10;
+        }
+        result[sku] = { v7: Math.round(v7*10)/10, v30: Math.round(v30*10)/10, sparkline, firstSeen: firstSeen[sku] || null, lastInStockVel };
       }
       return result;
     })(),
