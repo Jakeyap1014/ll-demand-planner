@@ -372,28 +372,33 @@ async function refreshAllData() {
     const cin7Count = Object.keys(cin7Products).length;
     console.log(`Data refresh complete in ${elapsed}s. CIN7: ${cin7Count} SKUs, ${cin7POs.length} POs. Shopify: Lifely ${Object.keys(lifelyVel).length} SKUs, Cushie ${Object.keys(cushieVel).length} SKUs.`);
     
-    // If CIN7 returned empty, retry after 15s (likely cold start / network issue)
+    // Auto-retry until CIN7 data loads (cold start recovery)
     if (cin7Count === 0 && !dataCache._retrying) {
-      console.log('CIN7 returned 0 SKUs — scheduling retry in 15s...');
-      dataCache._retrying = true;
-      setTimeout(async () => {
-        console.log('CIN7 retry starting...');
-        try {
-          const retryProducts = await fetchCin7AllProducts();
-          const retryPOs = await fetchCin7POs();
-          if (Object.keys(retryProducts).length > 0) {
-            dataCache.cin7Products = retryProducts;
-            dataCache.cin7POs = retryPOs;
-            dataCache.lastRefresh = new Date().toISOString();
-            console.log('CIN7 retry SUCCESS: ' + Object.keys(retryProducts).length + ' SKUs');
-          } else {
-            console.log('CIN7 retry still empty');
+      dataCache._retryCount = (dataCache._retryCount || 0) + 1;
+      if (dataCache._retryCount <= 10) {
+        console.log('CIN7 returned 0 SKUs — retry ' + dataCache._retryCount + '/10 in 20s...');
+        dataCache._retrying = true;
+        setTimeout(async () => {
+          try {
+            const retryProducts = await fetchCin7AllProducts();
+            if (Object.keys(retryProducts).length > 0) {
+              dataCache.cin7Products = retryProducts;
+              const retryPOs = await fetchCin7POs();
+              if (retryPOs.length > 0) dataCache.cin7POs = retryPOs;
+              dataCache.lastRefresh = new Date().toISOString();
+              dataCache._retryCount = 0;
+              console.log('CIN7 retry SUCCESS: ' + Object.keys(retryProducts).length + ' SKUs');
+            } else {
+              console.log('CIN7 retry ' + dataCache._retryCount + ' still empty');
+            }
+          } catch (e) {
+            console.error('CIN7 retry failed:', e.message);
           }
-        } catch (e) {
-          console.error('CIN7 retry failed:', e.message);
-        }
-        dataCache._retrying = false;
-      }, 15000);
+          dataCache._retrying = false;
+        }, 20000);
+      }
+    } else if (cin7Count > 0) {
+      dataCache._retryCount = 0;
     }
   } catch (e) {
     console.error('Data refresh failed:', e.message);
