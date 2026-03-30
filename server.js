@@ -519,7 +519,7 @@ function buildCKData(ckId) {
     if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
       if (excludeCV && sku.includes('-CV')) continue;
       if (sku.includes('-CS-')) continue;
-      if (sku.includes('-FRM')) continue;
+      if (sku.includes('-FRM') && ckId !== 'lluk') continue;
       cin7Raw[sku] = data;
     }
   }
@@ -547,7 +547,7 @@ function buildCKData(ckId) {
     if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
       if (excludeCV && sku.includes('-CV')) continue;
       if (sku.includes('-CS-')) continue;
-      if (sku.includes('-FRM')) continue;
+      if (sku.includes('-FRM') && ckId !== 'lluk') continue;
       shopify[sku] = qty;
     }
   }
@@ -559,7 +559,7 @@ function buildCKData(ckId) {
     if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
       if (excludeCV && sku.includes('-CV')) continue;
       if (sku.includes('-CS-')) continue;
-      if (sku.includes('-FRM')) continue;
+      if (sku.includes('-FRM') && ckId !== 'lluk') continue;
       velocity[sku] = vel;
     }
   }
