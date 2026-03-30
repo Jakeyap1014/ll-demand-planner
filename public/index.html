@@ -543,7 +543,7 @@ function toggleInboundDrilldown() {
           po: po.reference || '?',
           sku,
           qty,
-          eta: po.arrival ? new Date(po.arrival).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : (po.customFields?.orders_1000 || 'No ETA'),
+          eta: po.customFields?.orders_1000 || (po.arrival ? new Date(po.arrival).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : 'No ETA'),
           supplier: (po.company || 'Unknown').substring(0, 30),
           status: po.stage || 'In Transit',
           container: po.trackingCode || '—'
