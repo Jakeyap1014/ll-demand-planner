@@ -281,11 +281,16 @@ async function fetchShopifyVelocity(storeKey) {
     } catch (e) { console.error(`Shopify ${storeKey} page ${page} error:`, e.message); break; }
   }
   
-  // Convert to weekly velocity
+  // Convert to weekly velocity (30-day window)
   const weeks = days / 7;
   const velocity = {};
-  for (const [sku, units] of Object.entries(skuUnits)) {
+  // Use sku30d (30-day counts) for velocity, not skuUnits (which covers 90 days)
+  for (const [sku, units] of Object.entries(sku30d)) {
     velocity[sku] = Math.round((units / weeks) * 10) / 10;
+  }
+  // Also include SKUs that had sales in 90d but not 30d (so they appear with 0 vel)
+  for (const sku of Object.keys(skuUnits)) {
+    if (!(sku in velocity)) velocity[sku] = 0;
   }
   
   // Also store weekly breakdown for WMAPE calculation
