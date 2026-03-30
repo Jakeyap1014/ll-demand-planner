@@ -375,7 +375,7 @@ async function refreshAllData() {
     // Auto-retry until CIN7 data loads (cold start recovery)
     if (cin7Count === 0 && !dataCache._retrying) {
       dataCache._retryCount = (dataCache._retryCount || 0) + 1;
-      if (dataCache._retryCount <= 10) {
+      if (dataCache._retryCount <= 3) {
         console.log('CIN7 returned 0 SKUs — retry ' + dataCache._retryCount + '/10 in 20s...');
         dataCache._retrying = true;
         setTimeout(async () => {
@@ -395,7 +395,7 @@ async function refreshAllData() {
             console.error('CIN7 retry failed:', e.message);
           }
           dataCache._retrying = false;
-        }, 120000);
+        }, 300000);
       }
     } else if (cin7Count > 0) {
       dataCache._retryCount = 0;
