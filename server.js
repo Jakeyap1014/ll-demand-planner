@@ -440,6 +440,28 @@ function normalizeCIN7(cin7Raw) {
 }
 
 // Radiant: map component SKUs to set SKUs
+// Swatch Pack: LLAU-CB-CS-PACK = 1× each swatch colour (6 swatches)
+// CIN7 tracks individual swatches: LLAU-CB-CS-{colour}
+// PACK SOH = min(all swatch SOH), cost = sum(all swatch costs)
+// Individual swatches inherit PACK velocity (they're only sold as a set)
+const SWATCH_COLOURS = ['DSBL', 'DGY', 'PST', 'BABL', 'CTCN', 'MSM'];
+function normalizeSwatchPack(cin7) {
+  const result = { ...cin7 };
+  const swatchKeys = SWATCH_COLOURS.map(c => 'LLAU-CB-CS-' + c);
+  const sohValues = swatchKeys.map(k => {
+    const d = cin7[k];
+    return typeof d === 'object' ? (d.soh || 0) : (d || 0);
+  });
+  const costs = swatchKeys.map(k => {
+    const d = cin7[k];
+    return typeof d === 'object' ? (d.costAUD || 0) : 0;
+  });
+  const packSoh = Math.min(...sohValues);
+  const packCost = costs.reduce((a, b) => a + b, 0);
+  result['LLAU-CB-CS-PACK'] = { soh: packSoh, available: packSoh, costAUD: packCost };
+  return result;
+}
+
 // Shopify sells: RDNT-{size}-{type}-SET (e.g. RDNT-Q-MF-SET)
 // CIN7 tracks: RDNT-{size}-{type} (e.g. RDNT-Q-MF) + RDNT-{size}-BASE
 // A SET = BASE + topper. Buildable = min(BASE, topper)
@@ -530,6 +552,7 @@ function buildCKData(ckId) {
   // Special handling per CK
   if (ckId.startsWith('rdnt')) cin7Normalized = normalizeRadiant(cin7Normalized, Object.keys(dataCache.shopifyInventory[storeKey] || {}));
   if (ckId.startsWith('cusb')) cin7Normalized = normalizeCushie(cin7Normalized);
+  if (ckId === 'llau-cb') cin7Normalized = normalizeSwatchPack(cin7Normalized);
   
   const cin7 = {};
   for (const [sku, data] of Object.entries(cin7Normalized)) {
@@ -564,6 +587,17 @@ function buildCKData(ckId) {
     }
   }
   
+  // Swatch pack: propagate PACK velocity to individual swatches
+  if (ckId === 'llau-cb' && velocity['LLAU-CB-CS-PACK']) {
+    const packVel = velocity['LLAU-CB-CS-PACK'];
+    for (const colour of SWATCH_COLOURS) {
+      const swatchKey = 'LLAU-CB-CS-' + colour;
+      if (cin7[swatchKey] !== undefined) {
+        velocity[swatchKey] = packVel; // each swatch consumed at pack rate
+      }
+    }
+  }
+
   // Purchase Orders
   const pos = [];
   for (const po of dataCache.cin7POs) {
