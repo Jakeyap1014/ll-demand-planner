@@ -421,9 +421,17 @@ function selectShipment(ref){
       let aisLng=s.vesselPosition.lng;
       if(s.destination&&s.destination.lng<-100&&aisLng<0) aisLng+=360;
       pos=[s.vesselPosition.lat,aisLng];
-    }else{
+    }else if(s.shipmentStatus==='arrived'){
+      // Arrived: fly to destination
+      let dLng=s.destination.lng;
+      if(dLng<-100) dLng+=360;
+      pos=[s.destination.lat,dLng];
+    }else if(s.progress>0&&s.progress<1){
       const routePoints=getRoutePoints(s.origin,s.destination);
-      pos=s.progress>0&&s.progress<1?getPointAlongRoute(routePoints,s.progress):[s.origin.lat,s.origin.lng];
+      pos=getPointAlongRoute(routePoints,s.progress);
+    }else{
+      // Production: fly to origin
+      pos=[s.origin.lat,s.origin.lng];
     }
     map.flyTo(pos,5,{duration:1});
     // Open popup
