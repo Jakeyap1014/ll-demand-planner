@@ -592,8 +592,11 @@ function trendIndicator(sku) {
   const v7 = t.v7, v30 = t.v30;
   const sparkline = t.sparkline || [];
   
-  // Both zero = dead
-  if (v7 === 0 && v30 === 0) return '<span style="color:var(--text-dim);font-size:9px"> No sales</span>';
+  // Both zero — if using estimated velocity, don't show "No sales" (handled by (est) tag)
+  if (v7 === 0 && v30 === 0) {
+    if (isEstVel(sku)) return '';
+    return '<span style="color:var(--text-dim);font-size:9px"> No sales</span>';
+  }
   
   // New SKU (< 30 days old)
   if (t.firstSeen) {
