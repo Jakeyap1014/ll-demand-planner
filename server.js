@@ -2,6 +2,7 @@ const express = require('express');
 const https = require('https');
 const crypto = require('crypto');
 const path = require('path');
+const WebSocket = require('ws');
 
 const app = express();
 app.use(express.json());
@@ -14,6 +15,7 @@ const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK || '';
 const CIN7_USER = process.env.CIN7_USER || '';
 const CIN7_KEY = process.env.CIN7_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const AIS_API_KEY = process.env.AIS_API_KEY || '';
 
 // Shopify stores
 const SHOPIFY_STORES = {
@@ -372,6 +374,7 @@ async function refreshAllData() {
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
     const cin7Count = Object.keys(cin7Products).length;
     console.log(`Data refresh complete in ${elapsed}s. CIN7: ${cin7Count} SKUs, ${cin7POs.length} POs. Shopify: Lifely ${Object.keys(lifelyVel).length} SKUs, Cushie ${Object.keys(cushieVel).length} SKUs.`);
+    refreshAIS(); // Update vessel tracking after data refresh
     
     // Auto-retry until CIN7 data loads (cold start recovery)
     if (cin7Count === 0 && !dataCache._retrying) {
@@ -963,6 +966,109 @@ function getSupplierOrigin(company) {
   return { city: 'Unknown', country: 'China', lat: 23.13, lng: 113.26, port: 'Nansha' };
 }
 
+// ===== AIS VESSEL TRACKING =====
+const vesselPositions = {}; // { vesselName: { lat, lng, heading, speed, timestamp } }
+let aisWs = null;
+let aisReconnectTimer = null;
+let aisSubscribedVessels = [];
+
+function extractVesselNames() {
+  // Extract vessel names from PO tracking codes (format: "CONTAINER / VESSEL" or "CONTAINER/VESSEL")
+  const vessels = new Set();
+  for (const po of dataCache.cin7POs || []) {
+    const tc = po.trackingCode || '';
+    // Match "CONTAINER / VESSEL_NAME" or "CONTAINER/VESSEL_NAME"
+    const match = tc.match(/[A-Z]{4}\d{6,7}\s*\/\s*(.+)/i);
+    if (match) {
+      let vesselName = match[1].trim();
+      // Remove voyage number suffix (e.g. "/023E")
+      vesselName = vesselName.replace(/\/\d+[A-Z]*$/, '').trim();
+      if (vesselName.length > 2) vessels.add(vesselName.toUpperCase());
+    }
+  }
+  return Array.from(vessels);
+}
+
+function connectAIS() {
+  if (!AIS_API_KEY) { console.log('[AIS] No API key, skipping'); return; }
+  
+  const vessels = extractVesselNames();
+  if (vessels.length === 0) { console.log('[AIS] No vessels to track'); return; }
+  
+  // Don't reconnect if same vessels
+  if (aisWs && aisWs.readyState === WebSocket.OPEN && 
+      JSON.stringify(aisSubscribedVessels) === JSON.stringify(vessels)) return;
+  
+  // Close existing
+  if (aisWs) { try { aisWs.close(); } catch(e){} }
+  
+  console.log(`[AIS] Connecting to track ${vessels.length} vessels: ${vessels.join(', ')}`);
+  aisSubscribedVessels = vessels;
+  
+  try {
+    aisWs = new WebSocket('wss://stream.aisstream.io/v0/stream');
+    
+    aisWs.on('open', () => {
+      console.log('[AIS] Connected');
+      // Subscribe by vessel name
+      aisWs.send(JSON.stringify({
+        APIKey: AIS_API_KEY,
+        BoundingBoxes: [[[-90, -180], [90, 180]]], // Global
+        FilterMessageTypes: ['PositionReport'],
+        FiltersShipMMSI: [],
+        FilterShipNames: vessels
+      }));
+    });
+    
+    aisWs.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data);
+        if (msg.MessageType === 'PositionReport' && msg.MetaData) {
+          const name = (msg.MetaData.ShipName || '').trim().toUpperCase();
+          const pos = msg.Message?.PositionReport;
+          if (name && pos) {
+            vesselPositions[name] = {
+              lat: pos.Latitude,
+              lng: pos.Longitude,
+              heading: pos.TrueHeading || 0,
+              speed: pos.Sog || 0, // Speed over ground in knots
+              timestamp: msg.MetaData.time_utc || new Date().toISOString(),
+              mmsi: msg.MetaData.MMSI || null
+            };
+            console.log(`[AIS] ${name}: ${pos.Latitude.toFixed(3)}, ${pos.Longitude.toFixed(3)} @ ${pos.Sog || 0}kn`);
+          }
+        }
+      } catch(e) { /* ignore parse errors */ }
+    });
+    
+    aisWs.on('close', () => {
+      console.log('[AIS] Disconnected, reconnecting in 30s');
+      aisReconnectTimer = setTimeout(connectAIS, 30000);
+    });
+    
+    aisWs.on('error', (err) => {
+      console.log('[AIS] Error:', err.message);
+    });
+    
+    // AIS stream stays open — aisstream sends updates as vessels report
+    // Close after 5 min to save resources, reopen on next data refresh
+    setTimeout(() => {
+      if (aisWs && aisWs.readyState === WebSocket.OPEN) {
+        console.log('[AIS] Closing after 5min cycle');
+        aisWs.close();
+      }
+    }, 5 * 60 * 1000);
+    
+  } catch(e) {
+    console.log('[AIS] Connection failed:', e.message);
+  }
+}
+
+// Reconnect AIS after each CIN7 data refresh (new POs may have new vessels)
+function refreshAIS() {
+  if (AIS_API_KEY) connectAIS();
+}
+
 function buildShipmentData() {
   const shipments = [];
   const now = new Date();
@@ -1055,8 +1161,23 @@ function buildShipmentData() {
       items: po.items || {},
       trackingCode: po.trackingCode || null,
       port: po.port || null,
-      internalComments: po.internalComments || null
+      internalComments: po.internalComments || null,
+      vesselPosition: null, // filled below
+      vesselName: null
     });
+  }
+  
+  // Attach AIS vessel positions
+  for (const s of shipments) {
+    if (!s.trackingCode) continue;
+    const match = (s.trackingCode || '').match(/[A-Z]{4}\d{6,7}\s*\/\s*(.+)/i);
+    if (match) {
+      let vn = match[1].trim().replace(/\/\d+[A-Z]*$/, '').trim().toUpperCase();
+      s.vesselName = vn;
+      if (vesselPositions[vn]) {
+        s.vesselPosition = vesselPositions[vn];
+      }
+    }
   }
   
   return shipments.sort((a, b) => {

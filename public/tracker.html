@@ -87,8 +87,8 @@ if(!SESSION)window.location.href='/login';
 const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
 
 // Init map
-const map=L.map('map',{center:[20,120],zoom:2,zoomControl:true,attributionControl:false,worldCopyJump:true});
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
+const map=L.map('map',{center:[20,180],zoom:2,zoomControl:true,attributionControl:false,worldCopyJump:false,maxBounds:[[-85,-30],[85,400]],maxBoundsViscosity:1.0});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18,noWrap:false}).addTo(map);
 
 // Custom icons
 function shipIcon(status){
@@ -157,7 +157,8 @@ function renderSidebar(){
     return`<div class="shipment-card ${selectedRef===s.reference?'active':''}" onclick="selectShipment('${s.reference}')">
       <div class="sc-header"><span class="sc-ref">${s.reference}</span><span class="sc-status ${s.shipmentStatus}">${statusLabel}</span></div>
       <div class="sc-supplier">${s.supplier.substring(0,40)}</div>
-      <div class="sc-route"><span>${s.origin.port||s.origin.city}</span><span class="arrow">→</span><span>${s.destination.port}</span></div>
+      <div class="sc-route"><span>${s.origin.port||s.origin.city}</span><span class="arrow">→</span><span>${s.destination.port||s.destination.city}</span></div>
+      ${s.vesselName?'<div style="font-size:11px;color:var(--dim)">🚢 '+s.vesselName+(s.vesselPosition?' <span style="color:var(--green)">● LIVE</span>':'')+'</div>':''}
       <div class="sc-meta"><span><strong>${s.totalUnits}</strong> units</span><span><strong>${s.skuCount}</strong> SKUs</span><span><strong>${s.total>=1000000?'$'+(s.total/1000000).toFixed(1)+'M':'$'+s.total.toLocaleString()}</strong></span></div>
       <div class="sc-progress"><div class="sc-progress-fill" style="width:${Math.round(s.progress*100)}%;background:${progressColor}"></div></div>
       <div class="sc-eta ${etaClass}">${s.receivedDate?'Received: '+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):s.eta?'ETA: '+new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+' ('+etaText+')':'No ETA set'}</div>
@@ -186,7 +187,10 @@ function renderMap(){
   });
   for(const[key,d]of Object.entries(destinations)){
     const label=(DEST_LABELS[d.city]||d.city).split('|');
-    const destM=L.marker([d.lat,d.lng],{icon:destIcon()}).addTo(map);
+    let dLng = d.lng;
+    // Trans-Pacific destinations: use >180 coords so marker matches the route
+    if(d.lng < -100) dLng = d.lng + 360;
+    const destM=L.marker([d.lat, dLng],{icon:destIcon()}).addTo(map);
     destM.bindPopup('<b>'+label[0]+'</b>'+(label[1]?'<br>'+label[1]:''));
     markers.push(destM);
   }
@@ -206,11 +210,21 @@ function renderMap(){
     const line=L.polyline(routePoints,{color:s.shipmentStatus==='in_transit'?'#5BAB31':'#DDE3D5',weight:s.shipmentStatus==='in_transit'?2.5:1.5,opacity:s.shipmentStatus==='in_transit'?0.8:0.4,dashArray:s.shipmentStatus==='in_transit'?null:'8 6'}).addTo(map);
     routeLines.push(line);
     
-    // Ship marker along route
-    if(s.progress>0&&s.progress<1){
+    // Ship marker — use real AIS position if available, else interpolate along route
+    if(s.vesselPosition && s.vesselPosition.lat){
+      // REAL AIS GPS position
+      let aisLng = s.vesselPosition.lng;
+      // If trans-Pacific route, adjust longitude for map coords >180
+      if(s.destination && s.destination.lng < -100 && aisLng < 0) aisLng += 360;
+      const sm=L.marker([s.vesselPosition.lat, aisLng],{icon:shipIcon('in_transit')}).addTo(map);
+      const aisAge = s.vesselPosition.timestamp ? 
+        Math.round((Date.now()-new Date(s.vesselPosition.timestamp).getTime())/60000) : '?';
+      sm.bindPopup(buildPopup(s)+`<br><b>🛰 Live AIS</b><br>Speed: ${s.vesselPosition.speed||0} kn, Heading: ${s.vesselPosition.heading||0}°<br><small>Updated ${aisAge} min ago</small>`);
+      markers.push(sm);
+    }else if(s.progress>0&&s.progress<1){
       const pos=getPointAlongRoute(routePoints,s.progress);
       const sm=L.marker(pos,{icon:shipIcon(s.shipmentStatus)}).addTo(map);
-      sm.bindPopup(buildPopup(s));
+      sm.bindPopup(buildPopup(s)+'<br><small>📍 Estimated position</small>');
       markers.push(sm);
     }else if(s.shipmentStatus==='production'){
       // Show factory icon at origin
@@ -256,16 +270,17 @@ function getRoutePoints(origin,dest){
   
   if (isTransPacific) {
     // China → Trans-Pacific → US/Canada West Coast
+    // Use lng > 180 to go EAST across Pacific (Leaflet antimeridian fix)
     waypoints.push([18, 120]);              // South China Sea / Philippines
     waypoints.push([22, 130]);              // East of Taiwan
     waypoints.push([30, 145]);              // Open Pacific, east of Japan
     waypoints.push([35, 160]);              // Mid-Pacific
     waypoints.push([38, 175]);              // Mid-Pacific
-    waypoints.push([40, -170]);             // Mid-Pacific (date line crossing)
-    waypoints.push([40, -155]);             // Mid-Pacific
-    waypoints.push([38, -140]);             // Eastern Pacific
-    waypoints.push([36, -128]);             // Approaching West Coast
-    waypoints.push([dest.lat, dest.lng]);
+    waypoints.push([40, 190]);              // Mid-Pacific (past date line = 180+10)
+    waypoints.push([40, 205]);              // Mid-Pacific (= -155 + 360)
+    waypoints.push([38, 220]);              // Eastern Pacific (= -140 + 360)
+    waypoints.push([36, 232]);              // Approaching West Coast (= -128 + 360)
+    waypoints.push([dest.lat, dest.lng + 360]); // Destination in >180 coords
   } else if (isUK) {
     // China → Singapore → Indian Ocean → Suez → Med → UK
     waypoints.push([5, 105]);
@@ -351,7 +366,8 @@ function buildPopup(s){
     <table>
       <tr><td>Supplier</td><td>${s.supplier.substring(0,35)}</td></tr>
       <tr><td>From</td><td>${s.origin.port||s.origin.city}, ${s.origin.country}</td></tr>
-      <tr><td>To</td><td>${s.destination.port}, Australia</td></tr>
+      <tr><td>To</td><td>${s.destination.port||s.destination.city}</td></tr>
+      ${s.vesselName?'<tr><td>Vessel</td><td>🚢 '+s.vesselName+'</td></tr>':''}
       ${s.receivedDate?'<tr><td>Received</td><td>'+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+'</td></tr>':''}
       ${s.eta?'<tr><td>ETA</td><td>'+new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+(s.daysUntil!==null?' ('+s.daysUntil+'d)':'')+'</td></tr>':''}
       <tr><td>Units</td><td>${s.totalUnits} across ${s.skuCount} SKUs</td></tr>
@@ -366,8 +382,15 @@ function selectShipment(ref){
   renderSidebar();
   const s=shipments.find(x=>x.reference===ref);
   if(s){
-    const routePoints=getRoutePoints(s.origin,s.destination);
-    const pos=s.progress>0&&s.progress<1?getPointAlongRoute(routePoints,s.progress):[s.origin.lat,s.origin.lng];
+    let pos;
+    if(s.vesselPosition && s.vesselPosition.lat){
+      let aisLng=s.vesselPosition.lng;
+      if(s.destination&&s.destination.lng<-100&&aisLng<0) aisLng+=360;
+      pos=[s.vesselPosition.lat,aisLng];
+    }else{
+      const routePoints=getRoutePoints(s.origin,s.destination);
+      pos=s.progress>0&&s.progress<1?getPointAlongRoute(routePoints,s.progress):[s.origin.lat,s.origin.lng];
+    }
     map.flyTo(pos,5,{duration:1});
     // Open popup
     markers.forEach(m=>{
