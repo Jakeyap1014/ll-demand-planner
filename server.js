@@ -1004,6 +1004,8 @@ function connectAIS() {
   
   console.log(`[AIS] Connecting to track ${vessels.length} vessels: ${vessels.join(', ')}`);
   aisSubscribedVessels = vessels;
+  // Clear stale positions from previous connection
+  Object.keys(vesselPositions).forEach(k => delete vesselPositions[k]);
   
   try {
     aisWs = new WebSocket('wss://stream.aisstream.io/v0/stream');
@@ -1011,14 +1013,25 @@ function connectAIS() {
     aisWs.on('open', () => {
       console.log('[AIS] Connected');
       // Subscribe by vessel name
+      // Use targeted bounding boxes to reduce stream volume:
+      // Box 1: China seas + SE Asia + Indian Ocean (departures & AU route)
+      // Box 2: Pacific Ocean (US/CA route)
+      // Box 3: Indian Ocean + Suez + Med (UK route)
       aisWs.send(JSON.stringify({
         APIKey: AIS_API_KEY,
-        BoundingBoxes: [[[-90, -180], [90, 180]]], // Global
-        FilterMessageTypes: ['PositionReport'],
-        FiltersShipMMSI: [],
-        FilterShipNames: vessels
+        BoundingBoxes: [
+          [[-45, 90], [45, 180]],    // China → Australia corridor
+          [[20, 120], [50, -120]],   // Trans-Pacific (note: API may not handle antimeridian)
+          [[-10, 30], [45, 110]],    // Indian Ocean + Suez + Med
+          [[-45, -180], [50, -100]]  // Eastern Pacific / Americas
+        ],
+        FilterMessageTypes: ['PositionReport']
       }));
     });
+    
+    // Build a Set of vessel names we're tracking for fast client-side filtering
+    // (FilterShipNames API param doesn't actually filter on aisstream)
+    const vesselSet = new Set(vessels);
     
     aisWs.on('message', (data) => {
       try {
@@ -1026,16 +1039,17 @@ function connectAIS() {
         if (msg.MessageType === 'PositionReport' && msg.MetaData) {
           const name = (msg.MetaData.ShipName || '').trim().toUpperCase();
           const pos = msg.Message?.PositionReport;
-          if (name && pos) {
+          // Only cache positions for vessels we're actually tracking
+          if (name && pos && vesselSet.has(name)) {
             vesselPositions[name] = {
               lat: pos.Latitude,
               lng: pos.Longitude,
               heading: pos.TrueHeading || 0,
-              speed: pos.Sog || 0, // Speed over ground in knots
+              speed: pos.Sog || 0,
               timestamp: msg.MetaData.time_utc || new Date().toISOString(),
               mmsi: msg.MetaData.MMSI || null
             };
-            console.log(`[AIS] ${name}: ${pos.Latitude.toFixed(3)}, ${pos.Longitude.toFixed(3)} @ ${pos.Sog || 0}kn`);
+            console.log(`[AIS] ✅ ${name}: ${pos.Latitude.toFixed(3)}, ${pos.Longitude.toFixed(3)} @ ${pos.Sog || 0}kn`);
           }
         }
       } catch(e) { /* ignore parse errors */ }
