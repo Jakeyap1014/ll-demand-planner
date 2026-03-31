@@ -74,6 +74,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <button class="filter-tab" id="tab-production" onclick="setFilter('production',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">Production <span id="cnt-production"></span></button>
     <button class="filter-tab" id="tab-arrived" onclick="setFilter('arrived',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">Arrived <span id="cnt-arrived"></span></button>
   </div>
+  <div style="display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg)">
+    <select id="filterCountry" onchange="applyFilters()" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--text)">
+      <option value="">All Destinations</option>
+    </select>
+    <input id="filterSKU" type="text" placeholder="Search SKU..." oninput="applyFilters()" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--card);color:var(--text)">
+  </div>
   <div class="shipment-list" id="shipmentList">
     <div style="padding:40px;text-align:center;color:var(--dim)">Loading shipments...</div>
   </div>
@@ -113,6 +119,8 @@ function destIcon(){return L.divIcon({className:'',html:'<div style="width:12px;
 let markers=[];
 let shipments=[];
 let currentFilter='active';
+let filterCountry='';
+let filterSKU='';
 
 function setFilter(filter, btn) {
   currentFilter=filter;
@@ -122,10 +130,39 @@ function setFilter(filter, btn) {
   renderMap();
 }
 
+function applyFilters(){
+  filterCountry=document.getElementById('filterCountry').value;
+  filterSKU=document.getElementById('filterSKU').value.toUpperCase().trim();
+  updateTabCounts();
+  renderSidebar();
+  renderMap();
+}
+
+function populateCountryFilter(){
+  const countries=new Set();
+  shipments.forEach(s=>{const c=s.destination?.city||s.destination?.port||'Unknown';countries.add(c)});
+  const sel=document.getElementById('filterCountry');
+  const prev=sel.value;
+  sel.innerHTML='<option value="">All Destinations</option>';
+  Array.from(countries).sort().forEach(c=>{sel.innerHTML+=`<option value="${c}">${c}</option>`});
+  sel.value=prev;
+}
+
+function matchesSubFilters(s){
+  if(filterCountry && (s.destination?.city||s.destination?.port||'')!==filterCountry) return false;
+  if(filterSKU){
+    const skus=Object.keys(s.items||{}).join(' ').toUpperCase();
+    if(!skus.includes(filterSKU)) return false;
+  }
+  return true;
+}
+
 function getFilteredShipments() {
-  if (currentFilter==='active') return shipments.filter(s=>s.shipmentStatus!=='arrived');
-  if (currentFilter==='arrived') return shipments.filter(s=>s.shipmentStatus==='arrived');
-  return shipments.filter(s=>s.shipmentStatus===currentFilter);
+  let list;
+  if (currentFilter==='active') list=shipments.filter(s=>s.shipmentStatus!=='arrived');
+  else if (currentFilter==='arrived') list=shipments.filter(s=>s.shipmentStatus==='arrived');
+  else list=shipments.filter(s=>s.shipmentStatus===currentFilter);
+  return list.filter(matchesSubFilters);
 }
 let routeLines=[];
 let selectedRef=null;
@@ -136,6 +173,7 @@ async function loadShipments(){
     if(r.status===401)return window.location.href='/login';
     const d=await r.json();
     shipments=d.shipments||[];
+    populateCountryFilter();
     updateTabCounts();
     renderSidebar();
     renderMap();
@@ -143,10 +181,11 @@ async function loadShipments(){
 }
 
 function updateTabCounts(){
-  const active=shipments.filter(s=>s.shipmentStatus!=='arrived').length;
-  const transit=shipments.filter(s=>s.shipmentStatus==='in_transit').length;
-  const prod=shipments.filter(s=>s.shipmentStatus==='production').length;
-  const arrived=shipments.filter(s=>s.shipmentStatus==='arrived').length;
+  const f=s=>matchesSubFilters(s);
+  const active=shipments.filter(s=>s.shipmentStatus!=='arrived'&&f(s)).length;
+  const transit=shipments.filter(s=>s.shipmentStatus==='in_transit'&&f(s)).length;
+  const prod=shipments.filter(s=>s.shipmentStatus==='production'&&f(s)).length;
+  const arrived=shipments.filter(s=>s.shipmentStatus==='arrived'&&f(s)).length;
   document.getElementById('cnt-active').textContent='('+active+')';
   document.getElementById('cnt-in_transit').textContent='('+transit+')';
   document.getElementById('cnt-production').textContent='('+prod+')';
