@@ -920,8 +920,40 @@ const SUPPLIER_ORIGINS = {
 
 const DESTINATIONS = {
   'Australia': { city: 'Melbourne', lat: -37.81, lng: 144.96, port: 'Melbourne' },
-  'default': { city: 'Melbourne', lat: -37.81, lng: 144.96, port: 'Melbourne' }
+  'USA':       { city: 'Los Angeles', lat: 33.74, lng: -118.26, port: 'Los Angeles' },
+  'Canada':    { city: 'Vancouver', lat: 49.29, lng: -123.11, port: 'Vancouver' },
+  'UK':        { city: 'Felixstowe', lat: 51.96, lng: 1.35, port: 'Felixstowe' },
+  'NZ':        { city: 'Auckland', lat: -36.84, lng: 174.76, port: 'Auckland' },
+  'Singapore': { city: 'Singapore', lat: 1.26, lng: 103.84, port: 'Singapore' },
+  'default':   { city: 'Melbourne', lat: -37.81, lng: 144.96, port: 'Melbourne' }
 };
+
+// Determine destination from PO reference and SKU prefixes
+function getDestination(po) {
+  const ref = (po.reference || '').toUpperCase();
+  const skus = Object.keys(po.items || {});
+
+  // 1. PO reference prefix takes priority
+  if (ref.startsWith('PO-CA'))  return DESTINATIONS['Canada'];
+  if (ref.startsWith('PO-US'))  return DESTINATIONS['USA'];
+  if (ref.startsWith('PO-UK'))  return DESTINATIONS['UK'];
+  if (ref.startsWith('PO-NZ'))  return DESTINATIONS['NZ'];
+  if (ref.startsWith('PO-SG'))  return DESTINATIONS['Singapore'];
+  if (ref.startsWith('PO-AU'))  return DESTINATIONS['Australia'];
+
+  // 2. Check SKU prefixes — if majority are NA, route to US
+  const naCount = skus.filter(s => s.startsWith('LLNA')).length;
+  const ukCount = skus.filter(s => s.includes('-UK')).length;
+  const sgCount = skus.filter(s => s.startsWith('LLSG')).length;
+  const total = skus.length || 1;
+
+  if (naCount / total > 0.5) return DESTINATIONS['USA'];
+  if (ukCount / total > 0.5) return DESTINATIONS['UK'];
+  if (sgCount / total > 0.5) return DESTINATIONS['Singapore'];
+
+  // 3. Fallback: Australia
+  return DESTINATIONS['default'];
+}
 
 function getSupplierOrigin(company) {
   if (!company) return { city: 'Unknown', country: 'China', lat: 23.13, lng: 113.26, port: 'Nansha' };
@@ -938,7 +970,7 @@ function buildShipmentData() {
   for (const po of dataCache.cin7POs) {
     // Include active POs (we already filter out Received in fetchCin7POs)
     const origin = getSupplierOrigin(po.company || '');
-    const dest = DESTINATIONS[po.deliveryCountry || 'default'] || DESTINATIONS['default'];
+    const dest = getDestination(po);
     
     // ETD = estimatedDeliveryDate (departure from China)
     let etd = null;

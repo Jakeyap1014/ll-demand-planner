@@ -87,7 +87,7 @@ if(!SESSION)window.location.href='/login';
 const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
 
 // Init map
-const map=L.map('map',{center:[5,80],zoom:3,zoomControl:true,attributionControl:false});
+const map=L.map('map',{center:[20,120],zoom:2,zoomControl:true,attributionControl:false,worldCopyJump:true});
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18}).addTo(map);
 
 // Custom icons
@@ -170,10 +170,26 @@ function renderMap(){
   routeLines.forEach(l=>map.removeLayer(l));
   markers=[];routeLines=[];
   
-  // Destination marker (Melbourne)
-  const destM=L.marker([-37.81,144.96],{icon:destIcon()}).addTo(map);
-  destM.bindPopup('<b>Melbourne, Australia</b><br>Warehouse: Laverton North');
-  markers.push(destM);
+  // Destination markers (dynamic based on shipments)
+  const destinations={};
+  const DEST_LABELS={
+    'Melbourne':'Melbourne, Australia|Warehouse: Laverton North',
+    'Los Angeles':'Los Angeles, USA|West Coast Port',
+    'Vancouver':'Vancouver, Canada|West Coast Port',
+    'Felixstowe':'Felixstowe, UK|East Coast Port',
+    'Auckland':'Auckland, New Zealand',
+    'Singapore':'Singapore'
+  };
+  getFilteredShipments().forEach(s=>{
+    const dk=s.destination.lat+','+s.destination.lng;
+    if(!destinations[dk]) destinations[dk]=s.destination;
+  });
+  for(const[key,d]of Object.entries(destinations)){
+    const label=(DEST_LABELS[d.city]||d.city).split('|');
+    const destM=L.marker([d.lat,d.lng],{icon:destIcon()}).addTo(map);
+    destM.bindPopup('<b>'+label[0]+'</b>'+(label[1]?'<br>'+label[1]:''));
+    markers.push(destM);
+  }
   
   // Group origins to avoid duplicate markers
   const origins={};
@@ -213,59 +229,95 @@ function renderMap(){
 }
 
 function getRoutePoints(origin,dest){
-  // Maritime route: China → South China Sea → Singapore Strait → south of Sumatra/Java → Indian Ocean → Melbourne
-  // Container ships going to Australia go SOUTH from Singapore, not through Malacca
   const waypoints = [];
-  
   waypoints.push([origin.lat, origin.lng]);
   
-  // Route to Singapore based on origin
-  if (origin.lat > 33) {
-    // Northern China (Qingdao, Tianjin)
-    waypoints.push([31, 122]);
-    waypoints.push([25, 119]);
-    waypoints.push([20, 116]);
-    waypoints.push([12, 112]);
-    waypoints.push([5, 106]);
-  } else if (origin.lat > 28) {
-    // Central China (Shanghai, Ningbo)
-    waypoints.push([25, 120]);
-    waypoints.push([18, 115]);
-    waypoints.push([10, 110]);
-    waypoints.push([5, 106]);
-  } else if (origin.lng < 102) {
+  // Determine route region from destination longitude
+  const isTransPacific = dest.lng < -100;   // USA, Canada (West Coast)
+  const isUK = dest.lng > -5 && dest.lng < 10 && dest.lat > 45; // UK/Europe
+  const isNZ = dest.lat < -30 && dest.lng > 165; // New Zealand
+  const isSG = dest.lat > 0 && dest.lat < 3 && dest.lng > 100 && dest.lng < 105; // Singapore
+  
+  // Step 1: Origin → open water (same for all routes from China/Thailand)
+  if (origin.lng < 102) {
     // Thailand (Laem Chabang)
     waypoints.push([10, 102]);
     waypoints.push([5, 103]);
+  } else if (origin.lat > 33) {
+    // Northern China
+    waypoints.push([31, 122]); waypoints.push([25, 119]); waypoints.push([20, 116]);
+  } else if (origin.lat > 28) {
+    // Central China (Shanghai, Ningbo)
+    waypoints.push([25, 120]); waypoints.push([18, 115]);
   } else {
-    // Southern China (Guangzhou, Shenzhen, Foshan, Dongguan)
-    waypoints.push([18, 114]);
-    waypoints.push([10, 109]);
-    waypoints.push([5, 105]);
+    // Southern China (Shenzhen, Foshan, Dongguan)
+    waypoints.push([18, 114]); waypoints.push([10, 109]);
   }
   
-  // Singapore
-  waypoints.push([1.2, 104.2]);
-  
-  // South from Singapore — go EAST of Sumatra, through Java Sea
-  // Then south through Sunda Strait (between Sumatra & Java) or Lombok Strait
-  waypoints.push([-1, 106]);              // South of Singapore, Java Sea
-  waypoints.push([-4, 107]);              // Java Sea (east of Sumatra, north of Java)
-  waypoints.push([-6.5, 106]);            // Sunda Strait (between Sumatra & Java)
-  waypoints.push([-8, 104]);              // Exit Sunda Strait into Indian Ocean
-  
-  // Indian Ocean — head southeast to Australia
-  waypoints.push([-12, 100]);             // Open Indian Ocean south of Sumatra
-  waypoints.push([-18, 98]);              // Indian Ocean
-  waypoints.push([-25, 102]);             // Turning east toward Australia
-  waypoints.push([-30, 110]);             // Approaching Western Australia
-  waypoints.push([-33, 118]);             // Off Perth
-  waypoints.push([-35, 126]);             // Great Australian Bight
-  waypoints.push([-37, 135]);             // GAB east
-  waypoints.push([-39, 143]);             // Bass Strait approach
-  waypoints.push([-38.3, 144.8]);         // Port Phillip entrance
-  
-  waypoints.push([dest.lat, dest.lng]);
+  if (isTransPacific) {
+    // China → Trans-Pacific → US/Canada West Coast
+    waypoints.push([18, 120]);              // South China Sea / Philippines
+    waypoints.push([22, 130]);              // East of Taiwan
+    waypoints.push([30, 145]);              // Open Pacific, east of Japan
+    waypoints.push([35, 160]);              // Mid-Pacific
+    waypoints.push([38, 175]);              // Mid-Pacific
+    waypoints.push([40, -170]);             // Mid-Pacific (date line crossing)
+    waypoints.push([40, -155]);             // Mid-Pacific
+    waypoints.push([38, -140]);             // Eastern Pacific
+    waypoints.push([36, -128]);             // Approaching West Coast
+    waypoints.push([dest.lat, dest.lng]);
+  } else if (isUK) {
+    // China → Singapore → Indian Ocean → Suez → Med → UK
+    waypoints.push([5, 105]);
+    waypoints.push([1.2, 104.2]);           // Singapore
+    waypoints.push([-1, 100]);              // Indian Ocean
+    waypoints.push([0, 75]);                // Central Indian Ocean
+    waypoints.push([5, 55]);                // Arabian Sea
+    waypoints.push([12, 45]);               // Gulf of Aden
+    waypoints.push([13, 43]);               // Bab el-Mandeb
+    waypoints.push([27, 34]);               // Red Sea
+    waypoints.push([30, 32.5]);             // Suez Canal
+    waypoints.push([31.5, 32]);             // Port Said
+    waypoints.push([35, 20]);               // Mediterranean
+    waypoints.push([36, 5]);                // Western Med
+    waypoints.push([37, -5]);               // Strait of Gibraltar
+    waypoints.push([43, -8]);               // Bay of Biscay
+    waypoints.push([48, -5]);               // English Channel approach
+    waypoints.push([50, 0]);                // English Channel
+    waypoints.push([dest.lat, dest.lng]);
+  } else if (isSG) {
+    // China → Singapore (short route)
+    waypoints.push([5, 105]);
+    waypoints.push([dest.lat, dest.lng]);
+  } else if (isNZ) {
+    // China → Singapore → Australia → NZ
+    waypoints.push([5, 105]);
+    waypoints.push([1.2, 104.2]);
+    waypoints.push([-1, 106]); waypoints.push([-4, 107]); waypoints.push([-6.5, 106]); waypoints.push([-8, 104]);
+    waypoints.push([-12, 100]); waypoints.push([-18, 98]); waypoints.push([-25, 102]);
+    waypoints.push([-30, 110]); waypoints.push([-33, 118]); waypoints.push([-35, 126]);
+    waypoints.push([-37, 140]); waypoints.push([-38, 150]); waypoints.push([-37, 160]);
+    waypoints.push([-36, 170]);
+    waypoints.push([dest.lat, dest.lng]);
+  } else {
+    // Default: Australia route (China → Singapore → Sunda Strait → Indian Ocean → Melbourne)
+    waypoints.push([5, 105]);
+    waypoints.push([1.2, 104.2]);           // Singapore
+    waypoints.push([-1, 106]);              // Java Sea
+    waypoints.push([-4, 107]);
+    waypoints.push([-6.5, 106]);            // Sunda Strait
+    waypoints.push([-8, 104]);              // Exit into Indian Ocean
+    waypoints.push([-12, 100]);
+    waypoints.push([-18, 98]);
+    waypoints.push([-25, 102]);
+    waypoints.push([-30, 110]);
+    waypoints.push([-33, 118]);             // Off Perth
+    waypoints.push([-35, 126]);             // Great Australian Bight
+    waypoints.push([-37, 135]);
+    waypoints.push([-39, 143]);             // Bass Strait approach
+    waypoints.push([-38.3, 144.8]);         // Port Phillip entrance
+    waypoints.push([dest.lat, dest.lng]);
+  }
   
   // Smooth interpolation
   const points = [];
