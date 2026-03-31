@@ -80,6 +80,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </div>
 <div class="map-container">
   <div id="map"></div>
+  <div id="map-legend" style="position:absolute;bottom:24px;right:16px;z-index:1000;background:rgba(255,255,255,0.92);border-radius:8px;padding:10px 14px;font-size:11px;line-height:20px;box-shadow:0 1px 4px rgba(0,0,0,0.15)">
+    <div style="font-weight:600;margin-bottom:4px">Routes</div>
+    <div><span style="display:inline-block;width:18px;height:3px;background:#5BAB31;border-radius:2px;vertical-align:middle;margin-right:6px"></span>Australia</div>
+    <div><span style="display:inline-block;width:18px;height:3px;background:#3B82F6;border-radius:2px;vertical-align:middle;margin-right:6px"></span>USA</div>
+    <div><span style="display:inline-block;width:18px;height:3px;background:#8B5CF6;border-radius:2px;vertical-align:middle;margin-right:6px"></span>Canada</div>
+    <div><span style="display:inline-block;width:18px;height:3px;background:#F59E0B;border-radius:2px;vertical-align:middle;margin-right:6px"></span>UK</div>
+    <div><span style="display:inline-block;width:18px;height:3px;background:#06B6D4;border-radius:2px;vertical-align:middle;margin-right:6px"></span>NZ</div>
+    <div><span style="display:inline-block;width:18px;height:3px;background:#EF4444;border-radius:2px;vertical-align:middle;margin-right:6px"></span>Singapore</div>
+    <div style="margin-top:4px;border-top:1px solid #eee;padding-top:4px"><span style="display:inline-block;width:18px;height:3px;background:#DDE3D5;border-radius:2px;vertical-align:middle;margin-right:6px;border:1px dashed #bbb"></span>Not yet departed</div>
+  </div>
 </div>
 <script>
 const SESSION=sessionStorage.getItem('session');
@@ -207,7 +217,19 @@ function renderMap(){
     
     // Route line
     const routePoints=getRoutePoints(s.origin,s.destination);
-    const line=L.polyline(routePoints,{color:s.shipmentStatus==='in_transit'?'#5BAB31':'#DDE3D5',weight:s.shipmentStatus==='in_transit'?2.5:1.5,opacity:s.shipmentStatus==='in_transit'?0.8:0.4,dashArray:s.shipmentStatus==='in_transit'?null:'8 6'}).addTo(map);
+    // Route color by destination
+    const ROUTE_COLORS={
+      'Melbourne':'#5BAB31',    // 🟢 Green — Australia
+      'Los Angeles':'#3B82F6',  // 🔵 Blue — USA
+      'Vancouver':'#8B5CF6',    // 🟣 Purple — Canada
+      'Felixstowe':'#F59E0B',   // 🟡 Amber — UK
+      'Auckland':'#06B6D4',     // 🔵 Cyan — NZ
+      'Singapore':'#EF4444'     // 🔴 Red — Singapore
+    };
+    const destCity=s.destination.city||s.destination.port||'Melbourne';
+    const routeColor=ROUTE_COLORS[destCity]||'#5BAB31';
+    const isActive=s.shipmentStatus==='in_transit';
+    const line=L.polyline(routePoints,{color:isActive?routeColor:'#DDE3D5',weight:isActive?2.5:1.5,opacity:isActive?0.8:0.4,dashArray:isActive?null:'8 6'}).addTo(map);
     routeLines.push(line);
     
     // Ship marker — use real AIS position if available, else interpolate along route
