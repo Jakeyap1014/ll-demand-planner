@@ -439,8 +439,10 @@ function getPointAlongRoute(points,progress){
 }
 
 function buildPopup(s){
-  const items=Object.entries(s.items||{}).slice(0,8).map(([sku,qty])=>`<tr><td>${sku}</td><td>${qty}</td></tr>`).join('');
-  const moreItems=Object.keys(s.items||{}).length>8?`<tr><td colspan="2" style="color:var(--dim)">+${Object.keys(s.items).length-8} more...</td></tr>`:'';
+  const allItems=Object.entries(s.items||{});
+  const visibleItems=allItems.slice(0,8).map(([sku,qty])=>`<tr><td>${sku}</td><td>${qty}</td></tr>`).join('');
+  const hiddenItems=allItems.slice(8).map(([sku,qty])=>`<tr style="display:none" class="sku-hidden-${s.reference.replace(/[^a-zA-Z0-9]/g,'')}""><td>${sku}</td><td>${qty}</td></tr>`).join('');
+  const moreItems=allItems.length>8?`<tr class="sku-toggle-${s.reference.replace(/[^a-zA-Z0-9]/g,'')}" style="cursor:pointer" onclick="this.style.display='none';document.querySelectorAll('.sku-hidden-${s.reference.replace(/[^a-zA-Z0-9]/g,'')}').forEach(r=>r.style.display='')"><td colspan="2" style="color:var(--teal);font-weight:600">+${allItems.length-8} more...</td></tr>`:'';
   return`<div class="popup-content">
     <h3>${s.reference}</h3>
     <table>
@@ -453,7 +455,7 @@ function buildPopup(s){
       <tr><td>Units</td><td>${s.totalUnits} across ${s.skuCount} SKUs</td></tr>
       <tr><td>Value</td><td>$${s.total.toLocaleString()} ${s.currency}</td></tr>
     </table>
-    ${items?'<table style="margin-top:8px"><tr><td><b>SKU</b></td><td><b>Qty</b></td></tr>'+items+moreItems+'</table>':''}
+    ${visibleItems?'<table style="margin-top:8px"><tr><td><b>SKU</b></td><td><b>Qty</b></td></tr>'+visibleItems+hiddenItems+moreItems+'</table>':''}
   </div>`;
 }
 
