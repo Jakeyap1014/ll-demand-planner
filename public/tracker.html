@@ -69,10 +69,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="summary-item"><div class="num" id="transitValue">-</div><div class="lbl">In Transit Value</div></div>
   </div>
   <div class="filter-bar" style="display:flex;gap:0;border-bottom:1px solid var(--border)">
-    <button class="filter-tab active" onclick="setFilter('active',this)" style="flex:1;padding:10px;border:none;background:var(--teal);color:#fff;cursor:pointer;font-size:12px;font-weight:600">Active</button>
-    <button class="filter-tab" onclick="setFilter('in_transit',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">In Transit</button>
-    <button class="filter-tab" onclick="setFilter('production',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">Production</button>
-    <button class="filter-tab" onclick="setFilter('arrived',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">Arrived</button>
+    <button class="filter-tab active" id="tab-active" onclick="setFilter('active',this)" style="flex:1;padding:10px;border:none;background:var(--teal);color:#fff;cursor:pointer;font-size:12px;font-weight:600">Active <span id="cnt-active"></span></button>
+    <button class="filter-tab" id="tab-in_transit" onclick="setFilter('in_transit',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">In Transit <span id="cnt-in_transit"></span></button>
+    <button class="filter-tab" id="tab-production" onclick="setFilter('production',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">Production <span id="cnt-production"></span></button>
+    <button class="filter-tab" id="tab-arrived" onclick="setFilter('arrived',this)" style="flex:1;padding:10px;border:none;background:var(--card);color:var(--dim);cursor:pointer;font-size:12px;font-weight:600;border-left:1px solid var(--border)">Arrived <span id="cnt-arrived"></span></button>
   </div>
   <div class="shipment-list" id="shipmentList">
     <div style="padding:40px;text-align:center;color:var(--dim)">Loading shipments...</div>
@@ -136,9 +136,21 @@ async function loadShipments(){
     if(r.status===401)return window.location.href='/login';
     const d=await r.json();
     shipments=d.shipments||[];
+    updateTabCounts();
     renderSidebar();
     renderMap();
   }catch(e){document.getElementById('shipmentList').innerHTML=`<div style="padding:20px;color:#C33252">Error: ${e.message}</div>`}
+}
+
+function updateTabCounts(){
+  const active=shipments.filter(s=>s.shipmentStatus!=='arrived').length;
+  const transit=shipments.filter(s=>s.shipmentStatus==='in_transit').length;
+  const prod=shipments.filter(s=>s.shipmentStatus==='production').length;
+  const arrived=shipments.filter(s=>s.shipmentStatus==='arrived').length;
+  document.getElementById('cnt-active').textContent='('+active+')';
+  document.getElementById('cnt-in_transit').textContent='('+transit+')';
+  document.getElementById('cnt-production').textContent='('+prod+')';
+  document.getElementById('cnt-arrived').textContent='('+arrived+')';
 }
 
 function renderSidebar(){
