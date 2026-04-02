@@ -602,10 +602,10 @@ function buildCKData(ckId) {
     }
   }
 
-  // Purchase Orders
+  // Purchase Orders (open = for incoming calculations, all = for PO tab)
   const pos = [];
+  const allPos = [];
   for (const po of dataCache.cin7POs) {
-    if (po.stage === 'Received') continue; // Don't count received POs as incoming stock
     const relevantItems = {};
     for (const [sku, qty] of Object.entries(po.items)) {
       if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
@@ -614,7 +614,10 @@ function buildCKData(ckId) {
       }
     }
     if (Object.keys(relevantItems).length > 0) {
-      pos.push({ ...po, items: relevantItems });
+      allPos.push({ ...po, items: relevantItems });
+      if (po.stage !== 'Received') {
+        pos.push({ ...po, items: relevantItems });
+      }
     }
   }
   
@@ -767,6 +770,7 @@ function buildCKData(ckId) {
     shopify,
     velocity,
     pos,
+    allPos,
     names,
     sizes: def.sizes,
     costs,

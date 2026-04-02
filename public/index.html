@@ -24,7 +24,7 @@
 .tabs{display:flex;gap:0;background:var(--bg-secondary);padding:0 32px;border-bottom:1px solid var(--border)}
 .tab{padding:10px 20px;cursor:pointer;font-size:13px;font-weight:500;color:#A8C5C8;border-bottom:3px solid transparent;transition:all 0.2s}
 .tab:hover{color:#FFF;background:rgba(255,255,255,0.1)}.tab.active{color:#FFF;border-bottom-color:#FFF}
-.container{max-width:1600px;margin:0 auto;padding:24px 32px}.view{display:none}.view.active{display:block}
+.container{max-width:1600px;margin:0 auto;padding:24px 32px}.view{display:none}.view.active{display:block}.po-items.open{max-height:2000px!important}
 .loading{text-align:center;padding:60px;color:var(--text-dim)}.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
@@ -99,6 +99,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
     <div class="tab" data-view="stockout">📉 Stockout</div>
     <div class="tab" data-view="reorder">🚨 Reorder</div>
     <div class="tab" data-view="forecast">📈 Forecast</div>
+    <div class="tab" data-view="purchaseorders">📋 Purchase Orders</div>
   </div>
   <div class="container">
     <div id="loadingScreen" class="loading"><div class="spinner"></div><br>Loading data from CIN7 + Shopify...</div>
@@ -144,6 +145,19 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
       </div>
       <div class="table-wrap"><table id="reorderTable"><thead></thead><tbody></tbody></table></div>
     </div>
+    <div id="purchaseorders" class="view">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="font-size:16px">Purchase Orders</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="poStatusFilter" onchange="renderPurchaseOrders()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px">
+            <option value="open">Open / In Transit</option>
+            <option value="received">Received</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+      </div>
+      <div id="poList"></div>
+    </div>
   </div>
 </div>
 <div class="modal-overlay" id="forecastModal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><button class="close-btn" onclick="document.getElementById('forecastModal').classList.remove('open')">&#10005;</button><h2>Forecast Accuracy — How It Works</h2><h3>What is WMAPE?</h3><p><b>Weighted Mean Absolute Percentage Error</b> measures how accurate demand forecasts are. Lower = more predictable.</p><h3>How We Forecast</h3><p>4-week rolling average: Forecast(this week) = avg of actual sales from the previous 4 weeks.</p><div class="formula">Forecast = (Week-4 + Week-3 + Week-2 + Week-1) / 4</div><h3>WMAPE Formula</h3><div class="formula">WMAPE = Sum(|Forecast - Actual|) / Sum(Actual) x 100%</div><h3>How to Read Results</h3><table><tr><th>WMAPE</th><th>Rating</th><th>Meaning</th></tr><tr><td style="color:green"><b>0-30%</b></td><td>Good</td><td>Demand predictable. Trust reorder calculations.</td></tr><tr><td style="color:orange"><b>31-50%</b></td><td>Fair</td><td>Some variability. Add extra safety stock.</td></tr><tr><td style="color:red"><b>50%+</b></td><td>Poor</td><td>Erratic demand. Plan manually with larger buffers.</td></tr></table><h3>What Causes High WMAPE?</h3><p>Promotions/sales events, stockouts (zero sales = not demand), new products with no history, seasonal shifts, viral social media spikes.</p><h3>Data Source</h3><p>Shopify order history (90 days), grouped by ISO week. First 4 weeks = seed. WMAPE evaluated from week 5 onwards.</p><h3>Limitations</h3><p>Simple moving average (no trend/seasonality adjustment). 90-day window = ~9 weeks of evaluation. Stockout periods artificially improve WMAPE.</p></div></div>
@@ -157,7 +171,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
 const SESSION=new URLSearchParams(window.location.search).get('session')||sessionStorage.getItem('session');
 if(!SESSION)window.location.href='/login';sessionStorage.setItem('session',SESSION);if(window.location.search)history.replaceState({},'','/');
 const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
-let DATA={cin7:{},shopify:{},velocity:{},pos:[],names:{},sizes:{}},currentCK=null,charts={},dashFilter={size:'All'},heatmapSortMode='risk';
+let DATA={cin7:{},shopify:{},velocity:{},pos:[],allPos:[],names:{},sizes:{}},currentCK=null,charts={},dashFilter={size:'All'},heatmapSortMode='risk';
 const TODAY=new Date();
 function getSkus(){return[...new Set([...Object.keys(DATA.cin7),...Object.keys(DATA.velocity)])]}
 function getNet(s){return(DATA.cin7[s]||0)+Math.min(DATA.shopify[s]||0,0)}
@@ -179,6 +193,7 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   t.classList.add('active');document.getElementById(t.dataset.view).classList.add('active');
   if(t.dataset.view==='stockout')setTimeout(renderStockout,100);
   if(t.dataset.view==='reorder')renderReorder();if(t.dataset.view==='forecast')renderForecast();
+  if(t.dataset.view==='purchaseorders')renderPurchaseOrders();
 }));
 
 async function loadSidebar(){
@@ -192,7 +207,7 @@ async function selectCK(ckId){
   currentCK=ckId;document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.ck===ckId));
   document.getElementById('loadingScreen').style.display='block';document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   try{const r=await fetch(`/api/ck/${ckId}`,{headers:H()});if(r.status===401)return window.location.href='/login';const d=await r.json();
-  DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,costs:d.costs||{},trendData:d.trendData||{},weeklyData:d.weeklyData||null};
+  DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],allPos:d.allPos||d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,costs:d.costs||{},trendData:d.trendData||{},weeklyData:d.weeklyData||null};
   document.getElementById('headerTitle').innerHTML=`<img src="/logos/${d.ck.logo}" style="height:32px;filter:brightness(0) invert(1)"> ${d.ck.name}`;
   document.getElementById('headerSub').textContent=`${Object.keys(DATA.cin7).length} CIN7 SKUs · ${Object.keys(DATA.velocity).length} with velocity · ${DATA.pos.length} open POs`;
   document.getElementById('headerMeta').textContent=d.lastRefresh?'Last refresh: '+new Date(d.lastRefresh).toLocaleString():'';
@@ -399,6 +414,72 @@ try{const r=await fetch('/api/chat',{method:'POST',headers:H(),body:JSON.stringi
 ms.innerHTML+=`<div class="chat-msg bot">${d.reply||'Error'}</div>`;chatHistory.push({role:'assistant',text:d.reply})}catch(e){document.getElementById('typing')?.remove();ms.innerHTML+=`<div class="chat-msg bot">Connection error.</div>`}ms.scrollTop=ms.scrollHeight}
 async function manualRefresh(){document.getElementById('refreshBtn').textContent='⏳...';try{await fetch('/api/refresh',{method:'POST',headers:H()});if(currentCK)await selectCK(currentCK);loadSidebar()}catch(e){}document.getElementById('refreshBtn').textContent='🔄 Refresh'}
 // Forecast Accuracy (WMAPE)
+function renderPurchaseOrders() {
+  const filter = document.getElementById('poStatusFilter')?.value || 'open';
+  const pos = (DATA.allPos || DATA.pos || []).filter(po => {
+    if (filter === 'open') return po.stage !== 'Received';
+    if (filter === 'received') return po.stage === 'Received';
+    return true;
+  });
+  // Sort: open first (by ETA asc), then received (by date desc)
+  pos.sort((a, b) => {
+    if (filter === 'received') return (b.arrival || '').localeCompare(a.arrival || '');
+    const aDate = a.arrival ? new Date(a.arrival) : new Date('2099-01-01');
+    const bDate = b.arrival ? new Date(b.arrival) : new Date('2099-01-01');
+    return aDate - bDate;
+  });
+  const container = document.getElementById('poList');
+  if (!pos.length) { container.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:40px">No purchase orders found</p>'; return; }
+  const fmt = d => { if (!d) return '—'; try { return new Date(d).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}); } catch(e) { return d; } };
+  const totalItems = po => Object.values(po.items || {}).reduce((t, q) => t + q, 0);
+  const skuCount = po => Object.keys(po.items || {}).length;
+  const stageBadge = po => {
+    if (po.stage === 'Received') return '<span class="badge healthy">RECEIVED</span>';
+    if (po.stage === 'New') return '<span class="badge ok">NEW</span>';
+    return '<span class="badge low">OPEN</span>';
+  };
+  container.innerHTML = pos.map((po, i) => {
+    const items = Object.entries(po.items || {}).sort(([a],[b]) => a.localeCompare(b));
+    const eta = po.arrival ? fmt(po.arrival) : (po.customFields?.orders_1000 || '—');
+    const etd = po.etd ? fmt(po.etd) : '—';
+    const originalEta = po.customFields?.orders_1000 || '—';
+    return `<div style="border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--bg-card);overflow:hidden">
+      <div onclick="this.parentElement.querySelector('.po-items').classList.toggle('open')" style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-family:monospace;font-weight:700;font-size:13px;color:var(--blue)">${po.reference}</span>
+          ${stageBadge(po)}
+          <span style="font-size:11px;color:var(--text-dim)">${po.company || ''}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px;font-size:11px;color:var(--text-dim)">
+          <span title="ETD (Departure)">🚢 ETD: ${etd}</span>
+          <span title="ETA (Updated Arrival)" style="color:var(--text)">📅 ETA: <b>${eta}</b></span>
+          <span title="Original ETA">📌 Orig: ${originalEta}</span>
+          <span>${skuCount(po)} SKUs · ${totalItems(po)} units</span>
+          <span style="font-size:14px;transition:transform 0.2s">▼</span>
+        </div>
+      </div>
+      <div class="po-items" style="max-height:0;overflow:hidden;transition:max-height 0.3s ease">
+        <table style="width:100%;font-size:11px;border-collapse:collapse">
+          <thead><tr style="background:var(--bg-body)">
+            <th style="text-align:left;padding:8px 18px;color:var(--text-dim);font-weight:600">SKU</th>
+            <th style="text-align:left;padding:8px;color:var(--text-dim);font-weight:600">Product</th>
+            <th style="text-align:right;padding:8px 18px;color:var(--text-dim);font-weight:600">Qty</th>
+          </tr></thead>
+          <tbody>${items.map(([sku, qty]) => `<tr style="border-top:1px solid var(--border)">
+            <td style="padding:6px 18px;font-family:monospace;font-size:10px">${sku}</td>
+            <td style="padding:6px 8px">${DATA.names?.[sku] || ''}</td>
+            <td style="padding:6px 18px;text-align:right;font-weight:600">${qty}</td>
+          </tr>`).join('')}</tbody>
+          <tfoot><tr style="border-top:2px solid var(--border);font-weight:700">
+            <td style="padding:8px 18px" colspan="2">Total</td>
+            <td style="padding:8px 18px;text-align:right">${totalItems(po)}</td>
+          </tr></tfoot>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function renderForecast() {
   if (!DATA.weeklyData) {
     document.getElementById('forecast-cards').innerHTML = '<div class="card yellow"><div class="label">No Data</div><div class="value">—</div><div class="sub">Weekly sales data not available</div></div>';
