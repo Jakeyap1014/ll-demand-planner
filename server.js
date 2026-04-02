@@ -203,7 +203,8 @@ async function fetchCin7POs() {
             reference: po.reference,
             status: po.status,
             stage: po.stage || '',
-            arrival: po.estimatedDeliveryDate || null,
+            arrival: po.estimatedArrivalDate || po.estimatedDeliveryDate || null,
+            etd: po.estimatedDeliveryDate || null,
             estimatedArrivalDate: po.estimatedArrivalDate || null,
             fullyReceivedDate: po.fullyReceivedDate || null,
             customFields: po.customFields || {},
@@ -1092,29 +1093,27 @@ function buildShipmentData() {
     const origin = getSupplierOrigin(po.company || '');
     const dest = getDestination(po);
     
-    // ETD = estimatedDeliveryDate (departure from China)
+    // ETD = estimatedDeliveryDate (departure from origin)
     let etd = null;
-    if (po.arrival) {
-      etd = new Date(po.arrival);
+    if (po.etd) {
+      etd = new Date(po.etd);
     }
     
-    // ETA = customFields.orders_1000 (Original ETA Date)
+    // ETA = estimatedArrivalDate (updated/revised ETA), fallback to Original ETA custom field
     let eta = null;
-    if (po.customFields?.orders_1000) {
+    if (po.estimatedArrivalDate) {
+      eta = new Date(po.estimatedArrivalDate);
+    }
+    if ((!eta || isNaN(eta.getTime())) && po.customFields?.orders_1000) {
       const cf = po.customFields.orders_1000;
-      // Handle various date formats: "2-3-2026", "16-Mar-2026", "5-5-2026"
       const parsed = new Date(cf.replace(/(\d+)-(\d+)-(\d+)/, (m, d, mo, y) => {
         return y + '-' + mo.padStart(2,'0') + '-' + d.padStart(2,'0');
       }));
       if (!isNaN(parsed.getTime())) eta = parsed;
-      // If that didn't work, try direct parse (handles "16-Mar-2026")
       if (!eta || isNaN(eta.getTime())) {
         const direct = new Date(cf);
         if (!isNaN(direct.getTime())) eta = direct;
       }
-    }
-    if (!eta && po.estimatedArrivalDate) {
-      eta = new Date(po.estimatedArrivalDate);
     }
     
     // Actual received date
