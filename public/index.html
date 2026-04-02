@@ -81,6 +81,8 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
   <div class="sidebar-brand"><h2>Lifely</h2><small>Demand Planner</small></div>
   <div class="sidebar-label">Category Killers</div>
   <div id="sidebarNav"></div>
+  <div class="sidebar-label">Tools</div>
+  <div class="sidebar-item" onclick="showAllPOs()" id="poNavItem">📋 <span>Purchase Orders</span></div>
   <div style="padding:8px"><a href="/tracker" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;font-size:13px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.15);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">🚢 Shipment Tracker</a></div>
   <div class="sidebar-footer" id="sidebarFooter">Loading...</div>
   <div style="padding:4px 8px 0"><a href="https://docs.google.com/document/d/1GTVkikz4bhFILlPM1ys2IlT0Xh-ZCBfwNIArEW8BBew/edit" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:12px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.1);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">📖 User Guide</a></div>
@@ -99,7 +101,6 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
     <div class="tab" data-view="stockout">📉 Stockout</div>
     <div class="tab" data-view="reorder">🚨 Reorder</div>
     <div class="tab" data-view="forecast">📈 Forecast</div>
-    <div class="tab" data-view="purchaseorders">📋 Purchase Orders</div>
   </div>
   <div class="container">
     <div id="loadingScreen" class="loading"><div class="spinner"></div><br>Loading data from CIN7 + Shopify...</div>
@@ -145,19 +146,26 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
       </div>
       <div class="table-wrap"><table id="reorderTable"><thead></thead><tbody></tbody></table></div>
     </div>
-    <div id="purchaseorders" class="view">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:16px">Purchase Orders</h2>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select id="poStatusFilter" onchange="renderPurchaseOrders()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px">
-            <option value="open">Open / In Transit</option>
-            <option value="received">Received</option>
-            <option value="all">All</option>
-          </select>
-        </div>
+  </div>
+</div>
+<div id="allPOsView" style="display:none;margin-left:var(--sidebar-w);min-height:100vh;background:var(--bg-primary)">
+  <div style="max-width:1600px;margin:0 auto;padding:24px 32px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div>
+        <h1 style="font-size:20px;font-weight:700">📋 Purchase Orders</h1>
+        <p style="font-size:12px;color:var(--text-dim);margin-top:4px">All POs across every Category Killer</p>
       </div>
-      <div id="poList"></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="poStatusFilter" onchange="loadAllPOs()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px">
+          <option value="open">Open / In Transit</option>
+          <option value="received">Received</option>
+          <option value="all">All</option>
+        </select>
+        <button onclick="hideAllPOs()" class="btn btn-ghost" style="padding:4px 12px;font-size:12px">← Back</button>
+      </div>
     </div>
+    <div id="poSummaryCards" class="cards" style="margin-bottom:20px"></div>
+    <div id="poList"></div>
   </div>
 </div>
 <div class="modal-overlay" id="forecastModal" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal"><button class="close-btn" onclick="document.getElementById('forecastModal').classList.remove('open')">&#10005;</button><h2>Forecast Accuracy — How It Works</h2><h3>What is WMAPE?</h3><p><b>Weighted Mean Absolute Percentage Error</b> measures how accurate demand forecasts are. Lower = more predictable.</p><h3>How We Forecast</h3><p>4-week rolling average: Forecast(this week) = avg of actual sales from the previous 4 weeks.</p><div class="formula">Forecast = (Week-4 + Week-3 + Week-2 + Week-1) / 4</div><h3>WMAPE Formula</h3><div class="formula">WMAPE = Sum(|Forecast - Actual|) / Sum(Actual) x 100%</div><h3>How to Read Results</h3><table><tr><th>WMAPE</th><th>Rating</th><th>Meaning</th></tr><tr><td style="color:green"><b>0-30%</b></td><td>Good</td><td>Demand predictable. Trust reorder calculations.</td></tr><tr><td style="color:orange"><b>31-50%</b></td><td>Fair</td><td>Some variability. Add extra safety stock.</td></tr><tr><td style="color:red"><b>50%+</b></td><td>Poor</td><td>Erratic demand. Plan manually with larger buffers.</td></tr></table><h3>What Causes High WMAPE?</h3><p>Promotions/sales events, stockouts (zero sales = not demand), new products with no history, seasonal shifts, viral social media spikes.</p><h3>Data Source</h3><p>Shopify order history (90 days), grouped by ISO week. First 4 weeks = seed. WMAPE evaluated from week 5 onwards.</p><h3>Limitations</h3><p>Simple moving average (no trend/seasonality adjustment). 90-day window = ~9 weeks of evaluation. Stockout periods artificially improve WMAPE.</p></div></div>
@@ -193,7 +201,6 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   t.classList.add('active');document.getElementById(t.dataset.view).classList.add('active');
   if(t.dataset.view==='stockout')setTimeout(renderStockout,100);
   if(t.dataset.view==='reorder')renderReorder();if(t.dataset.view==='forecast')renderForecast();
-  if(t.dataset.view==='purchaseorders')renderPurchaseOrders();
 }));
 
 async function loadSidebar(){
@@ -204,6 +211,8 @@ async function loadSidebar(){
   if(d.list.length>0)selectCK(d.list[0].id)}catch(e){document.getElementById('sidebarNav').innerHTML='<div style="padding:12px;color:#C33252">Failed to load</div>'}}
 
 async function selectCK(ckId){
+  document.getElementById('allPOsView').style.display='none';document.querySelector('.main').style.display='block';
+  document.getElementById('poNavItem').classList.remove('active');
   currentCK=ckId;document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.ck===ckId));
   document.getElementById('loadingScreen').style.display='block';document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   try{const r=await fetch(`/api/ck/${ckId}`,{headers:H()});if(r.status===401)return window.location.href='/login';const d=await r.json();
@@ -414,9 +423,34 @@ try{const r=await fetch('/api/chat',{method:'POST',headers:H(),body:JSON.stringi
 ms.innerHTML+=`<div class="chat-msg bot">${d.reply||'Error'}</div>`;chatHistory.push({role:'assistant',text:d.reply})}catch(e){document.getElementById('typing')?.remove();ms.innerHTML+=`<div class="chat-msg bot">Connection error.</div>`}ms.scrollTop=ms.scrollHeight}
 async function manualRefresh(){document.getElementById('refreshBtn').textContent='⏳...';try{await fetch('/api/refresh',{method:'POST',headers:H()});if(currentCK)await selectCK(currentCK);loadSidebar()}catch(e){}document.getElementById('refreshBtn').textContent='🔄 Refresh'}
 // Forecast Accuracy (WMAPE)
-function renderPurchaseOrders() {
+async function showAllPOs() {
+  document.querySelector('.main').style.display = 'none';
+  document.getElementById('allPOsView').style.display = 'block';
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('poNavItem').classList.add('active');
+  await loadAllPOs();
+}
+function hideAllPOs() {
+  document.getElementById('allPOsView').style.display = 'none';
+  document.querySelector('.main').style.display = 'block';
+  document.getElementById('poNavItem').classList.remove('active');
+  if (currentCK) document.querySelector(`[data-ck="${currentCK}"]`)?.classList.add('active');
+}
+
+async function loadAllPOs() {
+  const container = document.getElementById('poList');
+  container.innerHTML = '<p style="text-align:center;padding:40px;color:var(--text-dim)">Loading...</p>';
+  try {
+    const r = await fetch('/api/all-pos', { headers: H() });
+    if (r.status === 401) return window.location.href = '/login';
+    const d = await r.json();
+    renderPurchaseOrders(d.pos);
+  } catch(e) { container.innerHTML = '<p style="color:var(--alert);text-align:center;padding:40px">Failed to load POs</p>'; }
+}
+
+function renderPurchaseOrders(allPOs) {
   const filter = document.getElementById('poStatusFilter')?.value || 'open';
-  const pos = (DATA.allPos || DATA.pos || []).filter(po => {
+  const pos = (allPOs || []).filter(po => {
     if (filter === 'open') return po.stage !== 'Received';
     if (filter === 'received') return po.stage === 'Received';
     return true;
@@ -438,6 +472,17 @@ function renderPurchaseOrders() {
     if (po.stage === 'New') return '<span class="badge ok">NEW</span>';
     return '<span class="badge low">OPEN</span>';
   };
+  // Summary cards
+  const openCount = (allPOs||[]).filter(p => p.stage !== 'Received').length;
+  const receivedCount = (allPOs||[]).filter(p => p.stage === 'Received').length;
+  const totalUnits = pos.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
+  const totalSkus = pos.reduce((t, po) => t + Object.keys(po.items||{}).length, 0);
+  document.getElementById('poSummaryCards').innerHTML = `
+    <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${filter==='open'?'Open/In Transit':filter==='received'?'Received':'All'} POs</div></div>
+    <div class="card green"><div class="label">Open POs</div><div class="value">${openCount}</div><div class="sub">Awaiting receipt</div></div>
+    <div class="card"><div class="label">Total Units</div><div class="value">${totalUnits.toLocaleString()}</div><div class="sub">Across ${totalSkus} SKU lines</div></div>
+    <div class="card"><div class="label">Received</div><div class="value">${receivedCount}</div><div class="sub">Completed POs</div></div>
+  `;
   container.innerHTML = pos.map((po, i) => {
     const items = Object.entries(po.items || {}).sort(([a],[b]) => a.localeCompare(b));
     const eta = po.arrival ? fmt(po.arrival) : (po.customFields?.orders_1000 || '—');

@@ -845,6 +845,22 @@ app.get('/api/ck-list', requireAuth, (req, res) => {
 });
 
 // CK data
+app.get('/api/all-pos', requireAuth, (req, res) => {
+  const pos = dataCache.cin7POs.map(po => ({
+    reference: po.reference,
+    stage: po.stage || '',
+    company: po.company || '',
+    arrival: po.arrival || null,
+    etd: po.etd || null,
+    estimatedArrivalDate: po.estimatedArrivalDate || null,
+    customFields: po.customFields || {},
+    trackingCode: po.trackingCode || '',
+    fullyReceivedDate: po.fullyReceivedDate || null,
+    items: po.items || {}
+  }));
+  res.json({ pos, lastRefresh: dataCache.lastRefresh });
+});
+
 app.get('/api/ck/:id', requireAuth, (req, res) => {
   const data = buildCKData(req.params.id);
   if (!data) return res.status(404).json({ error: 'Unknown CK' });
