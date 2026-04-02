@@ -46,11 +46,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .sc-eta.noeta{color:var(--red)}
 .map-container{flex:1;position:relative}
 #map{width:100%;height:100%}
-.popup-content{font-size:12px;line-height:1.6}
-.popup-content h3{font-size:14px;margin-bottom:8px;color:var(--teal)}
+.popup-content{font-size:12px;line-height:1.6;max-height:60vh;overflow-y:auto}
+.popup-content h3{font-size:14px;margin-bottom:8px;color:var(--teal);position:sticky;top:0;background:#fff;padding-bottom:4px}
 .popup-content table{font-size:11px;border-collapse:collapse;width:100%;margin-top:8px}
 .popup-content td{padding:2px 6px;border-bottom:1px solid #eee}
 .popup-content td:first-child{font-weight:600;color:var(--dim);white-space:nowrap}
+.leaflet-popup-content{max-height:70vh;overflow:visible}
 .back-link{position:absolute;top:12px;left:12px;z-index:1000;background:var(--card);padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;color:var(--teal);text-decoration:none;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
 .back-link:hover{background:var(--teal);color:#fff}
 @media(max-width:800px){.sidebar{width:100%;height:40vh;border-right:none;border-bottom:1px solid var(--border)}.map-container{height:60vh}body{flex-direction:column}}
@@ -115,6 +116,7 @@ function shipIcon(status){
 
 function originIcon(){return L.divIcon({className:'',html:'<div style="width:10px;height:10px;background:#D4930D;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>',iconSize:[10,10],iconAnchor:[5,5]})}
 function destIcon(){return L.divIcon({className:'',html:'<div style="width:12px;height:12px;background:#2C474B;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div>',iconSize:[12,12],iconAnchor:[6,6]})}
+const POPUP_OPTS={maxWidth:280,minWidth:220,offset:L.point(0,8)};
 
 let markers=[];
 let shipments=[];
@@ -292,24 +294,24 @@ function renderMap(){
       const sm=L.marker([s.vesselPosition.lat, aisLng],{icon:shipIcon('in_transit')}).addTo(map);
       const aisAge = s.vesselPosition.timestamp ? 
         Math.round((Date.now()-new Date(s.vesselPosition.timestamp).getTime())/60000) : '?';
-      sm.bindPopup(buildPopup(s)+`<br><b>🛰 Live AIS</b><br>Speed: ${s.vesselPosition.speed||0} kn, Heading: ${s.vesselPosition.heading||0}°<br><small>Updated ${aisAge} min ago</small>`);
+      sm.bindPopup(buildPopup(s)+`<br><b>🛰 Live AIS</b><br>Speed: ${s.vesselPosition.speed||0} kn, Heading: ${s.vesselPosition.heading||0}°<br><small>Updated ${aisAge} min ago</small>`,POPUP_OPTS);
       markers.push(sm);
     }else if(s.progress>0&&s.progress<1){
       const pos=getPointAlongRoute(routePoints,s.progress);
       const sm=L.marker(pos,{icon:shipIcon(s.shipmentStatus)}).addTo(map);
-      sm.bindPopup(buildPopup(s)+'<br><small>📍 Estimated position</small>');
+      sm.bindPopup(buildPopup(s)+'<br><small>📍 Estimated position</small>',POPUP_OPTS);
       markers.push(sm);
     }else if(s.shipmentStatus==='arrived'){
       // Show arrived marker at destination
       let dLng=s.destination.lng;
       if(dLng<-100) dLng+=360;
       const am=L.marker([s.destination.lat+Math.random()*0.3-0.15, dLng+Math.random()*0.3-0.15],{icon:shipIcon('arrived')}).addTo(map);
-      am.bindPopup(buildPopup(s));
+      am.bindPopup(buildPopup(s),POPUP_OPTS);
       markers.push(am);
     }else if(s.shipmentStatus==='production'){
       // Show factory icon at origin
       const fm=L.marker([s.origin.lat+Math.random()*0.5-0.25,s.origin.lng+Math.random()*0.5-0.25],{icon:shipIcon('production')}).addTo(map);
-      fm.bindPopup(buildPopup(s));
+      fm.bindPopup(buildPopup(s),POPUP_OPTS);
       markers.push(fm);
     }
   });
