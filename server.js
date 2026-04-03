@@ -332,7 +332,8 @@ async function fetchShopifyInventory(storeKey) {
         const pStatus = p.status || 'active';
         for (const v of (p.variants || [])) {
           if (v.sku) {
-            inventory[v.sku] = v.inventory_quantity || 0;
+            // Sum inventory when same SKU appears on multiple products (e.g. combo pre-orders)
+            inventory[v.sku] = (inventory[v.sku] || 0) + (v.inventory_quantity || 0);
             // Track inactive SKUs
 
           }
