@@ -175,7 +175,9 @@ async function fetchCin7AllProducts() {
         const variants = product.productOptions || [];
         for (const v of variants) {
           if (v.code) {
-            results[v.code] = { soh: v.stockOnHand || 0, available: v.stockAvailable || 0, costAUD: v.priceColumns?.costAUD || 0 };
+            const pc = v.priceColumns || {};
+            const costAUD = pc.costAUD || (pc.costUSD ? pc.costUSD * fxRate.USDAUD : 0);
+            results[v.code] = { soh: v.stockOnHand || 0, available: v.stockAvailable || 0, costAUD };
           }
         }
         // Also store parent level if it has SOH
