@@ -858,6 +858,7 @@ app.get('/api/all-pos', requireAuth, (req, res) => {
     fullyReceivedDate: po.fullyReceivedDate || null,
     total: po.total || 0,
     currencyCode: po.currencyCode || 'USD',
+    deliveryCountry: po.deliveryCountry || '',
     items: po.items || {}
   }));
   res.json({ pos, lastRefresh: dataCache.lastRefresh });

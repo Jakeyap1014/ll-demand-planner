@@ -156,6 +156,9 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
         <p style="font-size:12px;color:var(--text-dim);margin-top:4px">All POs across every Category Killer</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <select id="poDestFilter" onchange="_poDestination=this.value;renderPurchaseOrders(_allPOsCache)" style="padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;outline:none;cursor:pointer">
+          <option value="all">All Destinations</option>
+        </select>
         <input type="text" id="poSearch" placeholder="Search PO ref, supplier, SKU..." oninput="renderPurchaseOrders(_allPOsCache)" style="padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;width:240px;outline:none">
       </div>
     </div>
@@ -441,6 +444,7 @@ function hideAllPOs() {
 
 let _allPOsCache = [];
 let _poFilter = 'all';
+let _poDestination = 'all';
 function setPoFilter(f, btn) {
   _poFilter = f;
   document.querySelectorAll('#poFilterBtns .filter-btn').forEach(b => b.classList.remove('active'));
@@ -456,6 +460,11 @@ async function loadAllPOs() {
     if (r.status === 401) return window.location.href = '/login';
     const d = await r.json();
     _allPOsCache = d.pos || [];
+    // Populate destination dropdown
+    const dests = [...new Set(_allPOsCache.map(p => p.deliveryCountry || '').filter(Boolean))].sort();
+    const dd = document.getElementById('poDestFilter');
+    const prev = dd.value;
+    dd.innerHTML = '<option value="all">All Destinations</option>' + dests.map(d => `<option value="${d}"${d===prev?' selected':''}>${d}</option>`).join('');
     renderPurchaseOrders(_allPOsCache);
   } catch(e) { console.error('PO load error:', e); container.innerHTML = '<p style="color:var(--alert);text-align:center;padding:40px">Failed to load POs — try refreshing</p>'; }
 }
@@ -473,6 +482,9 @@ function renderPurchaseOrders(allPOs) {
     if (_poFilter === 'received') return po.stage === 'Received';
     return true;
   });
+  if (_poDestination && _poDestination !== 'all') {
+    pos = pos.filter(po => (po.deliveryCountry || '') === _poDestination);
+  }
   if (search) {
     pos = pos.filter(po => {
       if ((po.reference || '').toLowerCase().includes(search)) return true;
@@ -495,7 +507,7 @@ function renderPurchaseOrders(allPOs) {
   const skuCount = po => Object.keys(po.items || {}).length;
   const stageBadge = po => {
     if (po.stage === 'Received') return '<span class="badge healthy">RECEIVED</span>';
-    if (po.stage === 'New') return '<span class="badge ok">NEW</span>';
+    if (poIsInTransit(po)) return '<span class="badge ok">IN TRANSIT</span>';
     return '<span class="badge low">OPEN</span>';
   };
   // Summary cards
@@ -538,16 +550,14 @@ function renderPurchaseOrders(allPOs) {
         <table style="width:100%;font-size:11px;border-collapse:collapse">
           <thead><tr style="background:var(--bg-body)">
             <th style="text-align:left;padding:8px 18px;color:var(--text-dim);font-weight:600">SKU</th>
-            <th style="text-align:left;padding:8px;color:var(--text-dim);font-weight:600">Product</th>
             <th style="text-align:right;padding:8px 18px;color:var(--text-dim);font-weight:600">Qty</th>
           </tr></thead>
           <tbody>${items.map(([sku, qty]) => `<tr style="border-top:1px solid var(--border)">
             <td style="padding:6px 18px;font-family:monospace;font-size:10px">${sku}</td>
-            <td style="padding:6px 8px">${DATA.names?.[sku] || ''}</td>
             <td style="padding:6px 18px;text-align:right;font-weight:600">${qty}</td>
           </tr>`).join('')}</tbody>
           <tfoot><tr style="border-top:2px solid var(--border);font-weight:700">
-            <td style="padding:8px 18px" colspan="2">Total</td>
+            <td style="padding:8px 18px">Total</td>
             <td style="padding:8px 18px;text-align:right">${totalItems(po)}</td>
           </tr></tfoot>
         </table>
