@@ -535,17 +535,17 @@ function renderPurchaseOrders(allPOs) {
   const transitPOs = (allPOs||[]).filter(p => poIsInTransit(p));
   const overduePOs = (allPOs||[]).filter(p => poIsOverdue(p));
   const receivedCount = (allPOs||[]).filter(p => p.stage === 'Received').length;
-  const totalUnits = pos.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
-  const totalValue = pos.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
-  const productionValue = productionPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
-  const transitValue = transitPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
-  const overdueValue = overduePOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
   const sym = _poCurrency === 'AUD' ? 'A$' : 'US$';
   const cx = (val, fromCurrency) => {
     if (!val) return 0;
     if (_poCurrency === 'AUD') return fromCurrency === 'AUD' ? val : val * _poFxRate;
     return fromCurrency === 'USD' ? val : val / _poFxRate;
   };
+  const totalUnits = pos.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
+  const totalValue = pos.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const productionValue = productionPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const transitValue = transitPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const overdueValue = overduePOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
   const fmtVal = v => sym + v.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
   document.getElementById('poSummaryCards').innerHTML = `
     <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div></div>
