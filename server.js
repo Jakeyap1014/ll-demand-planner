@@ -845,6 +845,24 @@ app.get('/api/ck-list', requireAuth, (req, res) => {
 });
 
 // CK data
+// Infer destination from SKU prefixes when CIN7 deliveryCountry is empty
+function inferDestination(po) {
+  if (po.deliveryCountry) return po.deliveryCountry;
+  const skus = Object.keys(po.items || {});
+  const dests = new Set();
+  for (const sku of skus) {
+    const u = sku.toUpperCase();
+    if (u.startsWith('LLSG')) dests.add('Singapore');
+    else if (u.startsWith('LLNA')) dests.add('North America');
+    else if (u.match(/^(LFSB|CUSB).*-UK/)) dests.add('United Kingdom');
+    else if (u.match(/^(V2-|V3-)/)) dests.add('United States');
+    else if (u.match(/^(LLAU|DD|COCOON|RDNT|WFHCR|CMSS|LIFELY|LFSB|CUSB)/)) dests.add('Australia');
+  }
+  if (dests.size === 1) return [...dests][0];
+  if (dests.size > 1) return [...dests].join(' / ');
+  return '';
+}
+
 app.get('/api/all-pos', requireAuth, (req, res) => {
   const pos = dataCache.cin7POs.map(po => ({
     reference: po.reference,
@@ -858,7 +876,7 @@ app.get('/api/all-pos', requireAuth, (req, res) => {
     fullyReceivedDate: po.fullyReceivedDate || null,
     total: po.total || 0,
     currencyCode: po.currencyCode || 'USD',
-    deliveryCountry: po.deliveryCountry || '',
+    deliveryCountry: inferDestination(po),
     items: po.items || {}
   }));
   res.json({ pos, lastRefresh: dataCache.lastRefresh });

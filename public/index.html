@@ -536,6 +536,7 @@ function renderPurchaseOrders(allPOs) {
           <span style="font-family:monospace;font-weight:700;font-size:13px;color:var(--blue)">${po.reference}</span>
           ${stageBadge(po)}
           <span style="font-size:11px;color:var(--text-dim)">${po.company || ''}</span>
+          ${po.deliveryCountry ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg-body);color:var(--text-dim)">${po.deliveryCountry}</span>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:20px;font-size:11px;color:var(--text-dim)">
           <span title="ETD (Departure)">🚢 ETD: ${etd}</span>
