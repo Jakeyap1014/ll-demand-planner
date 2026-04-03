@@ -482,7 +482,7 @@ function renderPurchaseOrders(allPOs) {
   }
   // Sort: open first (by ETA asc), then received (by date desc)
   pos.sort((a, b) => {
-    if (filter === 'received') return (b.arrival || '').localeCompare(a.arrival || '');
+    if (_poFilter === 'received') return (b.arrival || '').localeCompare(a.arrival || '');
     const aDate = a.arrival ? new Date(a.arrival) : new Date('2099-01-01');
     const bDate = b.arrival ? new Date(b.arrival) : new Date('2099-01-01');
     return aDate - bDate;
