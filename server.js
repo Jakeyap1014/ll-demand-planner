@@ -184,7 +184,7 @@ async function fetchCin7POs() {
   if (!CIN7_USER || !CIN7_KEY) return [];
   const auth = Buffer.from(`${CIN7_USER}:${CIN7_KEY}`).toString('base64');
   const results = [];
-  for (let page = 1; page <= 5; page++) {
+  for (let page = 1; page <= 20; page++) {
     try {
       const { body } = await apiRequest({
         hostname: 'api.cin7.com',
