@@ -901,12 +901,12 @@ function inferDestination(po) {
 
 // Estimated freight + tariff by destination (from yk's shipping data)
 const FREIGHT_TARIFF = {
-  'United States':  { freight: 5800, freightCurrency: 'USD', tariff: 0.19, tariffNote: '19% US tariff' },
-  'Canada':         { freight: 5800, freightCurrency: 'USD', tariff: 0.08, tariffNote: '~8% MFN (⚠️ 188% if upholstered seating)' },
-  'United Kingdom': { freight: 5000, freightCurrency: 'USD', tariff: 0,    tariffNote: '' },
+  'United States':  { freight: 8404, freightCurrency: 'AUD', tariff: 0.19, tariffNote: '19% US tariff' },
+  'Canada':         { freight: 8404, freightCurrency: 'AUD', tariff: 0.08, tariffNote: '~8% MFN (⚠️ 188% if upholstered seating)' },
+  'United Kingdom': { freight: 7245, freightCurrency: 'AUD', tariff: 0,    tariffNote: '' },
   'Australia':      { freight: 7000, freightCurrency: 'AUD', tariff: 0,    tariffNote: '' },
-  'Singapore':      { freight: 2000, freightCurrency: 'USD', tariff: 0,    tariffNote: '0% (free trade)' },
-  'New Zealand':    { freight: 2000, freightCurrency: 'USD', tariff: 0,    tariffNote: '' },
+  'Singapore':      { freight: 2898, freightCurrency: 'AUD', tariff: 0,    tariffNote: '0% (free trade)' },
+  'New Zealand':    { freight: 2898, freightCurrency: 'AUD', tariff: 0,    tariffNote: '' },
 };
 
 function estimateLandedCost(po, destination) {
