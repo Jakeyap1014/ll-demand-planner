@@ -113,6 +113,21 @@ let dataCache = {
   shopifyInventory: {} // store -> {sku -> inventory_level}
 };
 
+// ===== LIVE FX RATE =====
+let fxRate = { USDAUD: 1.45, lastFetch: null }; // fallback
+async function refreshFxRate() {
+  try {
+    const { body } = await apiRequest({ hostname: 'open.er-api.com', path: '/v6/latest/USD', headers: {} });
+    if (body?.rates?.AUD) {
+      fxRate.USDAUD = body.rates.AUD;
+      fxRate.lastFetch = new Date().toISOString();
+      console.log(`FX rate updated: 1 USD = ${fxRate.USDAUD} AUD`);
+    }
+  } catch (e) { console.log('FX rate fetch failed:', e.message); }
+}
+refreshFxRate();
+setInterval(refreshFxRate, 6 * 60 * 60 * 1000); // Refresh every 6 hours
+
 // ===== HTTPS REQUEST HELPER =====
 function apiRequest(options, postData) {
   return new Promise((resolve, reject) => {
@@ -934,7 +949,7 @@ app.get('/api/all-pos', requireAuth, (req, res) => {
       items: po.items || {}
     };
   });
-  res.json({ pos, lastRefresh: dataCache.lastRefresh });
+  res.json({ pos, lastRefresh: dataCache.lastRefresh, fx: { USDAUD: fxRate.USDAUD, lastFetch: fxRate.lastFetch } });
 });
 
 app.get('/api/ck/:id', requireAuth, (req, res) => {

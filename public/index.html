@@ -156,6 +156,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
         <p style="font-size:12px;color:var(--text-dim);margin-top:4px">All POs across every Category Killer</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
+        <button id="poCurrencyBtn" onclick="_poCurrency=_poCurrency==='AUD'?'USD':'AUD';this.textContent=_poCurrency;renderPurchaseOrders(_allPOsCache)" style="padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--blue);color:#fff;font-size:12px;font-weight:700;cursor:pointer;min-width:50px">AUD</button>
         <select id="poDestFilter" onchange="_poDestination=this.value;renderPurchaseOrders(_allPOsCache)" style="padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;outline:none;cursor:pointer">
           <option value="all">All Destinations</option>
         </select>
@@ -446,6 +447,8 @@ function hideAllPOs() {
 let _allPOsCache = [];
 let _poFilter = 'all';
 let _poDestination = 'all';
+let _poCurrency = 'AUD';
+let _poFxRate = 1.45; // USD→AUD fallback
 function setPoFilter(f, btn) {
   _poFilter = f;
   document.querySelectorAll('#poFilterBtns .filter-btn').forEach(b => b.classList.remove('active'));
@@ -461,6 +464,7 @@ async function loadAllPOs() {
     if (r.status === 401) return window.location.href = '/login';
     const d = await r.json();
     _allPOsCache = d.pos || [];
+    if (d.fx?.USDAUD) _poFxRate = d.fx.USDAUD;
     // Populate destination dropdown
     const dests = [...new Set(_allPOsCache.map(p => p.deliveryCountry || '').filter(Boolean))].sort();
     const dd = document.getElementById('poDestFilter');
@@ -532,11 +536,17 @@ function renderPurchaseOrders(allPOs) {
   const overduePOs = (allPOs||[]).filter(p => poIsOverdue(p));
   const receivedCount = (allPOs||[]).filter(p => p.stage === 'Received').length;
   const totalUnits = pos.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
-  const totalValue = pos.reduce((t, po) => t + (po.total || 0), 0);
-  const productionValue = productionPOs.reduce((t, po) => t + (po.total || 0), 0);
-  const transitValue = transitPOs.reduce((t, po) => t + (po.total || 0), 0);
-  const overdueValue = overduePOs.reduce((t, po) => t + (po.total || 0), 0);
-  const fmtVal = v => '$' + v.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  const totalValue = pos.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const productionValue = productionPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const transitValue = transitPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const overdueValue = overduePOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const sym = _poCurrency === 'AUD' ? 'A$' : 'US$';
+  const cx = (val, fromCurrency) => {
+    if (!val) return 0;
+    if (_poCurrency === 'AUD') return fromCurrency === 'AUD' ? val : val * _poFxRate;
+    return fromCurrency === 'USD' ? val : val / _poFxRate;
+  };
+  const fmtVal = v => sym + v.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
   document.getElementById('poSummaryCards').innerHTML = `
     <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div></div>
     <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionPOs.length}</div><div class="sub">${fmtVal(productionValue)}</div></div>
@@ -558,8 +568,8 @@ function renderPurchaseOrders(allPOs) {
         <span style="color:var(--text-dim)" title="ETD (Departure)">🚢 ${etd}</span>
         <span style="color:var(--text);font-weight:600" title="ETA (Updated Arrival)">📅 ${eta}</span>
         <span style="color:var(--text-dim);font-size:10px" title="Original ETA">📌 ${originalEta}</span>
-        <span style="font-weight:700;color:var(--text);text-align:right">${po.total ? '$' + po.total.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) : '—'}</span>
-        <span style="text-align:right;color:var(--text-dim);white-space:nowrap" title="Freight${po.isEstFreight ? ' (estimated)' : ''}: ${po.freightCurrency} ${po.freight?.toLocaleString() || 0}${po.tariffRate ? ' + ' + (po.tariffRate*100) + '% tariff' : ''}">🚛 ${po.freight ? (po.isEstFreight ? '<span style="font-size:8px;padding:1px 3px;border-radius:3px;background:#FEF3C7;color:#92400E">est</span> ' : '') + '$' + po.freight.toLocaleString() : '—'}</span>
+        <span style="font-weight:700;color:var(--text);text-align:right">${po.total ? fmtVal(cx(po.total, po.currencyCode || 'USD')) : '—'}</span>
+        <span style="text-align:right;color:var(--text-dim);white-space:nowrap" title="Freight${po.isEstFreight ? ' (estimated)' : ''}${po.tariffRate ? ' + ' + (po.tariffRate*100) + '% tariff' : ''}">🚛 ${po.freight ? (po.isEstFreight ? '<span style="font-size:8px;padding:1px 3px;border-radius:3px;background:#FEF3C7;color:#92400E">est</span> ' : '') + fmtVal(cx(po.freight, po.freightCurrency || 'USD')) : '—'}</span>
         <span style="text-align:right;color:var(--text-dim);white-space:nowrap" title="${po.tariffNote || ''}">${po.tariffRate ? (po.tariffRate*100) + '%' : '0%'}</span>
         <span style="color:var(--text-dim);text-align:right;white-space:nowrap">${skuCount(po)} SKUs · ${totalItems(po)}</span>
         <span style="font-size:14px;text-align:center;transition:transform 0.2s">▼</span>
