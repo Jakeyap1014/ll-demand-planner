@@ -156,7 +156,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
         <p style="font-size:12px;color:var(--text-dim);margin-top:4px">All POs across every Category Killer</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" id="poSearch" placeholder="Search PO ref, supplier, SKU..." oninput="loadAllPOs()" style="padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;width:240px;outline:none">
+        <input type="text" id="poSearch" placeholder="Search PO ref, supplier, SKU..." oninput="renderPurchaseOrders(_allPOsCache)" style="padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;width:240px;outline:none">
       </div>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:20px" id="poFilterBtns">
@@ -457,7 +457,7 @@ async function loadAllPOs() {
     const d = await r.json();
     _allPOsCache = d.pos || [];
     renderPurchaseOrders(_allPOsCache);
-  } catch(e) { container.innerHTML = '<p style="color:var(--alert);text-align:center;padding:40px">Failed to load POs</p>'; }
+  } catch(e) { console.error('PO load error:', e); container.innerHTML = '<p style="color:var(--alert);text-align:center;padding:40px">Failed to load POs — try refreshing</p>'; }
 }
 
 function poIsInTransit(po) {
