@@ -722,18 +722,41 @@ function toggleInboundDrilldown() {
   });
   
   rows.sort((a, b) => a.sku.localeCompare(b.sku));
+  window._incomingRows = rows;
+  window._incomingSortCol = 'sku';
+  window._incomingSortAsc = true;
   
+  renderIncomingTable();
+}
+function sortIncoming(col) {
+  if (window._incomingSortCol === col) { window._incomingSortAsc = !window._incomingSortAsc; }
+  else { window._incomingSortCol = col; window._incomingSortAsc = true; }
+  renderIncomingTable();
+}
+function renderIncomingTable() {
+  const rows = window._incomingRows || [];
+  const col = window._incomingSortCol || 'sku';
+  const asc = window._incomingSortAsc;
+  const sorted = [...rows].sort((a, b) => {
+    let va = a[col], vb = b[col];
+    if (col === 'qty') return asc ? va - vb : vb - va;
+    if (col === 'eta') { va = va || '9999'; vb = vb || '9999'; }
+    return asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+  const dd = document.getElementById('inboundDrilldown');
+  const arrow = c => col === c ? (asc ? ' ▲' : ' ▼') : '';
+  const thStyle = 'cursor:pointer;user-select:none';
   let html = '<h3>📦 Incoming Stock Breakdown <button class="close" onclick="document.getElementById(\'inboundDrilldown\').classList.remove(\'open\')">✕</button></h3>';
   
-  if (rows.length === 0) {
+  if (sorted.length === 0) {
     html += '<p style="color:var(--text-dim)">No incoming POs for this category</p>';
   } else {
-    html += '<table><thead><tr><th>PO</th><th>SKU</th><th>Qty</th><th>ETA</th><th>Supplier</th><th>Container</th><th>Status</th></tr></thead><tbody>';
-    html += rows.map(r => 
+    html += '<table><thead><tr><th style="'+thStyle+'" onclick="sortIncoming(\'po\')">PO'+arrow('po')+'</th><th style="'+thStyle+'" onclick="sortIncoming(\'sku\')">SKU'+arrow('sku')+'</th><th style="'+thStyle+'" onclick="sortIncoming(\'qty\')">Qty'+arrow('qty')+'</th><th style="'+thStyle+'" onclick="sortIncoming(\'eta\')">ETA'+arrow('eta')+'</th><th style="'+thStyle+'" onclick="sortIncoming(\'supplier\')">Supplier'+arrow('supplier')+'</th><th style="'+thStyle+'" onclick="sortIncoming(\'container\')">Container'+arrow('container')+'</th><th style="'+thStyle+'" onclick="sortIncoming(\'status\')">Status'+arrow('status')+'</th></tr></thead><tbody>';
+    html += sorted.map(r => 
       '<tr><td style="font-weight:600">' + r.po + '</td><td style="font-family:monospace;font-size:10px">' + r.sku + '</td><td style="font-weight:700">' + r.qty + '</td><td>' + r.eta + '</td><td style="font-size:10px">' + r.supplier + '</td><td style="font-family:monospace;font-size:10px">' + r.container + '</td><td>' + r.status + '</td></tr>'
     ).join('');
     html += '</tbody></table>';
-    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px">Total: ' + rows.reduce((t,r) => t + r.qty, 0) + ' units across ' + new Set(rows.map(r=>r.po)).size + ' POs</div>';
+    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px">Total: ' + sorted.reduce((t,r) => t + r.qty, 0) + ' units across ' + new Set(sorted.map(r=>r.po)).size + ' POs</div>';
   }
   
   dd.innerHTML = html;
