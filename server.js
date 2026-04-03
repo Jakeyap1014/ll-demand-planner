@@ -173,16 +173,17 @@ async function fetchCin7AllProducts() {
       await new Promise(r => setTimeout(r, 1000));
       for (const product of body) {
         const variants = product.productOptions || [];
+        const cbm = product.volume || 0; // CBM at product level
         for (const v of variants) {
           if (v.code) {
             const pc = v.priceColumns || {};
             const costAUD = pc.costAUD || (pc.costUSD ? pc.costUSD * fxRate.USDAUD : 0);
-            results[v.code] = { soh: v.stockOnHand || 0, available: v.stockAvailable || 0, costAUD };
+            results[v.code] = { soh: v.stockOnHand || 0, available: v.stockAvailable || 0, costAUD, cbm };
           }
         }
         // Also store parent level if it has SOH
         if (product.styleCode && product.stockOnHand > 0) {
-          results[product.styleCode] = { soh: product.stockOnHand, available: product.stockAvailable || 0 };
+          results[product.styleCode] = { soh: product.stockOnHand, available: product.stockAvailable || 0, cbm };
         }
       }
     } catch (e) { console.error(`CIN7 Products page ${page} error:`, e.message); continue; }
@@ -444,7 +445,8 @@ function normalizeCIN7(cin7Raw) {
     const available = Math.min(...boxes.map(b => typeof b === 'object' ? (b.available || b.soh) : b));
     // Sum costs across all boxes (each box is a separate shipped piece)
     const costAUD = boxes.reduce((sum, b) => sum + (typeof b === 'object' ? (b.costAUD || 0) : 0), 0);
-    result[base] = { soh, available, costAUD };
+    const cbm = boxes.reduce((sum, b) => sum + (typeof b === 'object' ? (b.cbm || 0) : 0), 0);
+    result[base] = { soh, available, costAUD, cbm };
   }
   
   return result;
@@ -493,7 +495,9 @@ function normalizeRadiant(cin7, shopifySkus) {
       // Single topper set
       const baseCost = cin7[baseKey]?.costAUD || 0;
       const compCost = cin7[compKey]?.costAUD || 0;
-      result[setKey] = { soh: Math.min(baseSoh, compSoh), available: Math.min(baseSoh, compSoh), costAUD: baseCost + compCost };
+      const baseCbm = cin7[baseKey]?.cbm || 0;
+      const compCbm = cin7[compKey]?.cbm || 0;
+      result[setKey] = { soh: Math.min(baseSoh, compSoh), available: Math.min(baseSoh, compSoh), costAUD: baseCost + compCost, cbm: baseCbm + compCbm };
       
       // Multi-topper combos (e.g. RDNT-Q-S-MF-SET = BASE + S + MF)
       for (const type2 of types) {
@@ -502,7 +506,8 @@ function normalizeRadiant(cin7, shopifySkus) {
         const comboSetKey = 'RDNT-' + size + '-' + type + '-' + type2 + '-SET';
         const comp2Soh = cin7[comp2Key]?.soh || cin7[comp2Key] || 0;
         const comp2Cost = cin7[comp2Key]?.costAUD || 0;
-        result[comboSetKey] = { soh: Math.min(baseSoh, compSoh, comp2Soh), available: Math.min(baseSoh, compSoh, comp2Soh), costAUD: baseCost + compCost + comp2Cost };
+        const comp2Cbm = cin7[comp2Key]?.cbm || 0;
+        result[comboSetKey] = { soh: Math.min(baseSoh, compSoh, comp2Soh), available: Math.min(baseSoh, compSoh, comp2Soh), costAUD: baseCost + compCost + comp2Cost, cbm: baseCbm + compCbm + comp2Cbm };
       }
     }
     
@@ -566,11 +571,15 @@ function buildCKData(ckId) {
   if (ckId === 'llau-cb') cin7Normalized = normalizeSwatchPack(cin7Normalized);
   
   const cin7 = {};
+  let cbmMap = {};
   for (const [sku, data] of Object.entries(cin7Normalized)) {
     cin7[sku] = typeof data === 'object' ? data.soh : data;
       if (typeof data === 'object' && data.costAUD) {
         if (!costs) costs = {};
         costs[sku] = data.costAUD;
+      }
+      if (typeof data === 'object' && data.cbm > 0) {
+        cbmMap[sku] = data.cbm;
       }
   }
   
@@ -771,6 +780,54 @@ function buildCKData(ckId) {
     if (inactiveSet.has(sku)) { delete velocity[sku]; }
   }
 
+  // === Per-SKU landed cost calculation (CBM-based freight allocation) ===
+  // Skip swatches, covers, protectors — only main CK products
+  const SKIP_LANDED = sku => /(-CV-|-CV$|-CS-|-CS$|-FS-|PROTECTOR|SWATCH|PACK$|SAMPLE)/i.test(sku);
+  const landedCosts = {};
+  
+  // For each non-received PO, calculate freight share per SKU by CBM proportion
+  for (const po of allPos) {
+    if (po.stage === 'Received') continue;
+    const destination = inferDestination(po);
+    const landed = estimateLandedCost(po, destination);
+    const containerFreight = landed.freight || 0;
+    const tariffRate = landed.tariffRate || 0;
+    const freightCurrency = landed.freightCurrency || 'AUD';
+    
+    // Calculate total CBM for this PO
+    let totalPoCbm = 0;
+    const skuItems = Object.entries(po.items || {});
+    for (const [sku, qty] of skuItems) {
+      if (!SKIP_LANDED(sku) && cbmMap[sku]) {
+        totalPoCbm += cbmMap[sku] * qty;
+      }
+    }
+    
+    if (totalPoCbm <= 0 || containerFreight <= 0) continue;
+    
+    // Allocate freight to each SKU by its CBM share
+    for (const [sku, qty] of skuItems) {
+      if (SKIP_LANDED(sku) || !cbmMap[sku]) continue;
+      const skuCbm = cbmMap[sku];
+      const cbmShare = (skuCbm * qty) / totalPoCbm;
+      const freightForSku = containerFreight * cbmShare / qty; // per unit
+      const fob = (costs ? costs[sku] : 0) || 0;
+      const tariffPerUnit = fob * tariffRate;
+      const landedPerUnit = fob + freightForSku + tariffPerUnit;
+      
+      // Average across multiple POs if SKU appears in more than one
+      if (!landedCosts[sku]) {
+        landedCosts[sku] = { fob, freightPerUnit: freightForSku, tariffPerUnit, landedPerUnit, cbm: skuCbm, poCount: 1 };
+      } else {
+        const lc = landedCosts[sku];
+        lc.freightPerUnit = (lc.freightPerUnit * lc.poCount + freightForSku) / (lc.poCount + 1);
+        lc.tariffPerUnit = (lc.tariffPerUnit * lc.poCount + tariffPerUnit) / (lc.poCount + 1);
+        lc.landedPerUnit = lc.fob + lc.freightPerUnit + lc.tariffPerUnit;
+        lc.poCount++;
+      }
+    }
+  }
+  
   return {
     ck: def,
     cin7,
@@ -781,6 +838,8 @@ function buildCKData(ckId) {
     names,
     sizes: def.sizes,
     costs,
+    cbmMap,
+    landedCosts,
     trendData: (() => {
       const vel = dataCache.shopifyVelocity?.[storeKey] || {};
       const d7 = vel._7d || {};
