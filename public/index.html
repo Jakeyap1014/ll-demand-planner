@@ -156,13 +156,15 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
         <p style="font-size:12px;color:var(--text-dim);margin-top:4px">All POs across every Category Killer</p>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <select id="poStatusFilter" onchange="loadAllPOs()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px">
-          <option value="open">Open / In Transit</option>
-          <option value="received">Received</option>
-          <option value="all">All</option>
-        </select>
-        <button onclick="hideAllPOs()" class="btn btn-ghost" style="padding:4px 12px;font-size:12px">← Back</button>
+        <input type="text" id="poSearch" placeholder="Search PO ref, supplier, SKU..." oninput="loadAllPOs()" style="padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;width:240px;outline:none">
       </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:20px" id="poFilterBtns">
+      <button class="filter-btn active" onclick="setPoFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setPoFilter('production',this)">🏭 In Production</button>
+      <button class="filter-btn" onclick="setPoFilter('transit',this)">🚢 In Transit</button>
+      <button class="filter-btn" onclick="setPoFilter('received',this)">✅ Received</button>
+    </div>
     </div>
     <div id="poSummaryCards" class="cards" style="margin-bottom:20px"></div>
     <div id="poList"></div>
@@ -437,24 +439,47 @@ function hideAllPOs() {
   if (currentCK) document.querySelector(`[data-ck="${currentCK}"]`)?.classList.add('active');
 }
 
+let _allPOsCache = [];
+let _poFilter = 'all';
+function setPoFilter(f, btn) {
+  _poFilter = f;
+  document.querySelectorAll('#poFilterBtns .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderPurchaseOrders(_allPOsCache);
+}
+
 async function loadAllPOs() {
   const container = document.getElementById('poList');
-  container.innerHTML = '<p style="text-align:center;padding:40px;color:var(--text-dim)">Loading...</p>';
+  if (!_allPOsCache.length) container.innerHTML = '<p style="text-align:center;padding:40px;color:var(--text-dim)">Loading...</p>';
   try {
     const r = await fetch('/api/all-pos', { headers: H() });
     if (r.status === 401) return window.location.href = '/login';
     const d = await r.json();
-    renderPurchaseOrders(d.pos);
+    _allPOsCache = d.pos || [];
+    renderPurchaseOrders(_allPOsCache);
   } catch(e) { container.innerHTML = '<p style="color:var(--alert);text-align:center;padding:40px">Failed to load POs</p>'; }
 }
 
+function poIsInTransit(po) {
+  return po.trackingCode && po.trackingCode.trim() !== '' && po.stage !== 'Received';
+}
+
 function renderPurchaseOrders(allPOs) {
-  const filter = document.getElementById('poStatusFilter')?.value || 'open';
-  const pos = (allPOs || []).filter(po => {
-    if (filter === 'open') return po.stage !== 'Received';
-    if (filter === 'received') return po.stage === 'Received';
+  const search = (document.getElementById('poSearch')?.value || '').toLowerCase().trim();
+  let pos = (allPOs || []).filter(po => {
+    if (_poFilter === 'production') return po.stage !== 'Received' && !poIsInTransit(po);
+    if (_poFilter === 'transit') return poIsInTransit(po);
+    if (_poFilter === 'received') return po.stage === 'Received';
     return true;
   });
+  if (search) {
+    pos = pos.filter(po => {
+      if ((po.reference || '').toLowerCase().includes(search)) return true;
+      if ((po.company || '').toLowerCase().includes(search)) return true;
+      if (Object.keys(po.items || {}).some(sku => sku.toLowerCase().includes(search))) return true;
+      return false;
+    });
+  }
   // Sort: open first (by ETA asc), then received (by date desc)
   pos.sort((a, b) => {
     if (filter === 'received') return (b.arrival || '').localeCompare(a.arrival || '');
@@ -473,15 +498,15 @@ function renderPurchaseOrders(allPOs) {
     return '<span class="badge low">OPEN</span>';
   };
   // Summary cards
-  const openCount = (allPOs||[]).filter(p => p.stage !== 'Received').length;
+  const productionCount = (allPOs||[]).filter(p => p.stage !== 'Received' && !poIsInTransit(p)).length;
+  const transitCount = (allPOs||[]).filter(p => poIsInTransit(p)).length;
   const receivedCount = (allPOs||[]).filter(p => p.stage === 'Received').length;
   const totalUnits = pos.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
-  const totalSkus = pos.reduce((t, po) => t + Object.keys(po.items||{}).length, 0);
   document.getElementById('poSummaryCards').innerHTML = `
-    <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${filter==='open'?'Open/In Transit':filter==='received'?'Received':'All'} POs</div></div>
-    <div class="card green"><div class="label">Open POs</div><div class="value">${openCount}</div><div class="sub">Awaiting receipt</div></div>
-    <div class="card"><div class="label">Total Units</div><div class="value">${totalUnits.toLocaleString()}</div><div class="sub">Across ${totalSkus} SKU lines</div></div>
-    <div class="card"><div class="label">Received</div><div class="value">${receivedCount}</div><div class="sub">Completed POs</div></div>
+    <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units</div></div>
+    <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionCount}</div><div class="sub">Awaiting shipment</div></div>
+    <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${transitCount}</div><div class="sub">On the water</div></div>
+    <div class="card"><div class="label">✅ Received</div><div class="value">${receivedCount}</div><div class="sub">Completed</div></div>
   `;
   container.innerHTML = pos.map((po, i) => {
     const items = Object.entries(po.items || {}).sort(([a],[b]) => a.localeCompare(b));
