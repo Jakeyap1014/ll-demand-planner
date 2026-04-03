@@ -872,7 +872,12 @@ function inferDestination(po) {
     const portLower = po.port.toLowerCase().trim();
     if (PORT_TO_DEST[portLower]) return PORT_TO_DEST[portLower];
   }
-  // 3. SKU prefix inference
+  // 3. Delivery city mapping (e.g. Laverton North = Melbourne warehouse = Australia)
+  if (po.deliveryCity) {
+    const cityLower = po.deliveryCity.toLowerCase().trim();
+    if (['laverton north', 'laverton', 'truganina', 'derrimut', 'altona', 'footscray'].includes(cityLower)) return 'Australia';
+  }
+  // 4. SKU prefix inference
   const skus = Object.keys(po.items || {});
   const dests = new Set();
   for (const sku of skus) {
@@ -885,7 +890,8 @@ function inferDestination(po) {
   }
   if (dests.size === 1) return [...dests][0];
   if (dests.size > 1) return [...dests].join(' / ');
-  return '';
+  // 5. Fallback: all remaining unmatched POs go to Australia (Melbourne port)
+  return 'Australia';
 }
 
 app.get('/api/all-pos', requireAuth, (req, res) => {
