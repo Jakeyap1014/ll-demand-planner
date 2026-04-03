@@ -563,10 +563,19 @@ function renderPurchaseOrders(allPOs) {
         <span style="font-size:14px;text-align:center;transition:transform 0.2s">▼</span>
       </div>
       <div class="po-items" style="max-height:0;overflow:hidden;transition:max-height 0.3s ease">
-        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 18px;background:var(--bg-body)">
-          ${items.map(([sku, qty]) => `<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);font-size:11px"><span style="font-family:monospace;font-size:10px;color:var(--text-dim)">${sku}</span><span style="font-weight:700;color:var(--text)">${qty}</span></div>`).join('')}
-          <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;background:var(--blue);color:#fff;font-size:11px;font-weight:700">Total: ${totalItems(po)}</div>
-        </div>
+        <table style="width:100%;font-size:11px;border-collapse:collapse">
+          <thead><tr style="background:var(--bg-body)">
+            <th style="text-align:left;padding:8px 18px;color:var(--text-dim);font-weight:600">SKU</th>
+            <th style="text-align:right;padding:8px 18px;color:var(--text-dim);font-weight:600">Qty</th>
+          </tr></thead>
+          <tbody>${items.map(([sku, qty]) => `<tr style="border-top:1px solid var(--border)">
+            <td style="padding:6px 18px;font-family:monospace;font-size:10px">${sku}</td>
+            <td style="padding:6px 18px;text-align:right;font-weight:600">${qty}</td>
+          </tr>`).join('')}</tbody>
+          <tfoot><tr style="border-top:2px solid var(--border);font-weight:700">
+            <td style="padding:8px 18px">Total</td>
+            <td style="padding:8px 18px;text-align:right">${totalItems(po)}</td>
+          </tr></tfoot>
         </table>
       </div>
     </div>`;
