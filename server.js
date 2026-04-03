@@ -845,17 +845,42 @@ app.get('/api/ck-list', requireAuth, (req, res) => {
 });
 
 // CK data
-// Infer destination from SKU prefixes when CIN7 deliveryCountry is empty
+// Infer destination from CIN7 deliveryCountry, port, or SKU prefixes
+const PORT_TO_DEST = {
+  'melbourne': 'Australia',
+  'sydney': 'Australia',
+  'brisbane': 'Australia',
+  'toronto': 'Canada',
+  'vancouver': 'Canada',
+  'felixstowe': 'United Kingdom',
+  'southampton': 'United Kingdom',
+  'la': 'United States',
+  'ny': 'United States',
+  'los angeles': 'United States',
+  'new york': 'United States',
+  'long beach': 'United States',
+  'savannah': 'United States',
+  'singapore': 'Singapore',
+  'auckland': 'New Zealand',
+  'tauranga': 'New Zealand',
+};
 function inferDestination(po) {
+  // 1. CIN7 deliveryCountry if filled
   if (po.deliveryCountry) return po.deliveryCountry;
+  // 2. Port mapping
+  if (po.port) {
+    const portLower = po.port.toLowerCase().trim();
+    if (PORT_TO_DEST[portLower]) return PORT_TO_DEST[portLower];
+  }
+  // 3. SKU prefix inference
   const skus = Object.keys(po.items || {});
   const dests = new Set();
   for (const sku of skus) {
     const u = sku.toUpperCase();
     if (u.startsWith('LLSG')) dests.add('Singapore');
-    else if (u.startsWith('LLNA')) dests.add('North America');
     else if (u.match(/^(LFSB|CUSB).*-UK/)) dests.add('United Kingdom');
     else if (u.match(/^(V2-|V3-)/)) dests.add('United States');
+    else if (u.match(/^LLNA/)) dests.add('United States');
     else if (u.match(/^(LLAU|DD|COCOON|RDNT|WFHCR|CMSS|LIFELY|LFSB|CUSB)/)) dests.add('Australia');
   }
   if (dests.size === 1) return [...dests][0];
