@@ -211,6 +211,7 @@ async function fetchCin7POs() {
             port: po.port || '',
             logisticsCarrier: po.logisticsCarrier || '',
             internalComments: po.internalComments || '',
+            freightTotal: po.freightTotal || 0,
             items
           });
         }
@@ -883,22 +884,56 @@ function inferDestination(po) {
   return 'Australia';
 }
 
+// Estimated freight + tariff by destination (from yk's shipping data)
+const FREIGHT_TARIFF = {
+  'United States':  { freight: 5800, freightCurrency: 'USD', tariff: 0.19, tariffNote: '19% US tariff' },
+  'Canada':         { freight: 5800, freightCurrency: 'USD', tariff: 0.08, tariffNote: '~8% MFN (⚠️ 188% if upholstered seating)' },
+  'United Kingdom': { freight: 5000, freightCurrency: 'USD', tariff: 0,    tariffNote: '' },
+  'Australia':      { freight: 7000, freightCurrency: 'AUD', tariff: 0,    tariffNote: '' },
+  'Singapore':      { freight: 2000, freightCurrency: 'USD', tariff: 0,    tariffNote: '0% (free trade)' },
+  'New Zealand':    { freight: 2000, freightCurrency: 'USD', tariff: 0,    tariffNote: '' },
+};
+
+function estimateLandedCost(po, destination) {
+  const freightActual = po.freightTotal > 0 ? po.freightTotal : 0;
+  const productValue = po.total || 0;
+  const dest = FREIGHT_TARIFF[destination];
+  const isEstimated = freightActual === 0;
+  const freight = freightActual > 0 ? freightActual : (dest ? dest.freight : 0);
+  const freightCurrency = freightActual > 0 ? (po.currencyCode || 'USD') : (dest ? dest.freightCurrency : 'USD');
+  const tariffRate = dest ? dest.tariff : 0;
+  const tariffAmount = productValue * tariffRate;
+  const tariffNote = dest ? dest.tariffNote : '';
+  return { freight, freightCurrency, tariffRate, tariffAmount, tariffNote, isEstimated, landedTotal: productValue + freight + tariffAmount };
+}
+
 app.get('/api/all-pos', requireAuth, (req, res) => {
-  const pos = dataCache.cin7POs.map(po => ({
-    reference: po.reference,
-    stage: po.stage || '',
-    company: po.company || '',
-    arrival: po.arrival || null,
-    etd: po.etd || null,
-    estimatedArrivalDate: po.estimatedArrivalDate || null,
-    customFields: po.customFields || {},
-    trackingCode: po.trackingCode || '',
-    fullyReceivedDate: po.fullyReceivedDate || null,
-    total: po.total || 0,
-    currencyCode: po.currencyCode || 'USD',
-    deliveryCountry: inferDestination(po),
-    items: po.items || {}
-  }));
+  const pos = dataCache.cin7POs.map(po => {
+    const destination = inferDestination(po);
+    const landed = estimateLandedCost(po, destination);
+    return {
+      reference: po.reference,
+      stage: po.stage || '',
+      company: po.company || '',
+      arrival: po.arrival || null,
+      etd: po.etd || null,
+      estimatedArrivalDate: po.estimatedArrivalDate || null,
+      customFields: po.customFields || {},
+      trackingCode: po.trackingCode || '',
+      fullyReceivedDate: po.fullyReceivedDate || null,
+      total: po.total || 0,
+      currencyCode: po.currencyCode || 'USD',
+      deliveryCountry: destination,
+      freight: landed.freight,
+      freightCurrency: landed.freightCurrency,
+      tariffRate: landed.tariffRate,
+      tariffAmount: landed.tariffAmount,
+      tariffNote: landed.tariffNote,
+      isEstFreight: landed.isEstimated,
+      landedTotal: landed.landedTotal,
+      items: po.items || {}
+    };
+  });
   res.json({ pos, lastRefresh: dataCache.lastRefresh });
 });
 

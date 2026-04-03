@@ -550,7 +550,7 @@ function renderPurchaseOrders(allPOs) {
     const etd = po.etd ? fmt(po.etd) : '—';
     const originalEta = po.customFields?.orders_1000 || '—';
     return `<div style="border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--bg-card);overflow:hidden">
-      <div onclick="this.parentElement.querySelector('.po-items').classList.toggle('open')" style="display:grid;grid-template-columns:130px 90px 200px 110px 130px 150px 130px 90px 120px 24px;align-items:center;padding:12px 18px;cursor:pointer;user-select:none;font-size:11px;gap:8px">
+      <div onclick="this.parentElement.querySelector('.po-items').classList.toggle('open')" style="display:grid;grid-template-columns:120px 85px 170px 95px 110px 130px 110px 85px 85px 70px 85px 24px;align-items:center;padding:12px 18px;cursor:pointer;user-select:none;font-size:11px;gap:6px">
         <span style="font-family:monospace;font-weight:700;font-size:12px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${po.reference}</span>
         <span style="text-align:center">${stageBadge(po)}</span>
         <span style="color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${po.company || ''}</span>
@@ -559,6 +559,8 @@ function renderPurchaseOrders(allPOs) {
         <span style="color:var(--text);font-weight:600" title="ETA (Updated Arrival)">📅 ${eta}</span>
         <span style="color:var(--text-dim);font-size:10px" title="Original ETA">📌 ${originalEta}</span>
         <span style="font-weight:700;color:var(--text);text-align:right">${po.total ? '$' + po.total.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) : '—'}</span>
+        <span style="text-align:right;color:var(--text-dim);white-space:nowrap" title="Freight${po.isEstFreight ? ' (estimated)' : ''}: ${po.freightCurrency} ${po.freight?.toLocaleString() || 0}${po.tariffRate ? ' + ' + (po.tariffRate*100) + '% tariff' : ''}">🚛 ${po.freight ? (po.isEstFreight ? '<span style="font-size:8px;padding:1px 3px;border-radius:3px;background:#FEF3C7;color:#92400E">est</span> ' : '') + '$' + po.freight.toLocaleString() : '—'}</span>
+        <span style="text-align:right;color:var(--text-dim);white-space:nowrap" title="${po.tariffNote || ''}">${po.tariffRate ? (po.tariffRate*100) + '%' : '0%'}</span>
         <span style="color:var(--text-dim);text-align:right;white-space:nowrap">${skuCount(po)} SKUs · ${totalItems(po)}</span>
         <span style="font-size:14px;text-align:center;transition:transform 0.2s">▼</span>
       </div>
