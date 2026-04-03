@@ -136,32 +136,26 @@ async function fetchCin7AllProducts() {
   if (!CIN7_USER || !CIN7_KEY) { console.log('CIN7 SKIPPED: no credentials. USER=' + (CIN7_USER ? 'set' : 'empty') + ' KEY=' + (CIN7_KEY ? 'set' : 'empty')); return {}; }
   const auth = Buffer.from(`${CIN7_USER}:${CIN7_KEY}`).toString('base64');
   const results = {};
-  for (let page = 1; page <= 20; page++) {
+  for (let page = 1; page <= 10; page++) {
     try {
       console.log('CIN7 Products: fetching page ' + page);
       let body, status;
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          const resp = await apiRequest({
-            hostname: 'api.cin7.com',
-            path: `/api/v1/Products?page=${page}&rows=250`,
-            headers: { 'Authorization': `Basic ${auth}` }
-          });
-          body = resp.body;
-          status = resp.status;
-          break;
-        } catch (retryErr) {
-          console.error(`CIN7 page ${page} attempt ${attempt} failed:`, retryErr.message);
-          if (attempt === 2) throw retryErr;
-          await new Promise(r => setTimeout(r, 2000)); // Wait 2s before retry
-        }
+      try {
+        const resp = await apiRequest({
+          hostname: 'api.cin7.com',
+          path: `/api/v1/Products?page=${page}&rows=250`,
+          headers: { 'Authorization': `Basic ${auth}` }
+        });
+        body = resp.body;
+        status = resp.status;
+      } catch (fetchErr) {
+        console.error(`CIN7 Products page ${page} failed:`, fetchErr.message);
+        break; // Don't retry individual pages — save calls
       }
       console.log('CIN7 Products page ' + page + ': status=' + status + ' isArray=' + Array.isArray(body) + ' length=' + (Array.isArray(body) ? body.length : 'N/A'));
       if (!Array.isArray(body) || body.length === 0) break;
-      // Rate limit: CIN7 allows 3 req/sec, add delay between pages
-      await new Promise(r => setTimeout(r, 1500));
-      // Rate limit: CIN7 allows 3 req/sec, add delay between pages
-      await new Promise(r => setTimeout(r, 1500));
+      // Rate limit: CIN7 allows 3 req/sec, 60/min — pace at 1 req/sec
+      await new Promise(r => setTimeout(r, 1000));
       for (const product of body) {
         const variants = product.productOptions || [];
         for (const v of variants) {
@@ -378,33 +372,27 @@ async function refreshAllData() {
     console.log(`Data refresh complete in ${elapsed}s. CIN7: ${cin7Count} SKUs, ${cin7POs.length} POs. Shopify: Lifely ${Object.keys(lifelyVel).length} SKUs, Cushie ${Object.keys(cushieVel).length} SKUs.`);
     refreshAIS(); // Update vessel tracking after data refresh
     
-    // Auto-retry until CIN7 data loads (cold start recovery)
+    // Auto-retry once if CIN7 data empty (cold start / rate limit recovery)
     if (cin7Count === 0 && !dataCache._retrying) {
-      dataCache._retryCount = (dataCache._retryCount || 0) + 1;
-      if (dataCache._retryCount <= 3) {
-        console.log('CIN7 returned 0 SKUs — retry ' + dataCache._retryCount + '/10 in 20s...');
-        dataCache._retrying = true;
-        setTimeout(async () => {
-          try {
-            const retryProducts = await fetchCin7AllProducts();
-            if (Object.keys(retryProducts).length > 0) {
-              dataCache.cin7Products = retryProducts;
-              const retryPOs = await fetchCin7POs();
-              if (retryPOs.length > 0) dataCache.cin7POs = retryPOs;
-              dataCache.lastRefresh = new Date().toISOString();
-              dataCache._retryCount = 0;
-              console.log('CIN7 retry SUCCESS: ' + Object.keys(retryProducts).length + ' SKUs');
-            } else {
-              console.log('CIN7 retry ' + dataCache._retryCount + ' still empty');
-            }
-          } catch (e) {
-            console.error('CIN7 retry failed:', e.message);
+      console.log('CIN7 returned 0 SKUs — will retry once in 10 min...');
+      dataCache._retrying = true;
+      setTimeout(async () => {
+        try {
+          const retryProducts = await fetchCin7AllProducts();
+          if (Object.keys(retryProducts).length > 0) {
+            dataCache.cin7Products = retryProducts;
+            const retryPOs = await fetchCin7POs();
+            if (retryPOs.length > 0) dataCache.cin7POs = retryPOs;
+            dataCache.lastRefresh = new Date().toISOString();
+            console.log('CIN7 retry SUCCESS: ' + Object.keys(retryProducts).length + ' SKUs');
+          } else {
+            console.log('CIN7 retry still empty — will recover on next scheduled refresh');
           }
-          dataCache._retrying = false;
-        }, 300000);
-      }
-    } else if (cin7Count > 0) {
-      dataCache._retryCount = 0;
+        } catch (e) {
+          console.error('CIN7 retry failed:', e.message);
+        }
+        dataCache._retrying = false;
+      }, 600000); // 10 min wait before retry
     }
   } catch (e) {
     console.error('Data refresh failed:', e.message);
@@ -921,7 +909,15 @@ app.get('/api/ck/:id', requireAuth, (req, res) => {
 });
 
 // Manual refresh
+let _lastManualRefresh = 0;
 app.post('/api/refresh', requireAuth, async (req, res) => {
+  const now = Date.now();
+  const cooldown = 10 * 60 * 1000; // 10 min cooldown between manual refreshes
+  if (now - _lastManualRefresh < cooldown) {
+    const waitMin = Math.ceil((cooldown - (now - _lastManualRefresh)) / 60000);
+    return res.json({ ok: false, error: `Please wait ${waitMin} min before refreshing again`, lastRefresh: dataCache.lastRefresh });
+  }
+  _lastManualRefresh = now;
   await refreshAllData();
   res.json({ ok: true, lastRefresh: dataCache.lastRefresh });
 });
@@ -1288,5 +1284,5 @@ app.use(requireAuth, express.static(path.join(__dirname, 'public')));
 app.listen(PORT, () => {
   console.log(`Demand Planner running on port ${PORT}`);
   refreshAllData(); // Initial fetch
-  setInterval(refreshAllData, 60 * 60 * 1000); // Hourly refresh
+  setInterval(refreshAllData, 2 * 60 * 60 * 1000); // Refresh every 2 hours
 });
