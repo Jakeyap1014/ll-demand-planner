@@ -518,7 +518,7 @@ function renderPurchaseOrders(allPOs) {
   const totalValue = pos.reduce((t, po) => t + (po.total || 0), 0);
   const productionValue = productionPOs.reduce((t, po) => t + (po.total || 0), 0);
   const transitValue = transitPOs.reduce((t, po) => t + (po.total || 0), 0);
-  const fmtVal = v => v >= 1000000 ? '$' + (v/1000000).toFixed(1) + 'M' : v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v.toFixed(0);
+  const fmtVal = v => '$' + v.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
   document.getElementById('poSummaryCards').innerHTML = `
     <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div></div>
     <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionPOs.length}</div><div class="sub">${fmtVal(productionValue)}</div></div>
