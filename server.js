@@ -1203,22 +1203,29 @@ function buildShipmentData() {
       etd = new Date(po.etd);
     }
     
-    // ETA = estimatedArrivalDate (updated/revised ETA), fallback to Original ETA custom field
-    let eta = null;
-    if (po.estimatedArrivalDate) {
-      eta = new Date(po.estimatedArrivalDate);
-    }
-    if ((!eta || isNaN(eta.getTime())) && po.customFields?.orders_1000) {
+    // Original ETA = customFields.orders_1000 (set when PO created)
+    let originalEta = null;
+    if (po.customFields?.orders_1000) {
       const cf = po.customFields.orders_1000;
       const parsed = new Date(cf.replace(/(\d+)-(\d+)-(\d+)/, (m, d, mo, y) => {
         return y + '-' + mo.padStart(2,'0') + '-' + d.padStart(2,'0');
       }));
-      if (!isNaN(parsed.getTime())) eta = parsed;
-      if (!eta || isNaN(eta.getTime())) {
+      if (!isNaN(parsed.getTime())) originalEta = parsed;
+      if (!originalEta || isNaN(originalEta.getTime())) {
         const direct = new Date(cf);
-        if (!isNaN(direct.getTime())) eta = direct;
+        if (!isNaN(direct.getTime())) originalEta = direct;
       }
     }
+
+    // Revised ETA = estimatedArrivalDate (updated when shipping info comes in)
+    let revisedEta = null;
+    if (po.estimatedArrivalDate) {
+      revisedEta = new Date(po.estimatedArrivalDate);
+      if (isNaN(revisedEta.getTime())) revisedEta = null;
+    }
+
+    // ETA for display/calculations: use revised if available, else original
+    let eta = revisedEta || originalEta;
     
     // Actual received date
     let receivedDate = null;
@@ -1267,6 +1274,9 @@ function buildShipmentData() {
       destination: dest,
       etd: etd ? etd.toISOString() : null,
       eta: eta ? eta.toISOString() : null,
+      originalEta: originalEta ? originalEta.toISOString() : null,
+      revisedEta: revisedEta ? revisedEta.toISOString() : null,
+      etaStatus: (originalEta && revisedEta) ? (revisedEta > originalEta ? 'delayed' : revisedEta < originalEta ? 'early' : 'on_time') : null,
       receivedDate: receivedDate ? receivedDate.toISOString() : null,
       daysUntil,
       progress,

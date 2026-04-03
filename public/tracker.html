@@ -249,7 +249,8 @@ function renderSidebar(){
   list.innerHTML=filtered.map(s=>{
     const statusLabel={production:'In Production',in_transit:'In Transit',arrived:'Arrived',unknown:'Unknown'}[s.shipmentStatus]||'Unknown';
     const etaText=s.shipmentStatus==='arrived'?'Received':s.daysUntil!==null?(s.daysUntil>0?s.daysUntil+' days':'Overdue by '+Math.abs(s.daysUntil)+'d'):'No ETA';
-    const etaClass=s.shipmentStatus==='arrived'?'received':s.receivedDate?'received':s.daysUntil===null?'noeta':s.daysUntil<0?'overdue':s.daysUntil<=7?'soon':'eta';
+    const etaClass=s.shipmentStatus==='arrived'?'received':s.etaStatus==='delayed'?'overdue':s.etaStatus==='early'?'received':s.receivedDate?'received':s.daysUntil===null?'noeta':s.daysUntil<0?'overdue':s.daysUntil<=7?'soon':'eta';
+    const etaTag=s.etaStatus==='delayed'?' <span style="font-size:10px;color:var(--red);font-weight:700">⚠ DELAYED</span>':s.etaStatus==='early'?' <span style="font-size:10px;color:var(--green);font-weight:700">✓ EARLY</span>':'';
     const progressColor=s.shipmentStatus==='in_transit'?'var(--green)':s.shipmentStatus==='production'?'var(--yellow)':'var(--teal)';
     
     return`<div class="shipment-card ${selectedRef===s.reference?'active':''}" onclick="selectShipment('${s.reference}')">
@@ -315,9 +316,12 @@ function renderMap(){
       'Singapore':'#EF4444'     // 🔴 Red — Singapore
     };
     const destCity=s.destination.city||s.destination.port||'Melbourne';
-    const routeColor=ROUTE_COLORS[destCity]||'#5BAB31';
+    let routeColor=ROUTE_COLORS[destCity]||'#5BAB31';
+    // Override color for delayed (red) or early (green) shipments
+    if(s.etaStatus==='delayed') routeColor='#C33252';
+    else if(s.etaStatus==='early') routeColor='#5BAB31';
     const isActive=s.shipmentStatus==='in_transit';
-    const line=L.polyline(routePoints,{color:isActive?routeColor:'#DDE3D5',weight:isActive?2.5:1.5,opacity:isActive?0.8:0.4,dashArray:isActive?null:'8 6'}).addTo(map);
+    const line=L.polyline(routePoints,{color:isActive?routeColor:'#DDE3D5',weight:isActive?(s.etaStatus==='delayed'?3.5:2.5):1.5,opacity:isActive?0.8:0.4,dashArray:isActive?null:'8 6'}).addTo(map);
     routeLines.push(line);
     
     // Ship marker — use real AIS position if available, else interpolate along route
@@ -483,7 +487,8 @@ function showDetail(s){
   const allItems=Object.entries(s.items||{}).sort((a,b)=>b[1]-a[1]);
   const skuRows=allItems.map(([sku,qty])=>`<tr><td>${sku}</td><td style="text-align:right">${qty}</td></tr>`).join('');
   const statusLabel={production:'🏭 In Production',in_transit:'🚢 In Transit',arrived:'📦 Arrived'}[s.shipmentStatus]||'Unknown';
-  const etaDisplay=s.shipmentStatus==='arrived'?(s.receivedDate?'✅ Received '+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'✅ Received'):(s.eta?new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+(s.daysUntil!==null&&s.daysUntil>0?' ('+s.daysUntil+' days)':''):'Not set');
+  const etaDisplay=s.shipmentStatus==='arrived'?(s.receivedDate?'✅ Received '+new Date(s.receivedDate).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'✅ Received'):(s.eta?new Date(s.eta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})+(s.daysUntil!==null&&s.daysUntil>0?' ('+s.daysUntil+' days)':'')+(s.etaStatus==='delayed'?' <span style="color:var(--red);font-weight:700">⚠ DELAYED</span>':s.etaStatus==='early'?' <span style="color:var(--green);font-weight:700">✓ EARLY</span>':''):'Not set');
+  const origEtaDisplay=s.originalEta?new Date(s.originalEta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):null;
   const etdDisplay=s.etd?new Date(s.etd).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Not set';
 
   document.getElementById('dpTitle').textContent=s.reference;
@@ -497,6 +502,7 @@ function showDetail(s){
       ${s.trackingCode?'<tr><td>Container</td><td style="font-family:monospace;font-size:11px">'+s.trackingCode+'</td></tr>':''}
       <tr><td>ETD</td><td>${etdDisplay}</td></tr>
       <tr><td>ETA</td><td>${etaDisplay}</td></tr>
+      ${origEtaDisplay?'<tr><td>Orig. ETA</td><td style="color:var(--dim)">'+origEtaDisplay+(s.etaStatus==='delayed'?' → <span style="color:var(--red)">delayed</span>':s.etaStatus==='early'?' → <span style="color:var(--green)">early</span>':'')+'</td></tr>':''}
       <tr><td>Units</td><td><b>${s.totalUnits}</b> across ${s.skuCount} SKUs</td></tr>
       <tr><td>Value</td><td><b>$${s.total.toLocaleString()}</b> ${s.currency}</td></tr>
       ${s.progress>0&&s.progress<1?'<tr><td>Progress</td><td><div style="background:var(--border);border-radius:3px;height:6px;margin-top:2px"><div style="width:'+Math.round(s.progress*100)+'%;height:100%;background:var(--green);border-radius:3px"></div></div><span style="font-size:10px;color:var(--dim)">'+Math.round(s.progress*100)+'%</span></td></tr>':''}
@@ -546,6 +552,17 @@ function generateNotifications(){
   const now=new Date();
   shipments.forEach(s=>{
     if(s.shipmentStatus==='arrived') return;
+
+    // ETA changed — delayed or early
+    if(s.etaStatus==='delayed'&&s.originalEta&&s.revisedEta){
+      const diffDays=Math.round((new Date(s.revisedEta)-new Date(s.originalEta))/(24*60*60*1000));
+      notifications.push({type:'delay',ref:s.reference,text:`${s.reference} delayed by ${diffDays} day${diffDays!==1?'s':''} (was ${new Date(s.originalEta).toLocaleDateString('en-AU',{day:'numeric',month:'short'})} → now ${new Date(s.revisedEta).toLocaleDateString('en-AU',{day:'numeric',month:'short'})})`,days:-diffDays,icon:'🔴'});
+    }
+    if(s.etaStatus==='early'&&s.originalEta&&s.revisedEta){
+      const diffDays=Math.round((new Date(s.originalEta)-new Date(s.revisedEta))/(24*60*60*1000));
+      notifications.push({type:'early',ref:s.reference,text:`${s.reference} arriving ${diffDays} day${diffDays!==1?'s':''} early (was ${new Date(s.originalEta).toLocaleDateString('en-AU',{day:'numeric',month:'short'})} → now ${new Date(s.revisedEta).toLocaleDateString('en-AU',{day:'numeric',month:'short'})})`,days:diffDays,icon:'🟢'});
+    }
+
     if(!s.eta) return;
     const eta=new Date(s.eta);
     const daysLeft=Math.ceil((eta-now)/(24*60*60*1000));
@@ -555,16 +572,15 @@ function generateNotifications(){
     }
     // Arriving within 7 days
     else if(daysLeft>=0&&daysLeft<=7){
-      notifications.push({type:'arriving',ref:s.reference,text:`${s.reference} arriving in ${daysLeft} day${daysLeft!==1?'s':''} (${eta.toLocaleDateString('en-AU',{day:'numeric',month:'short'})})`,days:daysLeft,icon:'🟡'});
-    }
-    // Arriving within 3 days
-    if(daysLeft>=0&&daysLeft<=3){
-      notifications[notifications.length-1].type='arriving';
-      notifications[notifications.length-1].icon='🟠';
+      notifications.push({type:daysLeft<=3?'arriving':'arriving',ref:s.reference,text:`${s.reference} arriving in ${daysLeft} day${daysLeft!==1?'s':''} (${eta.toLocaleDateString('en-AU',{day:'numeric',month:'short'})})`,days:daysLeft,icon:daysLeft<=3?'🟠':'🟡'});
     }
   });
-  // Sort: overdue first, then soonest arriving
-  notifications.sort((a,b)=>a.days-b.days);
+  // Sort: delays first, then soonest
+  notifications.sort((a,b)=>{
+    if(a.type==='delay'&&b.type!=='delay') return -1;
+    if(a.type!=='delay'&&b.type==='delay') return 1;
+    return a.days-b.days;
+  });
   updateNotifBadge();
 }
 
