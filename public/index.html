@@ -543,15 +543,20 @@ function renderPurchaseOrders(allPOs) {
   };
   const totalUnits = pos.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
   const totalValue = pos.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const totalFreight = pos.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
+  const totalTariff = pos.reduce((t, po) => t + cx(po.tariffAmount || 0, po.currencyCode || 'USD'), 0);
   const productionValue = productionPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const productionFreight = productionPOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
   const transitValue = transitPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const transitFreight = transitPOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
   const overdueValue = overduePOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const overdueFreight = overduePOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
   const fmtVal = v => sym + v.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
   document.getElementById('poSummaryCards').innerHTML = `
-    <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div></div>
-    <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionPOs.length}</div><div class="sub">${fmtVal(productionValue)}</div></div>
-    <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${transitPOs.length}</div><div class="sub">${fmtVal(transitValue)}</div></div>
-    ${overduePOs.length > 0 ? `<div class="card" style="border-left:3px solid #991B1B"><div class="label">⚠️ Overdue</div><div class="value">${overduePOs.length}</div><div class="sub">${fmtVal(overdueValue)}</div></div>` : ''}
+    <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(totalFreight)} freight${totalTariff ? ' + ' + fmtVal(totalTariff) + ' tariff' : ''}</div></div>
+    <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionPOs.length}</div><div class="sub">${fmtVal(productionValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(productionFreight)} freight</div></div>
+    <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${transitPOs.length}</div><div class="sub">${fmtVal(transitValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(transitFreight)} freight</div></div>
+    ${overduePOs.length > 0 ? `<div class="card" style="border-left:3px solid #991B1B"><div class="label">⚠️ Overdue</div><div class="value">${overduePOs.length}</div><div class="sub">${fmtVal(overdueValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(overdueFreight)} freight</div></div>` : ''}
     <div class="card"><div class="label">✅ Received</div><div class="value">${receivedCount}</div><div class="sub">Completed</div></div>
   `;
   container.innerHTML = pos.map((po, i) => {
