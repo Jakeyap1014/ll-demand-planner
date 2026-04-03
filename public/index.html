@@ -471,14 +471,11 @@ async function loadAllPOs() {
 
 function poIsInTransit(po) {
   if (po.stage === 'Received') return false;
-  // In Transit = post ETD but not yet reached ETA
   const now = new Date();
   const etd = po.etd ? new Date(po.etd) : null;
   const eta = po.arrival ? new Date(po.arrival) : null;
-  if (etd && etd <= now) {
-    // Past ETD — in transit (unless past ETA too, but not received = still in transit/delayed)
-    return true;
-  }
+  // In Transit = post ETD + pre ETA (needs both dates)
+  if (etd && eta && etd <= now && eta > now) return true;
   return false;
 }
 
