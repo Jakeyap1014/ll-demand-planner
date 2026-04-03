@@ -161,10 +161,10 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
     </div>
     <div style="display:flex;gap:6px;margin-bottom:20px" id="poFilterBtns">
       <button class="filter-btn active" onclick="setPoFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setPoFilter('active',this)">📦 Active</button>
       <button class="filter-btn" onclick="setPoFilter('production',this)">🏭 In Production</button>
       <button class="filter-btn" onclick="setPoFilter('transit',this)">🚢 In Transit</button>
       <button class="filter-btn" onclick="setPoFilter('received',this)">✅ Received</button>
-    </div>
     </div>
     <div id="poSummaryCards" class="cards" style="margin-bottom:20px"></div>
     <div id="poList"></div>
@@ -467,6 +467,7 @@ function poIsInTransit(po) {
 function renderPurchaseOrders(allPOs) {
   const search = (document.getElementById('poSearch')?.value || '').toLowerCase().trim();
   let pos = (allPOs || []).filter(po => {
+    if (_poFilter === 'active') return po.stage !== 'Received';
     if (_poFilter === 'production') return po.stage !== 'Received' && !poIsInTransit(po);
     if (_poFilter === 'transit') return poIsInTransit(po);
     if (_poFilter === 'received') return po.stage === 'Received';
@@ -498,14 +499,18 @@ function renderPurchaseOrders(allPOs) {
     return '<span class="badge low">OPEN</span>';
   };
   // Summary cards
-  const productionCount = (allPOs||[]).filter(p => p.stage !== 'Received' && !poIsInTransit(p)).length;
-  const transitCount = (allPOs||[]).filter(p => poIsInTransit(p)).length;
+  const productionPOs = (allPOs||[]).filter(p => p.stage !== 'Received' && !poIsInTransit(p));
+  const transitPOs = (allPOs||[]).filter(p => poIsInTransit(p));
   const receivedCount = (allPOs||[]).filter(p => p.stage === 'Received').length;
   const totalUnits = pos.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
+  const totalValue = pos.reduce((t, po) => t + (po.total || 0), 0);
+  const productionValue = productionPOs.reduce((t, po) => t + (po.total || 0), 0);
+  const transitValue = transitPOs.reduce((t, po) => t + (po.total || 0), 0);
+  const fmtVal = v => v >= 1000000 ? '$' + (v/1000000).toFixed(1) + 'M' : v >= 1000 ? '$' + (v/1000).toFixed(0) + 'K' : '$' + v.toFixed(0);
   document.getElementById('poSummaryCards').innerHTML = `
-    <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units</div></div>
-    <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionCount}</div><div class="sub">Awaiting shipment</div></div>
-    <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${transitCount}</div><div class="sub">On the water</div></div>
+    <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div></div>
+    <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionPOs.length}</div><div class="sub">${fmtVal(productionValue)}</div></div>
+    <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${transitPOs.length}</div><div class="sub">${fmtVal(transitValue)}</div></div>
     <div class="card"><div class="label">✅ Received</div><div class="value">${receivedCount}</div><div class="sub">Completed</div></div>
   `;
   container.innerHTML = pos.map((po, i) => {
@@ -524,6 +529,7 @@ function renderPurchaseOrders(allPOs) {
           <span title="ETD (Departure)">🚢 ETD: ${etd}</span>
           <span title="ETA (Updated Arrival)" style="color:var(--text)">📅 ETA: <b>${eta}</b></span>
           <span title="Original ETA">📌 Orig: ${originalEta}</span>
+          <span style="font-weight:600;color:var(--text)">${po.total ? '$' + po.total.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) : '—'}</span>
           <span>${skuCount(po)} SKUs · ${totalItems(po)} units</span>
           <span style="font-size:14px;transition:transform 0.2s">▼</span>
         </div>
