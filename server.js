@@ -391,27 +391,28 @@ async function refreshAllData() {
     console.log(`Data refresh complete in ${elapsed}s. CIN7: ${cin7Count} SKUs, ${cin7POs.length} POs. Shopify: Lifely ${Object.keys(lifelyVel).length} SKUs, Cushie ${Object.keys(cushieVel).length} SKUs.`);
     refreshAIS(); // Update vessel tracking after data refresh
     
-    // Auto-retry once if CIN7 data empty (cold start / rate limit recovery)
+    // Auto-retry with escalating delays if data is empty (cold start / rate limit recovery)
     if (cin7Count === 0 && !dataCache._retrying) {
-      console.log('CIN7 returned 0 SKUs — will retry once in 10 min...');
       dataCache._retrying = true;
-      setTimeout(async () => {
-        try {
-          const retryProducts = await fetchCin7AllProducts();
-          if (Object.keys(retryProducts).length > 0) {
-            dataCache.cin7Products = retryProducts;
-            const retryPOs = await fetchCin7POs();
-            if (retryPOs.length > 0) dataCache.cin7POs = retryPOs;
-            dataCache.lastRefresh = new Date().toISOString();
-            console.log('CIN7 retry SUCCESS: ' + Object.keys(retryProducts).length + ' SKUs');
-          } else {
-            console.log('CIN7 retry still empty — will recover on next scheduled refresh');
-          }
-        } catch (e) {
-          console.error('CIN7 retry failed:', e.message);
+      const retryDelays = [60000, 120000, 300000]; // 1 min, 2 min, 5 min
+      (async function retryLoop() {
+        for (let i = 0; i < retryDelays.length; i++) {
+          console.log(`CIN7 empty — retry ${i + 1}/${retryDelays.length} in ${retryDelays[i] / 1000}s...`);
+          await new Promise(r => setTimeout(r, retryDelays[i]));
+          try {
+            const retryProducts = await fetchCin7AllProducts();
+            if (Object.keys(retryProducts).length > 0) {
+              dataCache.cin7Products = retryProducts;
+              const retryPOs = await fetchCin7POs();
+              if (retryPOs.length > 0) dataCache.cin7POs = retryPOs;
+              dataCache.lastRefresh = new Date().toISOString();
+              console.log('CIN7 retry SUCCESS: ' + Object.keys(retryProducts).length + ' SKUs, ' + retryPOs.length + ' POs');
+              break;
+            }
+          } catch (e) { console.error('CIN7 retry ' + (i + 1) + ' failed:', e.message); }
         }
         dataCache._retrying = false;
-      }, 600000); // 10 min wait before retry
+      })();
     }
   } catch (e) {
     console.error('Data refresh failed:', e.message);
@@ -1397,6 +1398,13 @@ app.get('/api/shipments', requireAuth, (req, res) => {
 // Serve shipment tracker page
 app.get('/tracker', (req, res) => res.sendFile(path.join(__dirname, 'public', 'tracker.html')));
 
+// Health check endpoint (no auth needed — used by keep-alive and monitoring)
+app.get('/api/health', (req, res) => {
+  const cin7Count = Object.keys(dataCache.cin7Products).length;
+  const poCount = dataCache.cin7POs.length;
+  res.json({ ok: cin7Count > 0, cin7: cin7Count, pos: poCount, lastRefresh: dataCache.lastRefresh, uptime: Math.round(process.uptime()) });
+});
+
 // Main app
 app.get('/', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.use(requireAuth, express.static(path.join(__dirname, 'public')));
@@ -1406,4 +1414,14 @@ app.listen(PORT, () => {
   console.log(`Demand Planner running on port ${PORT}`);
   refreshAllData(); // Initial fetch
   setInterval(refreshAllData, 2 * 60 * 60 * 1000); // Refresh every 2 hours
+  
+  // Keep-alive: ping self every 10 min to prevent Render free tier spin-down
+  setInterval(() => {
+    const url = `http://localhost:${PORT}/api/health`;
+    https.get(url, () => {}).on('error', () => {});
+    // Also use http since it's localhost
+    require('http').get(url, () => {}).on('error', () => {});
+  }, 10 * 60 * 1000);
 });
+
+
