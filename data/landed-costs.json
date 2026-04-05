@@ -1,0 +1,4917 @@
+{
+  "DD-21137CF": {
+    "landedPerUnit": 98.41,
+    "sohQty": 152,
+    "sohValue": 14958.67
+  },
+  "DD-21183CF": {
+    "landedPerUnit": 146.62,
+    "sohQty": 1,
+    "sohValue": 146.62
+  },
+  "DD-21107CF": {
+    "landedPerUnit": 83.36,
+    "sohQty": 30,
+    "sohValue": 2500.83
+  },
+  "DD-21915CF": {
+    "landedPerUnit": 69.19,
+    "sohQty": 71,
+    "sohValue": 4912.8
+  },
+  "DD-34137D-SFM": {
+    "landedPerUnit": 173.95,
+    "sohQty": 3,
+    "sohValue": 521.84
+  },
+  "DD-34183K-SFM": {
+    "landedPerUnit": 212.73,
+    "sohQty": 3,
+    "sohValue": 638.19
+  },
+  "DD-34153Q-SFM": {
+    "landedPerUnit": 190.11,
+    "sohQty": 1,
+    "sohValue": 190.11
+  },
+  "ACHE-FLAMP-ECO-2": {
+    "landedPerUnit": 19.93,
+    "sohQty": 1,
+    "sohValue": 19.93
+  },
+  "ADLN-BT-WHT": {
+    "landedPerUnit": 73.71,
+    "sohQty": 1,
+    "sohValue": 73.71
+  },
+  "ALX-BF-K-NAL-ECO-1": {
+    "landedPerUnit": 90.54,
+    "sohQty": 40,
+    "sohValue": 3621.62
+  },
+  "ALX-BF-K-NAL-ECO-2": {
+    "landedPerUnit": 82.72,
+    "sohQty": 40,
+    "sohValue": 3308.9
+  },
+  "ALX-BF-K-NAL-ECO-3": {
+    "landedPerUnit": 124.32,
+    "sohQty": 41,
+    "sohValue": 5097.27
+  },
+  "ALX-BF-Q-NAL-ECO-1": {
+    "landedPerUnit": 90.68,
+    "sohQty": 43,
+    "sohValue": 3899.18
+  },
+  "ALX-BF-Q-NAL-ECO-2": {
+    "landedPerUnit": 78.12,
+    "sohQty": 43,
+    "sohValue": 3359.01
+  },
+  "ALX-BF-Q-NAL-ECO-3": {
+    "landedPerUnit": 110.18,
+    "sohQty": 43,
+    "sohValue": 4737.82
+  },
+  "ALXS-CHR-WHT-ECO": {
+    "landedPerUnit": 166.45,
+    "sohQty": 3,
+    "sohValue": 499.34
+  },
+  "AFI-BF-K-WHT-ECO": {
+    "landedPerUnit": 503.12,
+    "sohQty": 1,
+    "sohValue": 503.12
+  },
+  "AFI-BF-K-ECO-1": {
+    "landedPerUnit": 219.27,
+    "sohQty": 1,
+    "sohValue": 219.27
+  },
+  "AFI-BF-K-ECO-2": {
+    "landedPerUnit": 226.56,
+    "sohQty": 2,
+    "sohValue": 453.11
+  },
+  "AFI-BF-Q-ECO-2": {
+    "landedPerUnit": 210.08,
+    "sohQty": 5,
+    "sohValue": 1050.42
+  },
+  "AFI-BF-Q-WHT-ECO-1": {
+    "landedPerUnit": 242.17,
+    "sohQty": 1,
+    "sohValue": 242.17
+  },
+  "AFI-BF-Q-WHT-ECO-2": {
+    "landedPerUnit": 229.63,
+    "sohQty": 2,
+    "sohValue": 459.27
+  },
+  "ALCE-BS-ECO": {
+    "landedPerUnit": 82.3,
+    "sohQty": 3,
+    "sohValue": 246.9
+  },
+  "ALSN-BT-OAK": {
+    "landedPerUnit": 99.05,
+    "sohQty": 1,
+    "sohValue": 99.05
+  },
+  "ALSN-BT-OAK-ECO": {
+    "landedPerUnit": 116.49,
+    "sohQty": 2,
+    "sohValue": 232.98
+  },
+  "ALLY-4COD-WHT": {
+    "landedPerUnit": 117.08,
+    "sohQty": 2,
+    "sohValue": 234.16
+  },
+  "ALLY-4COD-WHT-1": {
+    "landedPerUnit": 58.54,
+    "sohQty": 1,
+    "sohValue": 58.54
+  },
+  "ALLY-TV-WHT-1": {
+    "landedPerUnit": 64.69,
+    "sohQty": 2,
+    "sohValue": 129.37
+  },
+  "ALLY-TV-WHT-2": {
+    "landedPerUnit": 64.68,
+    "sohQty": 3,
+    "sohValue": 194.05
+  },
+  "ALLY-V2-TV-WHT-2": {
+    "landedPerUnit": 71.37,
+    "sohQty": 1,
+    "sohValue": 71.37
+  },
+  "ALLY-V2-TV-WHT-ECO-1": {
+    "landedPerUnit": 79.18,
+    "sohQty": 5,
+    "sohValue": 395.91
+  },
+  "ALLY-V2-TV-WHT-ECO-2": {
+    "landedPerUnit": 89.03,
+    "sohQty": 4,
+    "sohValue": 356.12
+  },
+  "ALLY-TV225-WHT-1": {
+    "landedPerUnit": 79.93,
+    "sohQty": 2,
+    "sohValue": 159.86
+  },
+  "ALLY-TV225-WHT-2": {
+    "landedPerUnit": 79.89,
+    "sohQty": 1,
+    "sohValue": 79.89
+  },
+  "ALLY-TV225-WHT-ECO-1": {
+    "landedPerUnit": 73.05,
+    "sohQty": 2,
+    "sohValue": 146.1
+  },
+  "AMBR-DC-BLK": {
+    "landedPerUnit": 108.57,
+    "sohQty": 1,
+    "sohValue": 108.57
+  },
+  "AMBR-DC-GRN": {
+    "landedPerUnit": 129.75,
+    "sohQty": 2,
+    "sohValue": 259.5
+  },
+  "AMBR-DC-GRN-ECO": {
+    "landedPerUnit": 173.97,
+    "sohQty": 2,
+    "sohValue": 347.95
+  },
+  "AMBR-DC-WHT-ECO": {
+    "landedPerUnit": 154.09,
+    "sohQty": 18,
+    "sohValue": 2773.68
+  },
+  "AMLA-DESK-1": {
+    "landedPerUnit": 77.23,
+    "sohQty": 2,
+    "sohValue": 154.47
+  },
+  "AMLA-DESK-2": {
+    "landedPerUnit": 76.08,
+    "sohQty": 2,
+    "sohValue": 152.17
+  },
+  "AMLA-DESK-ECO-1": {
+    "landedPerUnit": 79.62,
+    "sohQty": 7,
+    "sohValue": 557.36
+  },
+  "AMLA-DESK-ECO-2": {
+    "landedPerUnit": 79.26,
+    "sohQty": 1,
+    "sohValue": 79.26
+  },
+  "ARH-SB160-WHT-2": {
+    "landedPerUnit": 98.16,
+    "sohQty": 21,
+    "sohValue": 2061.4
+  },
+  "ARH-SB160-WHT-ECO-1": {
+    "landedPerUnit": 102.71,
+    "sohQty": 1,
+    "sohValue": 102.71
+  },
+  "ARH-SB160-WHT-ECO-2": {
+    "landedPerUnit": 77.83,
+    "sohQty": 5,
+    "sohValue": 389.16
+  },
+  "ARH-5DC80-WHT-1": {
+    "landedPerUnit": 83.15,
+    "sohQty": 2,
+    "sohValue": 166.3
+  },
+  "ARH-5DC80-WHT-2": {
+    "landedPerUnit": 82.86,
+    "sohQty": 3,
+    "sohValue": 248.57
+  },
+  "ARH-5DC80-WHT-ECO-1": {
+    "landedPerUnit": 115.91,
+    "sohQty": 3,
+    "sohValue": 347.73
+  },
+  "ARH-5DC80-WHT-ECO-2": {
+    "landedPerUnit": 85.11,
+    "sohQty": 2,
+    "sohValue": 170.23
+  },
+  "ARH-MR80-WHT": {
+    "landedPerUnit": 116.13,
+    "sohQty": 3,
+    "sohValue": 348.38
+  },
+  "ARH-MR80-WHT-ECO": {
+    "landedPerUnit": 131.12,
+    "sohQty": 1,
+    "sohValue": 131.12
+  },
+  "ARH-TV220-WHT-2": {
+    "landedPerUnit": 107.36,
+    "sohQty": 6,
+    "sohValue": 644.14
+  },
+  "ARH-TV220-WHT-ECO-1": {
+    "landedPerUnit": 79.33,
+    "sohQty": 2,
+    "sohValue": 158.67
+  },
+  "ARH-TV220-WHT-ECO-2": {
+    "landedPerUnit": 118.3,
+    "sohQty": 2,
+    "sohValue": 236.6
+  },
+  "ARH-TV180-WHT-2": {
+    "landedPerUnit": 83.93,
+    "sohQty": 3,
+    "sohValue": 251.79
+  },
+  "ADN-TV180-ASH-ECO-1": {
+    "landedPerUnit": 67.21,
+    "sohQty": 2,
+    "sohValue": 134.42
+  },
+  "ARLO-6COD-WHT-1": {
+    "landedPerUnit": 63.09,
+    "sohQty": 2,
+    "sohValue": 126.18
+  },
+  "ARLO-6COD-WHT-2": {
+    "landedPerUnit": 63.09,
+    "sohQty": 6,
+    "sohValue": 378.54
+  },
+  "ARLO-6COD-WHT-3": {
+    "landedPerUnit": 63.09,
+    "sohQty": 6,
+    "sohValue": 378.54
+  },
+  "ARLO-6COD-WHT-ECO-1": {
+    "landedPerUnit": 72.87,
+    "sohQty": 19,
+    "sohValue": 1384.45
+  },
+  "ARLO-6COD-WHT-ECO-2": {
+    "landedPerUnit": 57.69,
+    "sohQty": 19,
+    "sohValue": 1096.13
+  },
+  "ARLO-6COD-WHT-ECO-3": {
+    "landedPerUnit": 65.68,
+    "sohQty": 18,
+    "sohValue": 1182.2
+  },
+  "ARLO-BT-WHT-ECO": {
+    "landedPerUnit": 88.5,
+    "sohQty": 2,
+    "sohValue": 177.01
+  },
+  "ARLO-CST-WHT-1": {
+    "landedPerUnit": 100.22,
+    "sohQty": 2,
+    "sohValue": 200.44
+  },
+  "ARLO-CST-WHT-2": {
+    "landedPerUnit": 66.42,
+    "sohQty": 3,
+    "sohValue": 199.26
+  },
+  "ARLO-CST-WHT-ECO-1": {
+    "landedPerUnit": 82.22,
+    "sohQty": 2,
+    "sohValue": 164.44
+  },
+  "ARLO-CST-WHT-ECO-2": {
+    "landedPerUnit": 91.96,
+    "sohQty": 1,
+    "sohValue": 91.96
+  },
+  "ARLO-SB-WHT-1": {
+    "landedPerUnit": 78.86,
+    "sohQty": 3,
+    "sohValue": 236.58
+  },
+  "ARLO-SB-WHT-2": {
+    "landedPerUnit": 79.08,
+    "sohQty": 1,
+    "sohValue": 79.08
+  },
+  "ARLO-SB-WHT-ECO-1": {
+    "landedPerUnit": 96.94,
+    "sohQty": 1,
+    "sohValue": 96.94
+  },
+  "ARLO-SB-WHT-ECO-2": {
+    "landedPerUnit": 88.83,
+    "sohQty": 1,
+    "sohValue": 88.83
+  },
+  "ARLO-SB-WHT-ECO-3": {
+    "landedPerUnit": 59.39,
+    "sohQty": 1,
+    "sohValue": 59.39
+  },
+  "ARLO-TV-WHT-1": {
+    "landedPerUnit": 109.28,
+    "sohQty": 2,
+    "sohValue": 218.56
+  },
+  "ARLO-TV-WHT-2": {
+    "landedPerUnit": 109.17,
+    "sohQty": 3,
+    "sohValue": 327.51
+  },
+  "ARLO-TV-WHT-ECO-1": {
+    "landedPerUnit": 127.65,
+    "sohQty": 2,
+    "sohValue": 255.3
+  },
+  "ARLO-TV-WHT-ECO-2": {
+    "landedPerUnit": 94.93,
+    "sohQty": 1,
+    "sohValue": 94.93
+  },
+  "ARLO-TV160-WHT-1": {
+    "landedPerUnit": 91.67,
+    "sohQty": 4,
+    "sohValue": 366.66
+  },
+  "ARLO-TV160-WHT-2": {
+    "landedPerUnit": 91.64,
+    "sohQty": 5,
+    "sohValue": 458.18
+  },
+  "ARLO-TV160-WHT-ECO-1": {
+    "landedPerUnit": 105.17,
+    "sohQty": 1,
+    "sohValue": 105.17
+  },
+  "ARLO-TV160-WHT-ECO-2": {
+    "landedPerUnit": 105.17,
+    "sohQty": 1,
+    "sohValue": 105.17
+  },
+  "V2-RMST-LIGY": {
+    "landedPerUnit": 29.68,
+    "sohQty": 109,
+    "sohValue": 3235.29
+  },
+  "V2-RMST-CREAM": {
+    "landedPerUnit": 25.53,
+    "sohQty": 32,
+    "sohValue": 817
+  },
+  "V2-RMST-DKBL": {
+    "landedPerUnit": 27.75,
+    "sohQty": 156,
+    "sohValue": 4329.53
+  },
+  "V2-RMST-DKGY": {
+    "landedPerUnit": 26.64,
+    "sohQty": 51,
+    "sohValue": 1358.43
+  },
+  "V2-RMST-LGN": {
+    "landedPerUnit": 30.55,
+    "sohQty": 285,
+    "sohValue": 8707.69
+  },
+  "ASW-3S-CLKWHT-1": {
+    "landedPerUnit": 139.85,
+    "sohQty": 3,
+    "sohValue": 419.56
+  },
+  "AVRY-FLAMP": {
+    "landedPerUnit": 67.82,
+    "sohQty": 1,
+    "sohValue": 67.82
+  },
+  "AVRY-FLAMP-1": {
+    "landedPerUnit": 37.67,
+    "sohQty": 1,
+    "sohValue": 37.67
+  },
+  "AVRY-FLAMP-2": {
+    "landedPerUnit": 37.67,
+    "sohQty": 1,
+    "sohValue": 37.67
+  },
+  "AVRY-FLAMP-CG-ECO-1": {
+    "landedPerUnit": 59.3,
+    "sohQty": 10,
+    "sohValue": 593.02
+  },
+  "AVRY-FLAMP-CG-ECO-2": {
+    "landedPerUnit": 16.42,
+    "sohQty": 13,
+    "sohValue": 213.52
+  },
+  "BLC-6COD-OAK-1": {
+    "landedPerUnit": 89.32,
+    "sohQty": 2,
+    "sohValue": 178.64
+  },
+  "BLC-6COD-OAK-2": {
+    "landedPerUnit": 89.32,
+    "sohQty": 2,
+    "sohValue": 178.64
+  },
+  "BLC-6COD-OAK-3": {
+    "landedPerUnit": 89.32,
+    "sohQty": 4,
+    "sohValue": 357.28
+  },
+  "BLC-6COD-OAK-ECO-1": {
+    "landedPerUnit": 89.53,
+    "sohQty": 2,
+    "sohValue": 179.06
+  },
+  "BLC-6COD-OAK-ECO-2": {
+    "landedPerUnit": 89.37,
+    "sohQty": 2,
+    "sohValue": 178.74
+  },
+  "BLC-6COD-OAK-ECO-3": {
+    "landedPerUnit": 88.47,
+    "sohQty": 3,
+    "sohValue": 265.4
+  },
+  "BLC-6COD-WNT-1": {
+    "landedPerUnit": 88.42,
+    "sohQty": 2,
+    "sohValue": 176.84
+  },
+  "BLC-6COD-WNT-2": {
+    "landedPerUnit": 88.42,
+    "sohQty": 5,
+    "sohValue": 442.09
+  },
+  "BLC-6COD-WNT-3": {
+    "landedPerUnit": 88.49,
+    "sohQty": 13,
+    "sohValue": 1150.34
+  },
+  "BLC-6COD-WNT-ECO-1": {
+    "landedPerUnit": 91.06,
+    "sohQty": 1,
+    "sohValue": 91.06
+  },
+  "BLC-6COD-WNT-ECO-2": {
+    "landedPerUnit": 90.95,
+    "sohQty": 7,
+    "sohValue": 636.66
+  },
+  "BLC-6COD-WNT-ECO-3": {
+    "landedPerUnit": 90.36,
+    "sohQty": 13,
+    "sohValue": 1174.71
+  },
+  "BLC-V2-BBK-OAK": {
+    "landedPerUnit": 333.38,
+    "sohQty": 1,
+    "sohValue": 333.38
+  },
+  "BLC-V2-BBK-OAK-1": {
+    "landedPerUnit": 116.94,
+    "sohQty": 1,
+    "sohValue": 116.94
+  },
+  "BLC-V2-BBK-OAK-3": {
+    "landedPerUnit": 116.95,
+    "sohQty": 8,
+    "sohValue": 935.64
+  },
+  "BLC-V2-BBK-OAK-ECO-1": {
+    "landedPerUnit": 93.92,
+    "sohQty": 1,
+    "sohValue": 93.92
+  },
+  "BLC-BBK-OAK-1": {
+    "landedPerUnit": 97.41,
+    "sohQty": 1,
+    "sohValue": 97.41
+  },
+  "BLC-BBK-OAK-3": {
+    "landedPerUnit": 97.41,
+    "sohQty": 1,
+    "sohValue": 97.41
+  },
+  "BLC-BBK-OAK-ECO-1": {
+    "landedPerUnit": 120.67,
+    "sohQty": 4,
+    "sohValue": 482.68
+  },
+  "BLC-BBK-OAK-ECO-2": {
+    "landedPerUnit": 82.23,
+    "sohQty": 3,
+    "sohValue": 246.68
+  },
+  "BLC-BBK-OAK-ECO-3": {
+    "landedPerUnit": 92.93,
+    "sohQty": 3,
+    "sohValue": 278.78
+  },
+  "BLC-BBQ-OAK-2": {
+    "landedPerUnit": 98.8,
+    "sohQty": 4,
+    "sohValue": 395.18
+  },
+  "BLC-BBQ-OAK-3": {
+    "landedPerUnit": 98.8,
+    "sohQty": 2,
+    "sohValue": 197.59
+  },
+  "BLC-BBQ-OAK-ECO-1": {
+    "landedPerUnit": 132.87,
+    "sohQty": 1,
+    "sohValue": 132.87
+  },
+  "BLC-BBQ-OAK-ECO-2": {
+    "landedPerUnit": 88.59,
+    "sohQty": 3,
+    "sohValue": 265.77
+  },
+  "BLC-BBQ-OAK-ECO-3": {
+    "landedPerUnit": 106.3,
+    "sohQty": 2,
+    "sohValue": 212.6
+  },
+  "BLC-V2-BBQ-OAK-1": {
+    "landedPerUnit": 110.2,
+    "sohQty": 12,
+    "sohValue": 1322.42
+  },
+  "BLC-V2-BBQ-OAK-2": {
+    "landedPerUnit": 110.2,
+    "sohQty": 11,
+    "sohValue": 1212.22
+  },
+  "BLC-V2-BBQ-OAK-ECO-1": {
+    "landedPerUnit": 98.55,
+    "sohQty": 1,
+    "sohValue": 98.55
+  },
+  "BLC-V2-BBQ-OAK-ECO-2": {
+    "landedPerUnit": 132.55,
+    "sohQty": 1,
+    "sohValue": 132.55
+  },
+  "BLC-BT-WNT": {
+    "landedPerUnit": 78.16,
+    "sohQty": 2,
+    "sohValue": 156.32
+  },
+  "BLC-BT-WNT-ECO": {
+    "landedPerUnit": 89.98,
+    "sohQty": 3,
+    "sohValue": 269.95
+  },
+  "BLC-BT-OAK": {
+    "landedPerUnit": 78.36,
+    "sohQty": 1,
+    "sohValue": 78.36
+  },
+  "BLC-BT-OAK-ECO": {
+    "landedPerUnit": 93.9,
+    "sohQty": 6,
+    "sohValue": 563.38
+  },
+  "BLC-CT-OAK-2": {
+    "landedPerUnit": 97.07,
+    "sohQty": 3,
+    "sohValue": 291.21
+  },
+  "BLC-CT-OAK-ECO-1": {
+    "landedPerUnit": 91.22,
+    "sohQty": 6,
+    "sohValue": 547.32
+  },
+  "BLC-CT-OAK-ECO-2": {
+    "landedPerUnit": 108.86,
+    "sohQty": 6,
+    "sohValue": 653.17
+  },
+  "BLC-CT-BLK-1": {
+    "landedPerUnit": 94.65,
+    "sohQty": 4,
+    "sohValue": 378.59
+  },
+  "BLC-CT-BLK-2": {
+    "landedPerUnit": 94.65,
+    "sohQty": 7,
+    "sohValue": 662.53
+  },
+  "BLC-TV200-OAK-1": {
+    "landedPerUnit": 96.97,
+    "sohQty": 5,
+    "sohValue": 484.87
+  },
+  "BLC-TV200-OAK-2": {
+    "landedPerUnit": 96.97,
+    "sohQty": 5,
+    "sohValue": 484.87
+  },
+  "BLC-TV200-OAK-ECO-1": {
+    "landedPerUnit": 98.67,
+    "sohQty": 28,
+    "sohValue": 2762.64
+  },
+  "BLC-TV200-OAK-ECO-2": {
+    "landedPerUnit": 98.83,
+    "sohQty": 27,
+    "sohValue": 2668.38
+  },
+  "BLC-TV200-WNT-ECO-1": {
+    "landedPerUnit": 118.21,
+    "sohQty": 2,
+    "sohValue": 236.42
+  },
+  "BLC-TV200-WNT-ECO-2": {
+    "landedPerUnit": 88.74,
+    "sohQty": 1,
+    "sohValue": 88.74
+  },
+  "BEN-RUG-160": {
+    "landedPerUnit": 37.56,
+    "sohQty": 6,
+    "sohValue": 225.35
+  },
+  "BEN-RUG-200": {
+    "landedPerUnit": 58.95,
+    "sohQty": 23,
+    "sohValue": 1355.77
+  },
+  "BEN-RUG-240": {
+    "landedPerUnit": 82.44,
+    "sohQty": 2,
+    "sohValue": 164.87
+  },
+  "BNC-6COD-WNT-ECO-1": {
+    "landedPerUnit": 58.53,
+    "sohQty": 24,
+    "sohValue": 1404.72
+  },
+  "BNC-6COD-WNT-ECO-2": {
+    "landedPerUnit": 47.74,
+    "sohQty": 24,
+    "sohValue": 1145.85
+  },
+  "BNC-6COD-WNT-ECO-3": {
+    "landedPerUnit": 59.97,
+    "sohQty": 24,
+    "sohValue": 1439.23
+  },
+  "BRDY-SOFA-RIGHT-LGY": {
+    "landedPerUnit": 143.06,
+    "sohQty": 1,
+    "sohValue": 143.06
+  },
+  "BRDY-OTM-LGY": {
+    "landedPerUnit": 70.75,
+    "sohQty": 2,
+    "sohValue": 141.5
+  },
+  "BRDY-SOFA-LGY": {
+    "landedPerUnit": 110.4,
+    "sohQty": 11,
+    "sohValue": 1214.44
+  },
+  "BRDY-SOFA-LEFT-LGY": {
+    "landedPerUnit": 143.06,
+    "sohQty": 5,
+    "sohValue": 715.29
+  },
+  "BRDY-SOFA-CORNER-LGY": {
+    "landedPerUnit": 127.51,
+    "sohQty": 5,
+    "sohValue": 637.54
+  },
+  "BRN-6COD-ECO-1": {
+    "landedPerUnit": 75.93,
+    "sohQty": 16,
+    "sohValue": 1214.86
+  },
+  "BRN-6COD-ECO-2": {
+    "landedPerUnit": 60.86,
+    "sohQty": 16,
+    "sohValue": 973.72
+  },
+  "BRN-6COD-ECO-3": {
+    "landedPerUnit": 91.16,
+    "sohQty": 16,
+    "sohValue": 1458.58
+  },
+  "BRL-BWD-BT-ECO": {
+    "landedPerUnit": 70.48,
+    "sohQty": 1,
+    "sohValue": 70.48
+  },
+  "CLB-D170-WNT-1": {
+    "landedPerUnit": 77.62,
+    "sohQty": 3,
+    "sohValue": 232.86
+  },
+  "CLB-D170-WNT-2": {
+    "landedPerUnit": 77.62,
+    "sohQty": 4,
+    "sohValue": 310.49
+  },
+  "CLB-D170-WNT-ECO-1": {
+    "landedPerUnit": 96.38,
+    "sohQty": 3,
+    "sohValue": 289.14
+  },
+  "CLB-D170-WNT-ECO-2": {
+    "landedPerUnit": 70.51,
+    "sohQty": 5,
+    "sohValue": 352.54
+  },
+  "CLV2-WB147-D-1": {
+    "landedPerUnit": 53.73,
+    "sohQty": 39,
+    "sohValue": 2095.47
+  },
+  "CLV2-WB147-D-2": {
+    "landedPerUnit": 53.91,
+    "sohQty": 43,
+    "sohValue": 2318.32
+  },
+  "CLV2-WB147-D-ECO-1": {
+    "landedPerUnit": 67.07,
+    "sohQty": 1,
+    "sohValue": 67.07
+  },
+  "CLV2-WB147-D-WNT-1": {
+    "landedPerUnit": 59.65,
+    "sohQty": 1,
+    "sohValue": 59.65
+  },
+  "CLV2-WB147-D-WNT-ECO-1": {
+    "landedPerUnit": 80.48,
+    "sohQty": 1,
+    "sohValue": 80.48
+  },
+  "CLV2-WB147-D-WNT-ECO-2": {
+    "landedPerUnit": 32.92,
+    "sohQty": 1,
+    "sohValue": 32.92
+  },
+  "CLV2-WB193-K-ECO-1": {
+    "landedPerUnit": 83.52,
+    "sohQty": 1,
+    "sohValue": 83.52
+  },
+  "CLV2-WB193-K-ECO-2": {
+    "landedPerUnit": 44.09,
+    "sohQty": 1,
+    "sohValue": 44.09
+  },
+  "CLV2-WB193-K-WNT-1": {
+    "landedPerUnit": 79.99,
+    "sohQty": 3,
+    "sohValue": 239.96
+  },
+  "CLV2-WB193-K-WNT-ECO-1": {
+    "landedPerUnit": 94.45,
+    "sohQty": 3,
+    "sohValue": 283.34
+  },
+  "CLV2-WB193-K-WNT-ECO-2": {
+    "landedPerUnit": 46.6,
+    "sohQty": 2,
+    "sohValue": 93.21
+  },
+  "CLV2-WB117-KS-1": {
+    "landedPerUnit": 44.21,
+    "sohQty": 13,
+    "sohValue": 574.68
+  },
+  "CLV2-WB117-KS-2": {
+    "landedPerUnit": 43.9,
+    "sohQty": 12,
+    "sohValue": 526.77
+  },
+  "CLV2-WB117-KS-ECO-2": {
+    "landedPerUnit": 33.42,
+    "sohQty": 2,
+    "sohValue": 66.84
+  },
+  "CLV2-WB117-KS-WNT-1": {
+    "landedPerUnit": 57.47,
+    "sohQty": 5,
+    "sohValue": 287.36
+  },
+  "CLV2-WB117-KS-WNT-2": {
+    "landedPerUnit": 57.47,
+    "sohQty": 5,
+    "sohValue": 287.36
+  },
+  "CLV2-WB163-Q-ECO-1": {
+    "landedPerUnit": 72.08,
+    "sohQty": 2,
+    "sohValue": 144.15
+  },
+  "CLV2-WB163-Q-ECO-2": {
+    "landedPerUnit": 33.98,
+    "sohQty": 2,
+    "sohValue": 67.96
+  },
+  "CLV2-WB163-Q-WNT-1": {
+    "landedPerUnit": 83.29,
+    "sohQty": 7,
+    "sohValue": 583.02
+  },
+  "CLV2-WB163-Q-WNT-2": {
+    "landedPerUnit": 80.5,
+    "sohQty": 5,
+    "sohValue": 402.5
+  },
+  "CLV2-WB163-Q-WNT-ECO-1": {
+    "landedPerUnit": 82.77,
+    "sohQty": 1,
+    "sohValue": 82.77
+  },
+  "CL-WB147-D-ECO": {
+    "landedPerUnit": 67.86,
+    "sohQty": 1,
+    "sohValue": 67.86
+  },
+  "CL-WB147-D-WNT-ECO": {
+    "landedPerUnit": 91.16,
+    "sohQty": 1,
+    "sohValue": 91.16
+  },
+  "CL-WB193-K": {
+    "landedPerUnit": 78.64,
+    "sohQty": 2,
+    "sohValue": 157.27
+  },
+  "CL-WB193-K-WNT": {
+    "landedPerUnit": 106.08,
+    "sohQty": 2,
+    "sohValue": 212.17
+  },
+  "CL-WB193-K-WNT-ECO": {
+    "landedPerUnit": 105.69,
+    "sohQty": 1,
+    "sohValue": 105.69
+  },
+  "CL-WB117-KS": {
+    "landedPerUnit": 61.06,
+    "sohQty": 4,
+    "sohValue": 244.23
+  },
+  "CL-WB163-Q-ECO": {
+    "landedPerUnit": 77.48,
+    "sohQty": 3,
+    "sohValue": 232.43
+  },
+  "CL-WB163-Q-WNT": {
+    "landedPerUnit": 86.34,
+    "sohQty": 1,
+    "sohValue": 86.34
+  },
+  "CL-WB102-S": {
+    "landedPerUnit": 55.35,
+    "sohQty": 1,
+    "sohValue": 55.35
+  },
+  "CL-WB102-S-ECO": {
+    "landedPerUnit": 57.94,
+    "sohQty": 7,
+    "sohValue": 405.57
+  },
+  "CAM-DSK-ADJ-WG-ECO-1": {
+    "landedPerUnit": 103.49,
+    "sohQty": 31,
+    "sohValue": 3208.23
+  },
+  "CAM-DSK-ADJ-WG-ECO-2": {
+    "landedPerUnit": 151.86,
+    "sohQty": 31,
+    "sohValue": 4707.72
+  },
+  "CAM-DSK150-WG": {
+    "landedPerUnit": 194.65,
+    "sohQty": 2,
+    "sohValue": 389.3
+  },
+  "CAM-DSK150-WG-ECO-1": {
+    "landedPerUnit": 90.67,
+    "sohQty": 3,
+    "sohValue": 272.02
+  },
+  "CAM-DSK150-WG-ECO-2": {
+    "landedPerUnit": 78.56,
+    "sohQty": 2,
+    "sohValue": 157.11
+  },
+  "CRSN-SB-NATR-ECO-1": {
+    "landedPerUnit": 132.97,
+    "sohQty": 2,
+    "sohValue": 265.94
+  },
+  "CRSN-SB-NATR-ECO-2": {
+    "landedPerUnit": 39.21,
+    "sohQty": 4,
+    "sohValue": 156.84
+  },
+  "CARY-SOFA-GY": {
+    "landedPerUnit": 139.23,
+    "sohQty": 2,
+    "sohValue": 278.46
+  },
+  "CARY-SOFA-CORNER-GY": {
+    "landedPerUnit": 165.52,
+    "sohQty": 2,
+    "sohValue": 331.04
+  },
+  "CARY-SOFA-CORNER-GY-ECO": {
+    "landedPerUnit": 229.62,
+    "sohQty": 8,
+    "sohValue": 1836.95
+  },
+  "CARY-SOFA-LEFT-GY": {
+    "landedPerUnit": 166.46,
+    "sohQty": 2,
+    "sohValue": 332.92
+  },
+  "CARY-OTM-GY": {
+    "landedPerUnit": 113.57,
+    "sohQty": 2,
+    "sohValue": 227.14
+  },
+  "CARY-OTM-GY-ECO": {
+    "landedPerUnit": 149.11,
+    "sohQty": 5,
+    "sohValue": 745.57
+  },
+  "CARY-SOFA-RIGHT-GY": {
+    "landedPerUnit": 166.46,
+    "sohQty": 2,
+    "sohValue": 332.92
+  },
+  "CARY-SOFA-RIGHT-GY-ECO": {
+    "landedPerUnit": 248.32,
+    "sohQty": 3,
+    "sohValue": 744.96
+  },
+  "CSA-2120-BB-D-2": {
+    "landedPerUnit": 50.46,
+    "sohQty": 7,
+    "sohValue": 353.23
+  },
+  "CSA-2430-BB-K-2": {
+    "landedPerUnit": 59.53,
+    "sohQty": 20,
+    "sohValue": 1190.57
+  },
+  "CSA-2260-BB-Q-2": {
+    "landedPerUnit": 46.21,
+    "sohQty": 34,
+    "sohValue": 1571.08
+  },
+  "CECE-MR180-WHT": {
+    "landedPerUnit": 141.08,
+    "sohQty": 1,
+    "sohValue": 141.08
+  },
+  "V2-CH-LIGY-1": {
+    "landedPerUnit": 194.94,
+    "sohQty": 4,
+    "sohValue": 779.75
+  },
+  "V2-CH-LIGY-2": {
+    "landedPerUnit": 48.85,
+    "sohQty": 4,
+    "sohValue": 195.41
+  },
+  "V2-CH-CREAM-1": {
+    "landedPerUnit": 178.69,
+    "sohQty": 1,
+    "sohValue": 178.69
+  },
+  "V2-CH-CREAM-2": {
+    "landedPerUnit": 44.8,
+    "sohQty": 1,
+    "sohValue": 44.8
+  },
+  "V2-CH-DKBL-1": {
+    "landedPerUnit": 178.69,
+    "sohQty": 1,
+    "sohValue": 178.69
+  },
+  "V2-CH-DKBL-2": {
+    "landedPerUnit": 56.04,
+    "sohQty": 8,
+    "sohValue": 448.33
+  },
+  "V2-CH-DKGY-1": {
+    "landedPerUnit": 230.12,
+    "sohQty": 3,
+    "sohValue": 690.35
+  },
+  "V2-CH-DKGY-2": {
+    "landedPerUnit": 57.47,
+    "sohQty": 3,
+    "sohValue": 172.4
+  },
+  "V2-CH-LGN-1": {
+    "landedPerUnit": 209.27,
+    "sohQty": 14,
+    "sohValue": 2929.71
+  },
+  "V2-CH-LGN-2": {
+    "landedPerUnit": 52.52,
+    "sohQty": 14,
+    "sohValue": 735.33
+  },
+  "CRA-FLAMP-1": {
+    "landedPerUnit": 40.82,
+    "sohQty": 2,
+    "sohValue": 81.64
+  },
+  "CRA-FLAMP-2": {
+    "landedPerUnit": 40.82,
+    "sohQty": 3,
+    "sohValue": 122.46
+  },
+  "CLEO-SB-OAK-1": {
+    "landedPerUnit": 69.05,
+    "sohQty": 4,
+    "sohValue": 276.19
+  },
+  "CLEO-SB-OAK-2": {
+    "landedPerUnit": 69.05,
+    "sohQty": 9,
+    "sohValue": 621.41
+  },
+  "CLEO-SB-OAK-ECO-1": {
+    "landedPerUnit": 77.34,
+    "sohQty": 2,
+    "sohValue": 154.68
+  },
+  "CLEO-SB-OAK-ECO-2": {
+    "landedPerUnit": 70.07,
+    "sohQty": 1,
+    "sohValue": 70.07
+  },
+  "CLUD-CT-WHT-1": {
+    "landedPerUnit": 68.18,
+    "sohQty": 10,
+    "sohValue": 681.83
+  },
+  "CLUD-CT-WHT-ECO-1": {
+    "landedPerUnit": 53.88,
+    "sohQty": 1,
+    "sohValue": 53.88
+  },
+  "CLUD-CT-WHT-ECO-2": {
+    "landedPerUnit": 97.47,
+    "sohQty": 1,
+    "sohValue": 97.47
+  },
+  "CLUD-CT-RST-1": {
+    "landedPerUnit": 68.67,
+    "sohQty": 1,
+    "sohValue": 68.67
+  },
+  "CLUD-CT-RST-2": {
+    "landedPerUnit": 68.67,
+    "sohQty": 1,
+    "sohValue": 68.67
+  },
+  "CLUD-CT-RST-ECO-1": {
+    "landedPerUnit": 50.05,
+    "sohQty": 1,
+    "sohValue": 50.05
+  },
+  "CLUD-CT-RST-ECO-2": {
+    "landedPerUnit": 90.71,
+    "sohQty": 1,
+    "sohValue": 90.71
+  },
+  "DD-137DMF": {
+    "landedPerUnit": 148.96,
+    "sohQty": 2,
+    "sohValue": 297.92
+  },
+  "DD-183KMF": {
+    "landedPerUnit": 194.48,
+    "sohQty": 1,
+    "sohValue": 194.48
+  },
+  "DD-153QMF": {
+    "landedPerUnit": 179.21,
+    "sohQty": 1,
+    "sohValue": 179.21
+  },
+  "CPA-V3-BT603-WOK": {
+    "landedPerUnit": 39.0,
+    "sohQty": 1,
+    "sohValue": 39
+  },
+  "CPA-V3-BT603-WOK-ECO": {
+    "landedPerUnit": 47.37,
+    "sohQty": 1,
+    "sohValue": 47.37
+  },
+  "CPA-V3-TV180-WOK-2": {
+    "landedPerUnit": 38.54,
+    "sohQty": 2,
+    "sohValue": 77.08
+  },
+  "CPA-V3-TV180-WOK-ECO-2": {
+    "landedPerUnit": 42.52,
+    "sohQty": 2,
+    "sohValue": 85.04
+  },
+  "LFSB-AMST-CHC": {
+    "landedPerUnit": 18.16,
+    "sohQty": 50,
+    "sohValue": 907.95
+  },
+  "LFSB-AMST-CV-CHC": {
+    "landedPerUnit": 7.86,
+    "sohQty": 3,
+    "sohValue": 23.57
+  },
+  "LFSB-AMST-CV-WHT": {
+    "landedPerUnit": 7.86,
+    "sohQty": 3,
+    "sohValue": 23.57
+  },
+  "LFSB-AMST-WHT-CV": {
+    "landedPerUnit": 7.94,
+    "sohQty": 2,
+    "sohValue": 15.88
+  },
+  "LFSB-AMST-CV-LTGN": {
+    "landedPerUnit": 7.86,
+    "sohQty": 6,
+    "sohValue": 47.14
+  },
+  "LFSB-AMST-WHT": {
+    "landedPerUnit": 17.99,
+    "sohQty": 33,
+    "sohValue": 593.7
+  },
+  "LFSB-AMST-LTGN": {
+    "landedPerUnit": 20.18,
+    "sohQty": 196,
+    "sohValue": 3954.33
+  },
+  "LFSB-CHS-CHC-1": {
+    "landedPerUnit": 106.17,
+    "sohQty": 3,
+    "sohValue": 318.52
+  },
+  "LFSB-CHS-CHC-2": {
+    "landedPerUnit": 98.5,
+    "sohQty": 4,
+    "sohValue": 394
+  },
+  "LFSB-CHS-WHT-1": {
+    "landedPerUnit": 104.58,
+    "sohQty": 7,
+    "sohValue": 732.07
+  },
+  "LFSB-CHS-WHT-2": {
+    "landedPerUnit": 97.18,
+    "sohQty": 7,
+    "sohValue": 680.26
+  },
+  "LFSB-D-CV-WHT": {
+    "landedPerUnit": 86.37,
+    "sohQty": 1,
+    "sohValue": 86.37
+  },
+  "LFSB-D-CV-LTGN": {
+    "landedPerUnit": 86.32,
+    "sohQty": 1,
+    "sohValue": 86.32
+  },
+  "LFSB-D-WHT-1": {
+    "landedPerUnit": 99.69,
+    "sohQty": 7,
+    "sohValue": 697.85
+  },
+  "LFSB-D-WHT-2": {
+    "landedPerUnit": 96.7,
+    "sohQty": 7,
+    "sohValue": 676.89
+  },
+  "LFSB-D-LTGN-1": {
+    "landedPerUnit": 101.16,
+    "sohQty": 3,
+    "sohValue": 303.48
+  },
+  "LFSB-D-LTGN-2": {
+    "landedPerUnit": 97.88,
+    "sohQty": 2,
+    "sohValue": 195.75
+  },
+  "LFSB-Q-CHC-1": {
+    "landedPerUnit": 109.85,
+    "sohQty": 36,
+    "sohValue": 3954.6
+  },
+  "LFSB-Q-CHC-2": {
+    "landedPerUnit": 106.78,
+    "sohQty": 36,
+    "sohValue": 3843.97
+  },
+  "LFSB-Q-CV-CHC": {
+    "landedPerUnit": 95.17,
+    "sohQty": 2,
+    "sohValue": 190.33
+  },
+  "LFSB-Q-CV-WHT": {
+    "landedPerUnit": 95.11,
+    "sohQty": 1,
+    "sohValue": 95.11
+  },
+  "LFSB-Q-CV-LTGN": {
+    "landedPerUnit": 95.22,
+    "sohQty": 3,
+    "sohValue": 285.65
+  },
+  "LFSB-Q-LTGN-1": {
+    "landedPerUnit": 109.8,
+    "sohQty": 70,
+    "sohValue": 7685.68
+  },
+  "LFSB-Q-LTGN-2": {
+    "landedPerUnit": 106.58,
+    "sohQty": 72,
+    "sohValue": 7674.12
+  },
+  "LFSB-S-CHC": {
+    "landedPerUnit": 115.84,
+    "sohQty": 16,
+    "sohValue": 1853.37
+  },
+  "LFSB-S-WHT": {
+    "landedPerUnit": 110.7,
+    "sohQty": 8,
+    "sohValue": 885.57
+  },
+  "LFSB-S-LTGN": {
+    "landedPerUnit": 109.23,
+    "sohQty": 7,
+    "sohValue": 764.6
+  },
+  "LFSB-SOTM-CHC": {
+    "landedPerUnit": 75.55,
+    "sohQty": 5,
+    "sohValue": 377.76
+  },
+  "LFSB-TW-CHC-1": {
+    "landedPerUnit": 78.87,
+    "sohQty": 17,
+    "sohValue": 1340.77
+  },
+  "LFSB-TW-CHC-2": {
+    "landedPerUnit": 76.11,
+    "sohQty": 17,
+    "sohValue": 1293.9
+  },
+  "LFSB-TW-CV-CHC": {
+    "landedPerUnit": 66.96,
+    "sohQty": 1,
+    "sohValue": 66.96
+  },
+  "LFSB-TW-CV-WHT": {
+    "landedPerUnit": 66.96,
+    "sohQty": 1,
+    "sohValue": 66.96
+  },
+  "LFSB-TW-CV-LTGN": {
+    "landedPerUnit": 67.01,
+    "sohQty": 3,
+    "sohValue": 201.04
+  },
+  "LFSB-TW-WHT-1": {
+    "landedPerUnit": 78.66,
+    "sohQty": 23,
+    "sohValue": 1809.09
+  },
+  "LFSB-TW-WHT-2": {
+    "landedPerUnit": 75.73,
+    "sohQty": 24,
+    "sohValue": 1817.42
+  },
+  "LFSB-TW-LTGN-1": {
+    "landedPerUnit": 79.06,
+    "sohQty": 153,
+    "sohValue": 12095.77
+  },
+  "LFSB-TW-LTGN-2": {
+    "landedPerUnit": 76.66,
+    "sohQty": 160,
+    "sohValue": 12265.63
+  },
+  "CMSS-SB-S-CHC": {
+    "landedPerUnit": 177.42,
+    "sohQty": 4,
+    "sohValue": 709.68
+  },
+  "DIRI-DS-CRM-1": {
+    "landedPerUnit": 114.32,
+    "sohQty": 1,
+    "sohValue": 114.32
+  },
+  "DIRI-DS-CRM-2": {
+    "landedPerUnit": 118.23,
+    "sohQty": 3,
+    "sohValue": 354.68
+  },
+  "DIRI-DS-CRM-3": {
+    "landedPerUnit": 120.17,
+    "sohQty": 2,
+    "sohValue": 240.33
+  },
+  "DIRI-DS-CRM-ECO-2": {
+    "landedPerUnit": 90.8,
+    "sohQty": 2,
+    "sohValue": 181.6
+  },
+  "DIRI-DS-CRM-ECO-3": {
+    "landedPerUnit": 114.36,
+    "sohQty": 2,
+    "sohValue": 228.71
+  },
+  "DRIS-SB160-WNT-2": {
+    "landedPerUnit": 78.15,
+    "sohQty": 3,
+    "sohValue": 234.45
+  },
+  "DRIS-SB160-WNT-ECO-1": {
+    "landedPerUnit": 70.01,
+    "sohQty": 3,
+    "sohValue": 210.04
+  },
+  "DRIS-SB160-WNT-ECO-2": {
+    "landedPerUnit": 76.33,
+    "sohQty": 2,
+    "sohValue": 152.66
+  },
+  "DUET-BH-D": {
+    "landedPerUnit": 108.85,
+    "sohQty": 1,
+    "sohValue": 108.85
+  },
+  "DUET-BH-Q": {
+    "landedPerUnit": 119.73,
+    "sohQty": 1,
+    "sohValue": 119.73
+  },
+  "ELNA-BF-K": {
+    "landedPerUnit": 444.39,
+    "sohQty": 5,
+    "sohValue": 2221.94
+  },
+  "ELNA-BF-K-1": {
+    "landedPerUnit": 111.09,
+    "sohQty": 1,
+    "sohValue": 111.09
+  },
+  "ELNA-BF-K-2": {
+    "landedPerUnit": 111.09,
+    "sohQty": 2,
+    "sohValue": 222.19
+  },
+  "ELNA-BF-K-3": {
+    "landedPerUnit": 111.1,
+    "sohQty": 3,
+    "sohValue": 333.31
+  },
+  "ELNA-BF-K-4": {
+    "landedPerUnit": 111.09,
+    "sohQty": 2,
+    "sohValue": 222.19
+  },
+  "ELNA-BF-Q-1": {
+    "landedPerUnit": 103.19,
+    "sohQty": 3,
+    "sohValue": 309.57
+  },
+  "ELNA-BF-Q-2": {
+    "landedPerUnit": 103.08,
+    "sohQty": 7,
+    "sohValue": 721.56
+  },
+  "ELNA-BF-Q-3": {
+    "landedPerUnit": 103.19,
+    "sohQty": 5,
+    "sohValue": 515.94
+  },
+  "ELNA-BF-Q-4": {
+    "landedPerUnit": 103.19,
+    "sohQty": 3,
+    "sohValue": 309.57
+  },
+  "ELNA-TV180-OAK-2": {
+    "landedPerUnit": 63.46,
+    "sohQty": 4,
+    "sohValue": 253.83
+  },
+  "ELNA-TV180-OAK-ECO-1": {
+    "landedPerUnit": 74.3,
+    "sohQty": 1,
+    "sohValue": 74.3
+  },
+  "ELLA-BF-K-4": {
+    "landedPerUnit": 113.34,
+    "sohQty": 7,
+    "sohValue": 793.35
+  },
+  "ELLA-BF-K-ECO-1": {
+    "landedPerUnit": 104.98,
+    "sohQty": 3,
+    "sohValue": 314.94
+  },
+  "ELLA-BF-K-ECO-2": {
+    "landedPerUnit": 85.9,
+    "sohQty": 2,
+    "sohValue": 171.8
+  },
+  "ELLA-BF-K-ECO-3": {
+    "landedPerUnit": 177.52,
+    "sohQty": 2,
+    "sohValue": 355.04
+  },
+  "ELLA-BF-K-ECO-4": {
+    "landedPerUnit": 194.69,
+    "sohQty": 2,
+    "sohValue": 389.38
+  },
+  "ELLA-BF-Q-3": {
+    "landedPerUnit": 101.41,
+    "sohQty": 1,
+    "sohValue": 101.41
+  },
+  "ELLA-BF-Q-4": {
+    "landedPerUnit": 101.41,
+    "sohQty": 1,
+    "sohValue": 101.41
+  },
+  "ELLA-BF-Q-ECO-1": {
+    "landedPerUnit": 90.42,
+    "sohQty": 3,
+    "sohValue": 271.27
+  },
+  "ELLA-BF-Q-ECO-2": {
+    "landedPerUnit": 74.09,
+    "sohQty": 4,
+    "sohValue": 296.35
+  },
+  "ELLA-BF-Q-ECO-3": {
+    "landedPerUnit": 127.8,
+    "sohQty": 4,
+    "sohValue": 511.2
+  },
+  "ELLA-BF-Q-ECO-4": {
+    "landedPerUnit": 142.87,
+    "sohQty": 4,
+    "sohValue": 571.47
+  },
+  "EMMA-DB160-OAK-ECO-1": {
+    "landedPerUnit": 40.48,
+    "sohQty": 2,
+    "sohValue": 80.95
+  },
+  "EMMA-DB160-OAK-ECO-2": {
+    "landedPerUnit": 51.5,
+    "sohQty": 2,
+    "sohValue": 103
+  },
+  "EMMA-DT180-OAK-2": {
+    "landedPerUnit": 66.44,
+    "sohQty": 4,
+    "sohValue": 265.75
+  },
+  "EMMA-DT180-OAK-3": {
+    "landedPerUnit": 66.44,
+    "sohQty": 6,
+    "sohValue": 398.63
+  },
+  "EMMA-DT180-OAK-ECO-2": {
+    "landedPerUnit": 57.58,
+    "sohQty": 3,
+    "sohValue": 172.73
+  },
+  "EMMA-DT180-OAK-ECO-3": {
+    "landedPerUnit": 64.33,
+    "sohQty": 3,
+    "sohValue": 193
+  },
+  "ERC-BS-CUSH-NAL-ECO": {
+    "landedPerUnit": 109.42,
+    "sohQty": 36,
+    "sohValue": 3939.09
+  },
+  "ERIK-RUG-160": {
+    "landedPerUnit": 22.45,
+    "sohQty": 2,
+    "sohValue": 44.9
+  },
+  "ERIK-RUG-200": {
+    "landedPerUnit": 35.4,
+    "sohQty": 2,
+    "sohValue": 70.8
+  },
+  "EVE-BF-K-NAL-ECO": {
+    "landedPerUnit": 216.78,
+    "sohQty": 3,
+    "sohValue": 650.35
+  },
+  "EVE-BF-K-NAL-ECO-1": {
+    "landedPerUnit": 65.49,
+    "sohQty": 3,
+    "sohValue": 196.46
+  },
+  "EVE-BF-K-NAL-ECO-2": {
+    "landedPerUnit": 49.27,
+    "sohQty": 2,
+    "sohValue": 98.54
+  },
+  "EVE-BF-K-NAL-ECO-3": {
+    "landedPerUnit": 42.64,
+    "sohQty": 3,
+    "sohValue": 127.92
+  },
+  "EVE-BF-K-NAL-ECO-4": {
+    "landedPerUnit": 60.53,
+    "sohQty": 3,
+    "sohValue": 181.59
+  },
+  "EVE-BF-Q-NAL-ECO-1": {
+    "landedPerUnit": 62.02,
+    "sohQty": 3,
+    "sohValue": 186.07
+  },
+  "EVE-BF-Q-NAL-ECO-2": {
+    "landedPerUnit": 37.46,
+    "sohQty": 2,
+    "sohValue": 74.92
+  },
+  "EVE-BF-Q-NAL-ECO-3": {
+    "landedPerUnit": 37.31,
+    "sohQty": 3,
+    "sohValue": 111.92
+  },
+  "EVE-BF-Q-NAL-ECO-4": {
+    "landedPerUnit": 57.29,
+    "sohQty": 3,
+    "sohValue": 171.87
+  },
+  "EVE-BF-D-ECO-1": {
+    "landedPerUnit": 62.04,
+    "sohQty": 2,
+    "sohValue": 124.08
+  },
+  "EVE-BF-D-ECO-2": {
+    "landedPerUnit": 33.98,
+    "sohQty": 2,
+    "sohValue": 67.96
+  },
+  "EVE-BF-D-ECO-3": {
+    "landedPerUnit": 34.7,
+    "sohQty": 2,
+    "sohValue": 69.4
+  },
+  "EVE-BF-D-ECO-4": {
+    "landedPerUnit": 59.59,
+    "sohQty": 1,
+    "sohValue": 59.59
+  },
+  "EVE-BF-K-1": {
+    "landedPerUnit": 58.43,
+    "sohQty": 5,
+    "sohValue": 292.15
+  },
+  "EVE-BF-K-2": {
+    "landedPerUnit": 58.43,
+    "sohQty": 3,
+    "sohValue": 175.29
+  },
+  "EVE-BF-K-3": {
+    "landedPerUnit": 58.43,
+    "sohQty": 4,
+    "sohValue": 233.72
+  },
+  "EVE-BF-K-4": {
+    "landedPerUnit": 58.44,
+    "sohQty": 2,
+    "sohValue": 116.88
+  },
+  "EVE-BF-K-ECO-1": {
+    "landedPerUnit": 62.2,
+    "sohQty": 4,
+    "sohValue": 248.78
+  },
+  "EVE-BF-K-ECO-2": {
+    "landedPerUnit": 47.53,
+    "sohQty": 4,
+    "sohValue": 190.14
+  },
+  "EVE-BF-K-ECO-3": {
+    "landedPerUnit": 40.38,
+    "sohQty": 2,
+    "sohValue": 80.75
+  },
+  "EVE-BF-K-ECO-4": {
+    "landedPerUnit": 56.55,
+    "sohQty": 2,
+    "sohValue": 113.11
+  },
+  "EVE-BF-Q-1": {
+    "landedPerUnit": 54.83,
+    "sohQty": 5,
+    "sohValue": 274.15
+  },
+  "EVE-BF-Q-2": {
+    "landedPerUnit": 54.83,
+    "sohQty": 4,
+    "sohValue": 219.32
+  },
+  "EVE-BF-Q-3": {
+    "landedPerUnit": 54.85,
+    "sohQty": 3,
+    "sohValue": 164.56
+  },
+  "EVE-BF-Q-4": {
+    "landedPerUnit": 54.83,
+    "sohQty": 3,
+    "sohValue": 164.49
+  },
+  "EVE-BF-Q-ECO-1": {
+    "landedPerUnit": 49.95,
+    "sohQty": 4,
+    "sohValue": 199.8
+  },
+  "EVE-BF-Q-ECO-2": {
+    "landedPerUnit": 50.08,
+    "sohQty": 4,
+    "sohValue": 200.32
+  },
+  "EVE-BF-Q-ECO-3": {
+    "landedPerUnit": 49.66,
+    "sohQty": 3,
+    "sohValue": 148.98
+  },
+  "EVE-BF-Q-ECO-4": {
+    "landedPerUnit": 49.65,
+    "sohQty": 3,
+    "sohValue": 148.94
+  },
+  "EZRA-CT100-WHT-1": {
+    "landedPerUnit": 83.52,
+    "sohQty": 3,
+    "sohValue": 250.56
+  },
+  "EZRA-CT100-WHT-2": {
+    "landedPerUnit": 83.64,
+    "sohQty": 9,
+    "sohValue": 752.73
+  },
+  "FELX-BB-K-1": {
+    "landedPerUnit": 61.4,
+    "sohQty": 7,
+    "sohValue": 429.82
+  },
+  "FELX-BB-K-2": {
+    "landedPerUnit": 61.4,
+    "sohQty": 1,
+    "sohValue": 61.4
+  },
+  "FELX-BB-K-3": {
+    "landedPerUnit": 61.4,
+    "sohQty": 8,
+    "sohValue": 491.23
+  },
+  "FELX-BB-K-ECO-1": {
+    "landedPerUnit": 172.62,
+    "sohQty": 3,
+    "sohValue": 517.86
+  },
+  "FELX-BB-K-ECO-2": {
+    "landedPerUnit": 42.66,
+    "sohQty": 5,
+    "sohValue": 213.31
+  },
+  "FELX-V2-BB-K-ECO-1": {
+    "landedPerUnit": 135.02,
+    "sohQty": 2,
+    "sohValue": 270.04
+  },
+  "FELX-V2-BB-K-ECO-3": {
+    "landedPerUnit": 44.69,
+    "sohQty": 2,
+    "sohValue": 89.38
+  },
+  "FELX-BB-Q-ECO-1": {
+    "landedPerUnit": 181.09,
+    "sohQty": 2,
+    "sohValue": 362.17
+  },
+  "FELX-BB-Q-ECO-2": {
+    "landedPerUnit": 37.82,
+    "sohQty": 1,
+    "sohValue": 37.82
+  },
+  "FELX-BB-D": {
+    "landedPerUnit": 158.79,
+    "sohQty": 1,
+    "sohValue": 158.79
+  },
+  "FELX-BB-D-1": {
+    "landedPerUnit": 78.61,
+    "sohQty": 1,
+    "sohValue": 78.61
+  },
+  "FELX-BB-D-2": {
+    "landedPerUnit": 78.61,
+    "sohQty": 1,
+    "sohValue": 78.61
+  },
+  "FELX-BB-Q-2": {
+    "landedPerUnit": 84.13,
+    "sohQty": 5,
+    "sohValue": 420.64
+  },
+  "FC-RCL102GF": {
+    "landedPerUnit": 75.97,
+    "sohQty": 3,
+    "sohValue": 227.9
+  },
+  "FMA-6COD-WNT-ECO-1": {
+    "landedPerUnit": 109.06,
+    "sohQty": 59,
+    "sohValue": 6434.67
+  },
+  "FMA-6COD-WNT-ECO-2": {
+    "landedPerUnit": 92.21,
+    "sohQty": 60,
+    "sohValue": 5532.74
+  },
+  "FMA-6COD-WNT-ECO-3": {
+    "landedPerUnit": 95.29,
+    "sohQty": 60,
+    "sohValue": 5717.45
+  },
+  "FMA-SB160-WNT-ECO-1": {
+    "landedPerUnit": 86.05,
+    "sohQty": 1,
+    "sohValue": 86.05
+  },
+  "FMA-SB160-WNT-ECO-2": {
+    "landedPerUnit": 111.85,
+    "sohQty": 1,
+    "sohValue": 111.85
+  },
+  "FMA-SB160-WNT-ECO-3": {
+    "landedPerUnit": 98.09,
+    "sohQty": 1,
+    "sohValue": 98.09
+  },
+  "FRK-AC-GRN-ECO": {
+    "landedPerUnit": 249.13,
+    "sohQty": 1,
+    "sohValue": 249.13
+  },
+  "FRK-AC-TD": {
+    "landedPerUnit": 167.15,
+    "sohQty": 1,
+    "sohValue": 167.15
+  },
+  "FRA-RUG-160": {
+    "landedPerUnit": 37.92,
+    "sohQty": 1,
+    "sohValue": 37.92
+  },
+  "FRA-RUG-200": {
+    "landedPerUnit": 60.96,
+    "sohQty": 2,
+    "sohValue": 121.92
+  },
+  "V2-DB-LIGY-1": {
+    "landedPerUnit": 199.53,
+    "sohQty": 6,
+    "sohValue": 1197.19
+  },
+  "V2-DB-LIGY-2": {
+    "landedPerUnit": 60.17,
+    "sohQty": 6,
+    "sohValue": 361.01
+  },
+  "V2-DB-CREAM-1": {
+    "landedPerUnit": 182.88,
+    "sohQty": 10,
+    "sohValue": 1828.81
+  },
+  "V2-DB-CREAM-2": {
+    "landedPerUnit": 55.2,
+    "sohQty": 10,
+    "sohValue": 551.97
+  },
+  "V2-DB-DKBL-1": {
+    "landedPerUnit": 215.16,
+    "sohQty": 15,
+    "sohValue": 3227.43
+  },
+  "V2-DB-DKBL-2": {
+    "landedPerUnit": 65.02,
+    "sohQty": 15,
+    "sohValue": 975.24
+  },
+  "V2-DB-DKGY-1": {
+    "landedPerUnit": 235.73,
+    "sohQty": 5,
+    "sohValue": 1178.65
+  },
+  "V2-DB-DKGY-2": {
+    "landedPerUnit": 70.67,
+    "sohQty": 5,
+    "sohValue": 353.36
+  },
+  "V2-DB-LGN-1": {
+    "landedPerUnit": 204.67,
+    "sohQty": 30,
+    "sohValue": 6139.99
+  },
+  "V2-DB-LGN-2": {
+    "landedPerUnit": 61.85,
+    "sohQty": 30,
+    "sohValue": 1855.4
+  },
+  "GBRL-GLS-CT-2": {
+    "landedPerUnit": 53.14,
+    "sohQty": 2,
+    "sohValue": 106.28
+  },
+  "GBRL-GLS-CT-ECO-2": {
+    "landedPerUnit": 59.61,
+    "sohQty": 3,
+    "sohValue": 178.82
+  },
+  "GEM-RTDSK-WNT-ECO-1": {
+    "landedPerUnit": 85.57,
+    "sohQty": 42,
+    "sohValue": 3593.78
+  },
+  "GEM-RTDSK-WNT-ECO-2": {
+    "landedPerUnit": 93.41,
+    "sohQty": 42,
+    "sohValue": 3923.02
+  },
+  "GEM-RTDSK-WNT-ECO-3": {
+    "landedPerUnit": 110.53,
+    "sohQty": 42,
+    "sohValue": 4642.35
+  },
+  "DD-36107SG": {
+    "landedPerUnit": 154.99,
+    "sohQty": 2,
+    "sohValue": 309.98
+  },
+  "HANK-BT-ASH": {
+    "landedPerUnit": 127.66,
+    "sohQty": 3,
+    "sohValue": 382.97
+  },
+  "HANK-BT-WNT-ECO": {
+    "landedPerUnit": 145.2,
+    "sohQty": 2,
+    "sohValue": 290.4
+  },
+  "HANK-CT-ASH-ECO-1": {
+    "landedPerUnit": 93.05,
+    "sohQty": 3,
+    "sohValue": 279.16
+  },
+  "HANK-CT-ASH-ECO-2": {
+    "landedPerUnit": 65.53,
+    "sohQty": 2,
+    "sohValue": 131.05
+  },
+  "HANK-CT-WNT-ECO-1": {
+    "landedPerUnit": 146.77,
+    "sohQty": 29,
+    "sohValue": 4256.47
+  },
+  "HANK-CT-WNT-ECO-2": {
+    "landedPerUnit": 97.2,
+    "sohQty": 29,
+    "sohValue": 2818.69
+  },
+  "HANK-CST-ASH-ECO-1": {
+    "landedPerUnit": 81.77,
+    "sohQty": 1,
+    "sohValue": 81.77
+  },
+  "HANK-CST-ASH-ECO-2": {
+    "landedPerUnit": 97.99,
+    "sohQty": 1,
+    "sohValue": 97.99
+  },
+  "HANK-SB160-ASH-ECO-1": {
+    "landedPerUnit": 122.39,
+    "sohQty": 3,
+    "sohValue": 367.18
+  },
+  "HANK-SB160-ASH-ECO-2": {
+    "landedPerUnit": 104.61,
+    "sohQty": 3,
+    "sohValue": 313.84
+  },
+  "HANK-SB160-WNT-ECO-1": {
+    "landedPerUnit": 129.56,
+    "sohQty": 13,
+    "sohValue": 1684.26
+  },
+  "HANK-SB160-WNT-ECO-2": {
+    "landedPerUnit": 177.03,
+    "sohQty": 14,
+    "sohValue": 2478.45
+  },
+  "HANK-SB160-WNT-ECO-3": {
+    "landedPerUnit": 160.9,
+    "sohQty": 10,
+    "sohValue": 1608.98
+  },
+  "HANK-TV180-ASH-ECO-1": {
+    "landedPerUnit": 117.4,
+    "sohQty": 3,
+    "sohValue": 352.2
+  },
+  "HANK-TV180-ASH-ECO-2": {
+    "landedPerUnit": 103.0,
+    "sohQty": 3,
+    "sohValue": 309
+  },
+  "HRS-DT120-BLK-1": {
+    "landedPerUnit": 50.12,
+    "sohQty": 26,
+    "sohValue": 1303.21
+  },
+  "HRS-DT120-NAL-1": {
+    "landedPerUnit": 50.12,
+    "sohQty": 3,
+    "sohValue": 150.37
+  },
+  "HAMY-BT-OAK": {
+    "landedPerUnit": 55.86,
+    "sohQty": 1,
+    "sohValue": 55.86
+  },
+  "HAMY-BT-OAK-ECO": {
+    "landedPerUnit": 70.63,
+    "sohQty": 3,
+    "sohValue": 211.89
+  },
+  "HAZ-CT-WNT-ECO": {
+    "landedPerUnit": 177.06,
+    "sohQty": 8,
+    "sohValue": 1416.48
+  },
+  "HAZ-CT-NAL-ECO": {
+    "landedPerUnit": 189.54,
+    "sohQty": 1,
+    "sohValue": 189.54
+  },
+  "HLO-DC-WHT-ECO": {
+    "landedPerUnit": 179.85,
+    "sohQty": 16,
+    "sohValue": 2877.58
+  },
+  "HDSN-DT180-OAK-2": {
+    "landedPerUnit": 116.07,
+    "sohQty": 7,
+    "sohValue": 812.51
+  },
+  "HDSN-DT180-OAK-ECO-1": {
+    "landedPerUnit": 99.59,
+    "sohQty": 2,
+    "sohValue": 199.18
+  },
+  "HDSN-DT180-OAK-ECO-2": {
+    "landedPerUnit": 101.07,
+    "sohQty": 18,
+    "sohValue": 1819.21
+  },
+  "HDSN-EDT-OAK-ECO-2": {
+    "landedPerUnit": 153.38,
+    "sohQty": 7,
+    "sohValue": 1073.67
+  },
+  "HDSN-DSK-OAK-2": {
+    "landedPerUnit": 73.97,
+    "sohQty": 17,
+    "sohValue": 1257.42
+  },
+  "HDSN-DSK-OAK-ECO-1": {
+    "landedPerUnit": 71.65,
+    "sohQty": 1,
+    "sohValue": 71.65
+  },
+  "HDSN-DSK-OAK-ECO-2": {
+    "landedPerUnit": 73.51,
+    "sohQty": 3,
+    "sohValue": 220.54
+  },
+  "ILIA-BT-WHT": {
+    "landedPerUnit": 108.44,
+    "sohQty": 1,
+    "sohValue": 108.44
+  },
+  "IRNE-BT-OAK-ECO": {
+    "landedPerUnit": 96.09,
+    "sohQty": 2,
+    "sohValue": 192.18
+  },
+  "IRNE-SB180-OAK-1": {
+    "landedPerUnit": 62.7,
+    "sohQty": 1,
+    "sohValue": 62.7
+  },
+  "IRNE-SB180-OAK-ECO-1": {
+    "landedPerUnit": 63.81,
+    "sohQty": 3,
+    "sohValue": 191.43
+  },
+  "IRNE-TV180-OAK-ECO-1": {
+    "landedPerUnit": 88.76,
+    "sohQty": 1,
+    "sohValue": 88.76
+  },
+  "IRNE-TV180-OAK-ECO-2": {
+    "landedPerUnit": 76.87,
+    "sohQty": 1,
+    "sohValue": 76.87
+  },
+  "IRNE-TV200-OAK-ECO-1": {
+    "landedPerUnit": 97.39,
+    "sohQty": 7,
+    "sohValue": 681.73
+  },
+  "IRNE-TV200-OAK-ECO-2": {
+    "landedPerUnit": 77.35,
+    "sohQty": 1,
+    "sohValue": 77.35
+  },
+  "IRSA-BF-K-WNT-ECO-1": {
+    "landedPerUnit": 73.58,
+    "sohQty": 46,
+    "sohValue": 3384.72
+  },
+  "IRSA-BF-K-WNT-ECO-2": {
+    "landedPerUnit": 67.34,
+    "sohQty": 46,
+    "sohValue": 3097.45
+  },
+  "IRSA-BF-K-WNT-ECO-3": {
+    "landedPerUnit": 77.29,
+    "sohQty": 46,
+    "sohValue": 3555.31
+  },
+  "IRSA-BF-Q-WNT-ECO-1": {
+    "landedPerUnit": 68.87,
+    "sohQty": 44,
+    "sohValue": 3030.3
+  },
+  "IRSA-BF-Q-WNT-ECO-2": {
+    "landedPerUnit": 62.57,
+    "sohQty": 44,
+    "sohValue": 2753.07
+  },
+  "IRSA-BF-Q-WNT-ECO-3": {
+    "landedPerUnit": 72.44,
+    "sohQty": 44,
+    "sohValue": 3187.27
+  },
+  "JCB-DC-NAL-ECO": {
+    "landedPerUnit": 207.73,
+    "sohQty": 41,
+    "sohValue": 8517
+  },
+  "JAM-BF-K-OAK-ECO-1": {
+    "landedPerUnit": 73.38,
+    "sohQty": 37,
+    "sohValue": 2714.9
+  },
+  "JAM-BF-K-OAK-ECO-2": {
+    "landedPerUnit": 65.61,
+    "sohQty": 37,
+    "sohValue": 2427.5
+  },
+  "JAM-BF-K-OAK-ECO-3": {
+    "landedPerUnit": 77.12,
+    "sohQty": 37,
+    "sohValue": 2853.33
+  },
+  "JAM-BF-Q-OAK-ECO-1": {
+    "landedPerUnit": 67.92,
+    "sohQty": 38,
+    "sohValue": 2580.93
+  },
+  "JAM-BF-Q-OAK-ECO-2": {
+    "landedPerUnit": 59.3,
+    "sohQty": 38,
+    "sohValue": 2253.5
+  },
+  "JAM-BF-Q-OAK-ECO-3": {
+    "landedPerUnit": 72.28,
+    "sohQty": 38,
+    "sohValue": 2746.75
+  },
+  "JSP-SOFA-3S-CWHT-1": {
+    "landedPerUnit": 154.06,
+    "sohQty": 5,
+    "sohValue": 770.28
+  },
+  "JSP-SOFA-3S-CWHT-2": {
+    "landedPerUnit": 149.08,
+    "sohQty": 8,
+    "sohValue": 1192.66
+  },
+  "JSP-SOFA-3S-CWHT-ECO-1": {
+    "landedPerUnit": 195.53,
+    "sohQty": 1,
+    "sohValue": 195.53
+  },
+  "JSP-SOFA-3S-CWHT-ECO-2": {
+    "landedPerUnit": 170.18,
+    "sohQty": 2,
+    "sohValue": 340.35
+  },
+  "JAX-DS-ABR": {
+    "landedPerUnit": 191.57,
+    "sohQty": 2,
+    "sohValue": 383.14
+  },
+  "JAX-DS-ABR-ECO": {
+    "landedPerUnit": 207.46,
+    "sohQty": 2,
+    "sohValue": 414.91
+  },
+  "JADN-FLAMP-ECO-1": {
+    "landedPerUnit": 76.62,
+    "sohQty": 1,
+    "sohValue": 76.62
+  },
+  "JADN-FLAMP-ECO-2": {
+    "landedPerUnit": 49.94,
+    "sohQty": 3,
+    "sohValue": 149.82
+  },
+  "JEAN-CT80-WHT-2": {
+    "landedPerUnit": 58.69,
+    "sohQty": 1,
+    "sohValue": 58.69
+  },
+  "JRM-RUG-160": {
+    "landedPerUnit": 52.43,
+    "sohQty": 1,
+    "sohValue": 52.43
+  },
+  "JRM-RUG-200": {
+    "landedPerUnit": 82.68,
+    "sohQty": 3,
+    "sohValue": 248.03
+  },
+  "JILN-6COD-OAK-ECO-1": {
+    "landedPerUnit": 77.89,
+    "sohQty": 23,
+    "sohValue": 1791.58
+  },
+  "JILN-6COD-OAK-ECO-2": {
+    "landedPerUnit": 97.77,
+    "sohQty": 23,
+    "sohValue": 2248.65
+  },
+  "JOSE-BF-GL-K-ECO-2": {
+    "landedPerUnit": 154.97,
+    "sohQty": 2,
+    "sohValue": 309.94
+  },
+  "JOSE-BF-GL-K-ECO-3": {
+    "landedPerUnit": 146.88,
+    "sohQty": 1,
+    "sohValue": 146.88
+  },
+  "JOSE-BF-GL-K-ECO-4": {
+    "landedPerUnit": 64.5,
+    "sohQty": 1,
+    "sohValue": 64.5
+  },
+  "JOSE-BF-GL-Q-ECO-1": {
+    "landedPerUnit": 84.21,
+    "sohQty": 1,
+    "sohValue": 84.21
+  },
+  "JOSE-BF-GL-Q-ECO-2": {
+    "landedPerUnit": 139.91,
+    "sohQty": 1,
+    "sohValue": 139.91
+  },
+  "JOSE-BF-GL-Q-ECO-3": {
+    "landedPerUnit": 139.38,
+    "sohQty": 1,
+    "sohValue": 139.38
+  },
+  "JOSE-BF-GL-Q-ECO-4": {
+    "landedPerUnit": 56.01,
+    "sohQty": 1,
+    "sohValue": 56.01
+  },
+  "JOSE-BF-K-FG-ECO-1": {
+    "landedPerUnit": 153.53,
+    "sohQty": 2,
+    "sohValue": 307.06
+  },
+  "JOSE-BF-K-FG-ECO-2": {
+    "landedPerUnit": 206.84,
+    "sohQty": 2,
+    "sohValue": 413.67
+  },
+  "JOSE-BF-Q-FG-ECO-1": {
+    "landedPerUnit": 125.81,
+    "sohQty": 1,
+    "sohValue": 125.81
+  },
+  "JOSE-BF-Q-FG-ECO-2": {
+    "landedPerUnit": 185.51,
+    "sohQty": 1,
+    "sohValue": 185.51
+  },
+  "JOSE-BF-D-1": {
+    "landedPerUnit": 116.25,
+    "sohQty": 7,
+    "sohValue": 813.75
+  },
+  "JOSE-BF-D-2": {
+    "landedPerUnit": 116.25,
+    "sohQty": 1,
+    "sohValue": 116.25
+  },
+  "JOSE-BF-D-ECO-1": {
+    "landedPerUnit": 120.97,
+    "sohQty": 5,
+    "sohValue": 604.85
+  },
+  "JOSE-BF-D-ECO-2": {
+    "landedPerUnit": 184.64,
+    "sohQty": 5,
+    "sohValue": 923.18
+  },
+  "JOSE-BF-K-1": {
+    "landedPerUnit": 139.66,
+    "sohQty": 1,
+    "sohValue": 139.66
+  },
+  "JOSE-BF-K-2": {
+    "landedPerUnit": 139.66,
+    "sohQty": 2,
+    "sohValue": 279.32
+  },
+  "JOSE-BF-K-ECO-1": {
+    "landedPerUnit": 111.9,
+    "sohQty": 2,
+    "sohValue": 223.8
+  },
+  "JOSE-V2-BF-K-2": {
+    "landedPerUnit": 68.47,
+    "sohQty": 2,
+    "sohValue": 136.94
+  },
+  "JOSE-BF-Q-1": {
+    "landedPerUnit": 121.09,
+    "sohQty": 4,
+    "sohValue": 484.37
+  },
+  "JOSE-BF-Q-2": {
+    "landedPerUnit": 121.09,
+    "sohQty": 2,
+    "sohValue": 242.18
+  },
+  "JSPH-DC-WNT-ECO": {
+    "landedPerUnit": 208.3,
+    "sohQty": 41,
+    "sohValue": 8540.32
+  },
+  "JOSIE-SB160-OAK-1": {
+    "landedPerUnit": 86.58,
+    "sohQty": 1,
+    "sohValue": 86.58
+  },
+  "JOSIE-SB160-OAK-2": {
+    "landedPerUnit": 86.59,
+    "sohQty": 2,
+    "sohValue": 173.18
+  },
+  "JOSIE-SB160-OAK-3": {
+    "landedPerUnit": 86.59,
+    "sohQty": 3,
+    "sohValue": 259.78
+  },
+  "KAEL-SOFA-3S-BG-1": {
+    "landedPerUnit": 206.21,
+    "sohQty": 7,
+    "sohValue": 1443.5
+  },
+  "KAEL-SOFA-3S-BG-2": {
+    "landedPerUnit": 206.21,
+    "sohQty": 7,
+    "sohValue": 1443.5
+  },
+  "KTH-SB180-WNT-ECO-1": {
+    "landedPerUnit": 55.21,
+    "sohQty": 29,
+    "sohValue": 1601.09
+  },
+  "KTH-SB180-WNT-ECO-2": {
+    "landedPerUnit": 76.23,
+    "sohQty": 29,
+    "sohValue": 2210.53
+  },
+  "KTH-SB180-WNT-ECO-3": {
+    "landedPerUnit": 69.85,
+    "sohQty": 29,
+    "sohValue": 2025.77
+  },
+  "KTH-SB180-WNT-ECO-4": {
+    "landedPerUnit": 77.64,
+    "sohQty": 29,
+    "sohValue": 2251.67
+  },
+  "KTRN-RUG-160": {
+    "landedPerUnit": 39.63,
+    "sohQty": 3,
+    "sohValue": 118.9
+  },
+  "KTZ-CT120-WHT-ECO-1": {
+    "landedPerUnit": 56.37,
+    "sohQty": 1,
+    "sohValue": 56.37
+  },
+  "KTZ-CT120-WHT-ECO-2": {
+    "landedPerUnit": 62.89,
+    "sohQty": 1,
+    "sohValue": 62.89
+  },
+  "KTZ-CT-WHT-2": {
+    "landedPerUnit": 74.9,
+    "sohQty": 1,
+    "sohValue": 74.9
+  },
+  "KTZ-CT-WHT-ECO-1": {
+    "landedPerUnit": 71.54,
+    "sohQty": 3,
+    "sohValue": 214.62
+  },
+  "KTZ-CT-WHT-1": {
+    "landedPerUnit": 74.9,
+    "sohQty": 2,
+    "sohValue": 149.8
+  },
+  "KTZ-DT-WHT-2": {
+    "landedPerUnit": 191.33,
+    "sohQty": 16,
+    "sohValue": 3061.27
+  },
+  "KTZ-DT-WHT-ECO-2": {
+    "landedPerUnit": 23.2,
+    "sohQty": 12,
+    "sohValue": 278.44
+  },
+  "KTZ-DT110-WHT-ECO-1": {
+    "landedPerUnit": 64.18,
+    "sohQty": 8,
+    "sohValue": 513.46
+  },
+  "KTZ-DT110-WHT-ECO-2": {
+    "landedPerUnit": 96.42,
+    "sohQty": 5,
+    "sohValue": 482.1
+  },
+  "KTZ-ST-WHT-ECO": {
+    "landedPerUnit": 70.18,
+    "sohQty": 1,
+    "sohValue": 70.18
+  },
+  "KTZ-ST-WHT-ECO-1": {
+    "landedPerUnit": 32.5,
+    "sohQty": 9,
+    "sohValue": 292.48
+  },
+  "KTZ-ST-WHT-ECO-2": {
+    "landedPerUnit": 38.84,
+    "sohQty": 10,
+    "sohValue": 388.44
+  },
+  "LNA-DBED-MPL-2": {
+    "landedPerUnit": 113.21,
+    "sohQty": 3,
+    "sohValue": 339.62
+  },
+  "LARA-CT-ABR": {
+    "landedPerUnit": 176.36,
+    "sohQty": 5,
+    "sohValue": 881.8
+  },
+  "LARY-6COD-ECO-1": {
+    "landedPerUnit": 49.32,
+    "sohQty": 1,
+    "sohValue": 49.32
+  },
+  "LARY-6COD-ECO-2": {
+    "landedPerUnit": 58.87,
+    "sohQty": 1,
+    "sohValue": 58.87
+  },
+  "LARY-6COD-ECO-3": {
+    "landedPerUnit": 71.67,
+    "sohQty": 1,
+    "sohValue": 71.67
+  },
+  "LYLA-BF-GL-K-ECO-2": {
+    "landedPerUnit": 172.15,
+    "sohQty": 2,
+    "sohValue": 344.29
+  },
+  "LYLA-BF-GL-K-ECO-3": {
+    "landedPerUnit": 157.93,
+    "sohQty": 2,
+    "sohValue": 315.85
+  },
+  "LYLA-BF-GL-Q-ECO-1": {
+    "landedPerUnit": 109.89,
+    "sohQty": 1,
+    "sohValue": 109.89
+  },
+  "LYLA-BF-GL-Q-ECO-2": {
+    "landedPerUnit": 159.13,
+    "sohQty": 1,
+    "sohValue": 159.13
+  },
+  "LYLA-BF-GL-Q-ECO-3": {
+    "landedPerUnit": 87.34,
+    "sohQty": 1,
+    "sohValue": 87.34
+  },
+  "LYLA-BF-GL-Q-ECO-4": {
+    "landedPerUnit": 83.41,
+    "sohQty": 1,
+    "sohValue": 83.41
+  },
+  "LYLA-BF-K-1": {
+    "landedPerUnit": 234.95,
+    "sohQty": 2,
+    "sohValue": 469.9
+  },
+  "LYLA-BF-K-2": {
+    "landedPerUnit": 235.24,
+    "sohQty": 3,
+    "sohValue": 705.72
+  },
+  "LYLA-BF-Q-2": {
+    "landedPerUnit": 224.72,
+    "sohQty": 1,
+    "sohValue": 224.72
+  },
+  "LYLA-BF-Q-ECO": {
+    "landedPerUnit": 436.58,
+    "sohQty": 1,
+    "sohValue": 436.58
+  },
+  "LYLA-BF-Q-ECO-2": {
+    "landedPerUnit": 214.1,
+    "sohQty": 2,
+    "sohValue": 428.21
+  },
+  "LIAM-DC-WHT-ECO": {
+    "landedPerUnit": 197.64,
+    "sohQty": 38,
+    "sohValue": 7510.43
+  },
+  "COCOON-DOUBLE-CRML-1": {
+    "landedPerUnit": 90.53,
+    "sohQty": 8,
+    "sohValue": 724.24
+  },
+  "COCOON-DOUBLE-CRML-2": {
+    "landedPerUnit": 183.83,
+    "sohQty": 7,
+    "sohValue": 1286.8
+  },
+  "COCOON-DOUBLE-IVR-1": {
+    "landedPerUnit": 93.61,
+    "sohQty": 3,
+    "sohValue": 280.84
+  },
+  "COCOON-DOUBLE-IVR-2": {
+    "landedPerUnit": 189.04,
+    "sohQty": 3,
+    "sohValue": 567.11
+  },
+  "COCOON-DOUBLE-MSGRN-1": {
+    "landedPerUnit": 98.16,
+    "sohQty": 9,
+    "sohValue": 883.47
+  },
+  "COCOON-DOUBLE-MSGRN-2": {
+    "landedPerUnit": 198.3,
+    "sohQty": 9,
+    "sohValue": 1784.73
+  },
+  "COCOON-KING-CRML-1": {
+    "landedPerUnit": 102.44,
+    "sohQty": 30,
+    "sohValue": 3073.25
+  },
+  "COCOON-KING-CRML-2": {
+    "landedPerUnit": 225.3,
+    "sohQty": 30,
+    "sohValue": 6758.98
+  },
+  "COCOON-KING-IVR-1": {
+    "landedPerUnit": 102.44,
+    "sohQty": 11,
+    "sohValue": 1126.85
+  },
+  "COCOON-KING-IVR-2": {
+    "landedPerUnit": 225.3,
+    "sohQty": 11,
+    "sohValue": 2478.3
+  },
+  "COCOON-KING-MSGRN-1": {
+    "landedPerUnit": 103.09,
+    "sohQty": 23,
+    "sohValue": 2371.05
+  },
+  "COCOON-KING-MSGRN-2": {
+    "landedPerUnit": 224.65,
+    "sohQty": 23,
+    "sohValue": 5166.99
+  },
+  "COCOON-QUEEN-CRML-1": {
+    "landedPerUnit": 93.52,
+    "sohQty": 2,
+    "sohValue": 187.03
+  },
+  "COCOON-QUEEN-CRML-2": {
+    "landedPerUnit": 205.45,
+    "sohQty": 2,
+    "sohValue": 410.9
+  },
+  "COCOON-QUEEN-IVR-1": {
+    "landedPerUnit": 93.99,
+    "sohQty": 3,
+    "sohValue": 281.98
+  },
+  "COCOON-QUEEN-IVR-2": {
+    "landedPerUnit": 204.97,
+    "sohQty": 3,
+    "sohValue": 614.92
+  },
+  "COCOON-QUEEN-MSGRN-1": {
+    "landedPerUnit": 94.76,
+    "sohQty": 11,
+    "sohValue": 1042.35
+  },
+  "COCOON-QUEEN-MSGRN-2": {
+    "landedPerUnit": 206.67,
+    "sohQty": 11,
+    "sohValue": 2273.32
+  },
+  "LFSF-AMCR-CV-OG": {
+    "landedPerUnit": 79.5,
+    "sohQty": 2,
+    "sohValue": 159
+  },
+  "LFSF-AMCR-CV-RST": {
+    "landedPerUnit": 78.18,
+    "sohQty": 5,
+    "sohValue": 390.88
+  },
+  "LFSF-AMCR-CV-WHT": {
+    "landedPerUnit": 78.19,
+    "sohQty": 3,
+    "sohValue": 234.58
+  },
+  "LIFELY-SOFA-AMCR-LB-1": {
+    "landedPerUnit": 129.12,
+    "sohQty": 2,
+    "sohValue": 258.23
+  },
+  "LIFELY-SOFA-AMCR-LB-2": {
+    "landedPerUnit": 129.11,
+    "sohQty": 3,
+    "sohValue": 387.34
+  },
+  "LIFELY-SOFA-AMCR-OG-1": {
+    "landedPerUnit": 129.11,
+    "sohQty": 3,
+    "sohValue": 387.34
+  },
+  "LIFELY-SOFA-AMCR-RST-1": {
+    "landedPerUnit": 129.11,
+    "sohQty": 3,
+    "sohValue": 387.34
+  },
+  "LIFELY-SOFA-AMCR-RST-2": {
+    "landedPerUnit": 129.12,
+    "sohQty": 4,
+    "sohValue": 516.46
+  },
+  "LIFELY-SOFA-AMCR-WHT-1": {
+    "landedPerUnit": 129.11,
+    "sohQty": 9,
+    "sohValue": 1162.03
+  },
+  "LIFELY-SOFA-AMCR-WHT-2": {
+    "landedPerUnit": 129.12,
+    "sohQty": 6,
+    "sohValue": 774.69
+  },
+  "LFSF-AMLS-CV-BLST": {
+    "landedPerUnit": 71.01,
+    "sohQty": 15,
+    "sohValue": 1065.12
+  },
+  "LFSF-AMLS-CV-CRMPIP": {
+    "landedPerUnit": 56.13,
+    "sohQty": 2,
+    "sohValue": 112.27
+  },
+  "LFSF-AMLS-CV-DKGN": {
+    "landedPerUnit": 57.42,
+    "sohQty": 12,
+    "sohValue": 689.08
+  },
+  "LFSF-AMLS-CV-OG": {
+    "landedPerUnit": 57.87,
+    "sohQty": 126,
+    "sohValue": 7291.54
+  },
+  "LFSF-AMLS-CV-RST": {
+    "landedPerUnit": 60.86,
+    "sohQty": 1,
+    "sohValue": 60.86
+  },
+  "LFSF-AMLS-CV-WHT": {
+    "landedPerUnit": 60.74,
+    "sohQty": 2,
+    "sohValue": 121.48
+  },
+  "LFSF-AMLS-FC": {
+    "landedPerUnit": 137.2,
+    "sohQty": 144,
+    "sohValue": 19756.96
+  },
+  "LIFELY-SOFA-AMLS-LB-1": {
+    "landedPerUnit": 96.84,
+    "sohQty": 1,
+    "sohValue": 96.84
+  },
+  "LIFELY-SOFA-AMLS-LB-2": {
+    "landedPerUnit": 96.84,
+    "sohQty": 1,
+    "sohValue": 96.84
+  },
+  "LIFELY-SOFA-AMLS-OG-1": {
+    "landedPerUnit": 96.83,
+    "sohQty": 2,
+    "sohValue": 193.67
+  },
+  "LIFELY-SOFA-AMLS-OG-2": {
+    "landedPerUnit": 96.84,
+    "sohQty": 1,
+    "sohValue": 96.84
+  },
+  "LIFELY-SOFA-AMLS-RST-1": {
+    "landedPerUnit": 96.84,
+    "sohQty": 1,
+    "sohValue": 96.84
+  },
+  "LIFELY-SOFA-AMLS-WHT-1": {
+    "landedPerUnit": 96.84,
+    "sohQty": 3,
+    "sohValue": 290.51
+  },
+  "LFSF-CRNR-CV-BLST": {
+    "landedPerUnit": 81.59,
+    "sohQty": 11,
+    "sohValue": 897.5
+  },
+  "LFSF-CRNR-CV-CRMPIP": {
+    "landedPerUnit": 61.99,
+    "sohQty": 9,
+    "sohValue": 557.88
+  },
+  "LFSF-CRNR-CV-DKGN": {
+    "landedPerUnit": 63.65,
+    "sohQty": 59,
+    "sohValue": 3755.23
+  },
+  "LFSF-CRNR-CV-LB": {
+    "landedPerUnit": 66.19,
+    "sohQty": 28,
+    "sohValue": 1853.43
+  },
+  "LFSF-CRNR-CV-OG": {
+    "landedPerUnit": 64.07,
+    "sohQty": 179,
+    "sohValue": 11469.21
+  },
+  "LFSF-CRNR-CV-WHT": {
+    "landedPerUnit": 67.37,
+    "sohQty": 20,
+    "sohValue": 1347.45
+  },
+  "LFSF-CRNR-FC": {
+    "landedPerUnit": 173.19,
+    "sohQty": 257,
+    "sohValue": 44509.07
+  },
+  "LIFELY-SOFA-CRNR-LB-1": {
+    "landedPerUnit": 114.51,
+    "sohQty": 5,
+    "sohValue": 572.56
+  },
+  "LIFELY-SOFA-CRNR-LB-2": {
+    "landedPerUnit": 114.51,
+    "sohQty": 2,
+    "sohValue": 229.02
+  },
+  "LIFELY-SOFA-CRNR-OG-1": {
+    "landedPerUnit": 114.51,
+    "sohQty": 2,
+    "sohValue": 229.02
+  },
+  "LIFELY-SOFA-CRNR-OG-2": {
+    "landedPerUnit": 114.51,
+    "sohQty": 1,
+    "sohValue": 114.51
+  },
+  "LIFELY-SOFA-CRNR-RST-1": {
+    "landedPerUnit": 114.51,
+    "sohQty": 3,
+    "sohValue": 343.53
+  },
+  "LIFELY-SOFA-CRNR-RST-2": {
+    "landedPerUnit": 114.51,
+    "sohQty": 1,
+    "sohValue": 114.51
+  },
+  "LIFELY-FS-BLST": {
+    "landedPerUnit": 0.39,
+    "sohQty": 168,
+    "sohValue": 65.52
+  },
+  "LIFELY-FS-CHC": {
+    "landedPerUnit": 0.39,
+    "sohQty": 167,
+    "sohValue": 65.13
+  },
+  "LIFELY-FS-CRMPIP": {
+    "landedPerUnit": 0.39,
+    "sohQty": 168,
+    "sohValue": 65.52
+  },
+  "LIFELY-FS-DKGN": {
+    "landedPerUnit": 0.39,
+    "sohQty": 167,
+    "sohValue": 65.13
+  },
+  "LIFELY-FS-LB": {
+    "landedPerUnit": 0.39,
+    "sohQty": 159,
+    "sohValue": 62.46
+  },
+  "LIFELY-FS-OG": {
+    "landedPerUnit": 0.39,
+    "sohQty": 146,
+    "sohValue": 57.35
+  },
+  "LIFELY-FS-RST": {
+    "landedPerUnit": 0.39,
+    "sohQty": 180,
+    "sohValue": 70.7
+  },
+  "LIFELY-FS-WHT": {
+    "landedPerUnit": 0.39,
+    "sohQty": 185,
+    "sohValue": 72.67
+  },
+  "LFSF-OTM-CV-BLST": {
+    "landedPerUnit": 49.83,
+    "sohQty": 2,
+    "sohValue": 99.65
+  },
+  "LFSF-OTM-CV-CHC": {
+    "landedPerUnit": 39.75,
+    "sohQty": 6,
+    "sohValue": 238.51
+  },
+  "LFSF-OTM-CV-DKGN": {
+    "landedPerUnit": 39.62,
+    "sohQty": 21,
+    "sohValue": 831.97
+  },
+  "LFSF-OTM-CV-LB": {
+    "landedPerUnit": 40.22,
+    "sohQty": 17,
+    "sohValue": 683.8
+  },
+  "LFSF-OTM-CV-OG": {
+    "landedPerUnit": 39.97,
+    "sohQty": 32,
+    "sohValue": 1279.03
+  },
+  "LFSF-OTM-CV-RST": {
+    "landedPerUnit": 41.95,
+    "sohQty": 2,
+    "sohValue": 83.89
+  },
+  "LFSF-OTM-CV-WHT": {
+    "landedPerUnit": 42.65,
+    "sohQty": 7,
+    "sohValue": 298.53
+  },
+  "LFSF-OTM-FC": {
+    "landedPerUnit": 94.89,
+    "sohQty": 59,
+    "sohValue": 5598.44
+  },
+  "LIFELY-OTM-LB-1": {
+    "landedPerUnit": 67.63,
+    "sohQty": 2,
+    "sohValue": 135.26
+  },
+  "LIFELY-OTM-LB-2": {
+    "landedPerUnit": 67.63,
+    "sohQty": 1,
+    "sohValue": 67.63
+  },
+  "LIFELY-OTM-OG-1": {
+    "landedPerUnit": 67.63,
+    "sohQty": 7,
+    "sohValue": 473.42
+  },
+  "LIFELY-OTM-OG-2": {
+    "landedPerUnit": 67.63,
+    "sohQty": 2,
+    "sohValue": 135.26
+  },
+  "LIFELY-OTM-RST-1": {
+    "landedPerUnit": 67.63,
+    "sohQty": 2,
+    "sohValue": 135.26
+  },
+  "LIFELY-OTM-WHT": {
+    "landedPerUnit": 147.26,
+    "sohQty": 1,
+    "sohValue": 147.26
+  },
+  "LIFELY-OTM-WHT-1": {
+    "landedPerUnit": 67.63,
+    "sohQty": 5,
+    "sohValue": 338.16
+  },
+  "WFHCR-CRM": {
+    "landedPerUnit": 227.91,
+    "sohQty": 1,
+    "sohValue": 227.91
+  },
+  "LLAU-CB-CS-BABL": {
+    "landedPerUnit": 0.46,
+    "sohQty": 182,
+    "sohValue": 82.94
+  },
+  "LLAU-CB-CS-CTCN": {
+    "landedPerUnit": 0.46,
+    "sohQty": 182,
+    "sohValue": 82.94
+  },
+  "LLAU-CB-CS-DGY": {
+    "landedPerUnit": 0.46,
+    "sohQty": 182,
+    "sohValue": 82.94
+  },
+  "LLAU-CB-CS-DSBL": {
+    "landedPerUnit": 0.46,
+    "sohQty": 183,
+    "sohValue": 83.39
+  },
+  "LLAU-CB-CS-MSM": {
+    "landedPerUnit": 0.46,
+    "sohQty": 182,
+    "sohValue": 82.94
+  },
+  "LLAU-CB-CS-PST": {
+    "landedPerUnit": 0.46,
+    "sohQty": 182,
+    "sohValue": 82.94
+  },
+  "LLAU-CB-D-BABL-CV": {
+    "landedPerUnit": 78.27,
+    "sohQty": 1,
+    "sohValue": 78.27
+  },
+  "LLAU-CB-D-DSBL-CV": {
+    "landedPerUnit": 95.61,
+    "sohQty": 2,
+    "sohValue": 191.23
+  },
+  "LLNA-CB-F-BABL-CV": {
+    "landedPerUnit": 117.22,
+    "sohQty": 3,
+    "sohValue": 351.67
+  },
+  "LLNA-CB-F-CTCN-CV": {
+    "landedPerUnit": 133.34,
+    "sohQty": 3,
+    "sohValue": 400.02
+  },
+  "LLNA-CB-F-DGY-CV": {
+    "landedPerUnit": 117.08,
+    "sohQty": 1,
+    "sohValue": 117.08
+  },
+  "LLNA-CB-F-MSM-CV": {
+    "landedPerUnit": 140.69,
+    "sohQty": 12,
+    "sohValue": 1688.25
+  },
+  "LLAU-CB-KS-DSBL-CV": {
+    "landedPerUnit": 94.83,
+    "sohQty": 1,
+    "sohValue": 94.83
+  },
+  "LLAU-CB-S-DGY-CV": {
+    "landedPerUnit": 74.01,
+    "sohQty": 1,
+    "sohValue": 74.01
+  },
+  "LLAU-CB-S-MSM-CV": {
+    "landedPerUnit": 90.25,
+    "sohQty": 1,
+    "sohValue": 90.25
+  },
+  "LLAU-CB-S-PST-CV": {
+    "landedPerUnit": 90.14,
+    "sohQty": 2,
+    "sohValue": 180.27
+  },
+  "LLAU-CB-D-BABL": {
+    "landedPerUnit": 214.42,
+    "sohQty": 10,
+    "sohValue": 2144.16
+  },
+  "LLAU-CB-D-CTCN": {
+    "landedPerUnit": 227.49,
+    "sohQty": 176,
+    "sohValue": 40038.37
+  },
+  "LLAU-CB-D-DGY": {
+    "landedPerUnit": 218.47,
+    "sohQty": 21,
+    "sohValue": 4587.9
+  },
+  "LLAU-CB-D-DSBL": {
+    "landedPerUnit": 232.2,
+    "sohQty": 187,
+    "sohValue": 43420.59
+  },
+  "LLAU-CB-D-MSM": {
+    "landedPerUnit": 235.73,
+    "sohQty": 281,
+    "sohValue": 66238.83
+  },
+  "LLAU-CB-D-PST": {
+    "landedPerUnit": 239.56,
+    "sohQty": 118,
+    "sohValue": 28268.42
+  },
+  "LLNA-CB-F-BABL": {
+    "landedPerUnit": 265.4,
+    "sohQty": 19,
+    "sohValue": 5042.67
+  },
+  "LLNA-CB-F-CTCN": {
+    "landedPerUnit": 283.89,
+    "sohQty": 32,
+    "sohValue": 9084.49
+  },
+  "LLNA-CB-F-DGY": {
+    "landedPerUnit": 268.54,
+    "sohQty": 15,
+    "sohValue": 4028.04
+  },
+  "LLNA-CB-F-MSM": {
+    "landedPerUnit": 300.82,
+    "sohQty": 34,
+    "sohValue": 10227.92
+  },
+  "LLNA-CB-F-PST": {
+    "landedPerUnit": 335.49,
+    "sohQty": 7,
+    "sohValue": 2348.45
+  },
+  "LLAU-CB-KS-CTCN": {
+    "landedPerUnit": 226.69,
+    "sohQty": 104,
+    "sohValue": 23575.38
+  },
+  "LLAU-CB-KS-DGY": {
+    "landedPerUnit": 204.1,
+    "sohQty": 38,
+    "sohValue": 7755.99
+  },
+  "LLAU-CB-KS-DSBL": {
+    "landedPerUnit": 220.49,
+    "sohQty": 77,
+    "sohValue": 16977.76
+  },
+  "LLAU-CB-KS-MSM": {
+    "landedPerUnit": 217.87,
+    "sohQty": 43,
+    "sohValue": 9368.48
+  },
+  "LLAU-CB-KS-PST": {
+    "landedPerUnit": 218.93,
+    "sohQty": 39,
+    "sohValue": 8538.25
+  },
+  "LLSG-CB-Q-BABL": {
+    "landedPerUnit": 242.17,
+    "sohQty": 10,
+    "sohValue": 2421.72
+  },
+  "LLSG-CB-Q-CTCN": {
+    "landedPerUnit": 251.72,
+    "sohQty": 10,
+    "sohValue": 2517.23
+  },
+  "LLSG-CB-Q-DGY": {
+    "landedPerUnit": 242.17,
+    "sohQty": 10,
+    "sohValue": 2421.72
+  },
+  "LLSG-CB-Q-MSM": {
+    "landedPerUnit": 247.04,
+    "sohQty": 4,
+    "sohValue": 988.17
+  },
+  "LLSG-CB-Q-PST": {
+    "landedPerUnit": 245.21,
+    "sohQty": 4,
+    "sohValue": 980.85
+  },
+  "LLSG-CB-S-BABL": {
+    "landedPerUnit": 214.14,
+    "sohQty": 10,
+    "sohValue": 2141.42
+  },
+  "LLAU-CB-S-CTCN": {
+    "landedPerUnit": 211.53,
+    "sohQty": 130,
+    "sohValue": 27498.3
+  },
+  "LLSG-CB-S-CTCN": {
+    "landedPerUnit": 221.93,
+    "sohQty": 10,
+    "sohValue": 2219.33
+  },
+  "LLAU-CB-S-DGY": {
+    "landedPerUnit": 191.47,
+    "sohQty": 89,
+    "sohValue": 17041
+  },
+  "LLAU-CB-S-DSBL": {
+    "landedPerUnit": 203.97,
+    "sohQty": 44,
+    "sohValue": 8974.8
+  },
+  "LLAU-CB-S-MSM": {
+    "landedPerUnit": 216.62,
+    "sohQty": 185,
+    "sohValue": 40074.05
+  },
+  "LLSG-CB-S-MSM": {
+    "landedPerUnit": 235.22,
+    "sohQty": 15,
+    "sohValue": 3528.36
+  },
+  "LLSG-CB-S-PST": {
+    "landedPerUnit": 217.88,
+    "sohQty": 4,
+    "sohValue": 871.53
+  },
+  "LLSG-CB-S-DGY": {
+    "landedPerUnit": 217.37,
+    "sohQty": 11,
+    "sohValue": 2391.03
+  },
+  "LLSG-CB-SS-BABL": {
+    "landedPerUnit": 229.86,
+    "sohQty": 10,
+    "sohValue": 2298.55
+  },
+  "LLSG-CB-SS-CTCN": {
+    "landedPerUnit": 245.43,
+    "sohQty": 17,
+    "sohValue": 4172.25
+  },
+  "LLSG-CB-SS-DGY": {
+    "landedPerUnit": 219.14,
+    "sohQty": 4,
+    "sohValue": 876.55
+  },
+  "LLSG-CB-SS-MSM": {
+    "landedPerUnit": 246.89,
+    "sohQty": 12,
+    "sohValue": 2962.71
+  },
+  "LLSG-CB-SS-PST": {
+    "landedPerUnit": 231.26,
+    "sohQty": 6,
+    "sohValue": 1387.54
+  },
+  "LLNA-CB-TW-BABL": {
+    "landedPerUnit": 236.03,
+    "sohQty": 12,
+    "sohValue": 2832.3
+  },
+  "LLNA-CB-TW-CTCN": {
+    "landedPerUnit": 247.48,
+    "sohQty": 7,
+    "sohValue": 1732.36
+  },
+  "LLNA-CB-TW-DGY": {
+    "landedPerUnit": 234.23,
+    "sohQty": 8,
+    "sohValue": 1873.82
+  },
+  "LLNA-CB-TW-MSM": {
+    "landedPerUnit": 267.82,
+    "sohQty": 24,
+    "sohValue": 6427.7
+  },
+  "LLNA-CB-TW-PST": {
+    "landedPerUnit": 289.26,
+    "sohQty": 2,
+    "sohValue": 578.52
+  },
+  "LLNA-CB-TWX-BABL": {
+    "landedPerUnit": 243.33,
+    "sohQty": 5,
+    "sohValue": 1216.66
+  },
+  "LLNA-CB-TWX-CTCN": {
+    "landedPerUnit": 269.14,
+    "sohQty": 14,
+    "sohValue": 3767.94
+  },
+  "LLNA-CB-TWX-DGY": {
+    "landedPerUnit": 256.19,
+    "sohQty": 3,
+    "sohValue": 768.58
+  },
+  "LLNA-CB-TWX-MSM": {
+    "landedPerUnit": 262.42,
+    "sohQty": 12,
+    "sohValue": 3149.06
+  },
+  "LLNA-CB-TWX-PST": {
+    "landedPerUnit": 306.46,
+    "sohQty": 3,
+    "sohValue": 919.39
+  },
+  "LOLA-BSF-NAL": {
+    "landedPerUnit": 131.89,
+    "sohQty": 18,
+    "sohValue": 2373.95
+  },
+  "LOLA-BSF-NAL-ECO": {
+    "landedPerUnit": 150.11,
+    "sohQty": 126,
+    "sohValue": 18913.81
+  },
+  "LOLA-HBSF-NAL-ECO-1": {
+    "landedPerUnit": 112.62,
+    "sohQty": 1,
+    "sohValue": 112.62
+  },
+  "LOLA-HBSF-NAL-ECO-2": {
+    "landedPerUnit": 102.86,
+    "sohQty": 1,
+    "sohValue": 102.86
+  },
+  "LOLA-LBSF-NAL-ECO-1": {
+    "landedPerUnit": 94.69,
+    "sohQty": 21,
+    "sohValue": 1988.51
+  },
+  "LOLA-LBSF-NAL-ECO-2": {
+    "landedPerUnit": 83.33,
+    "sohQty": 21,
+    "sohValue": 1749.93
+  },
+  "LORA-AC-ORG": {
+    "landedPerUnit": 118.08,
+    "sohQty": 1,
+    "sohValue": 118.08
+  },
+  "LORA-AC-ORG-ECO": {
+    "landedPerUnit": 120.41,
+    "sohQty": 1,
+    "sohValue": 120.41
+  },
+  "LORA-AC-SND": {
+    "landedPerUnit": 122.07,
+    "sohQty": 3,
+    "sohValue": 366.21
+  },
+  "LUK-BS-NAL-ECO": {
+    "landedPerUnit": 112.04,
+    "sohQty": 32,
+    "sohValue": 3585.36
+  },
+  "MS-BASE153": {
+    "landedPerUnit": 129.25,
+    "sohQty": 72,
+    "sohValue": 9305.8
+  },
+  "MS-BASE183": {
+    "landedPerUnit": 139.91,
+    "sohQty": 71,
+    "sohValue": 9933.3
+  },
+  "MRN-FLAMP-1": {
+    "landedPerUnit": 27.66,
+    "sohQty": 24,
+    "sohValue": 663.84
+  },
+  "MRN-FLAMP-2": {
+    "landedPerUnit": 38.86,
+    "sohQty": 24,
+    "sohValue": 932.56
+  },
+  "MVS-DS-OAK-1": {
+    "landedPerUnit": 82.74,
+    "sohQty": 1,
+    "sohValue": 82.74
+  },
+  "MVS-DS-OAK-2": {
+    "landedPerUnit": 75.91,
+    "sohQty": 3,
+    "sohValue": 227.72
+  },
+  "MVS-DS-OAK-3": {
+    "landedPerUnit": 75.91,
+    "sohQty": 3,
+    "sohValue": 227.72
+  },
+  "MVS-DS-OAK-ECO-2": {
+    "landedPerUnit": 61.23,
+    "sohQty": 3,
+    "sohValue": 183.69
+  },
+  "MVS-DS-OAK-ECO-3": {
+    "landedPerUnit": 86.55,
+    "sohQty": 2,
+    "sohValue": 173.09
+  },
+  "MAX-SC-ECO-1": {
+    "landedPerUnit": 42.99,
+    "sohQty": 23,
+    "sohValue": 988.81
+  },
+  "MAX-SC-ECO-2": {
+    "landedPerUnit": 47.7,
+    "sohQty": 23,
+    "sohValue": 1097.11
+  },
+  "MAX-SC-ECO-3": {
+    "landedPerUnit": 50.76,
+    "sohQty": 23,
+    "sohValue": 1167.37
+  },
+  "MAX-SC-ECO-4": {
+    "landedPerUnit": 75.66,
+    "sohQty": 21,
+    "sohValue": 1588.91
+  },
+  "MAY-TV200-OAK-1": {
+    "landedPerUnit": 81.46,
+    "sohQty": 2,
+    "sohValue": 162.92
+  },
+  "MAY-TV200-OAK-2": {
+    "landedPerUnit": 81.46,
+    "sohQty": 3,
+    "sohValue": 244.38
+  },
+  "MAY-TV200-OAK-ECO-1": {
+    "landedPerUnit": 93.1,
+    "sohQty": 1,
+    "sohValue": 93.1
+  },
+  "MAY-TV200-OAK-ECO-2": {
+    "landedPerUnit": 80.53,
+    "sohQty": 1,
+    "sohValue": 80.53
+  },
+  "MEG-MR16-WNT-ECO": {
+    "landedPerUnit": 141.88,
+    "sohQty": 37,
+    "sohValue": 5249.59
+  },
+  "MLW-RUG-200": {
+    "landedPerUnit": 77.5,
+    "sohQty": 7,
+    "sohValue": 542.53
+  },
+  "MLW-RUG-160-MG": {
+    "landedPerUnit": 54.2,
+    "sohQty": 1,
+    "sohValue": 54.2
+  },
+  "MLW-RUG-200-MG": {
+    "landedPerUnit": 77.5,
+    "sohQty": 4,
+    "sohValue": 310.02
+  },
+  "MLW-RUG-160-SF": {
+    "landedPerUnit": 59.26,
+    "sohQty": 5,
+    "sohValue": 296.29
+  },
+  "MLW-RUG-200-SF": {
+    "landedPerUnit": 72.46,
+    "sohQty": 4,
+    "sohValue": 289.85
+  },
+  "MLW-RUG-240": {
+    "landedPerUnit": 108.69,
+    "sohQty": 3,
+    "sohValue": 326.06
+  },
+  "MIA-V2-DB1300-NT-1": {
+    "landedPerUnit": 66.54,
+    "sohQty": 7,
+    "sohValue": 465.78
+  },
+  "MIA-V2-DB1300-NT-2": {
+    "landedPerUnit": 85.18,
+    "sohQty": 7,
+    "sohValue": 596.26
+  },
+  "MIA-V2-DB1300-NT-3": {
+    "landedPerUnit": 54.05,
+    "sohQty": 7,
+    "sohValue": 378.35
+  },
+  "MORI-RUG-160-ECO": {
+    "landedPerUnit": 117.41,
+    "sohQty": 1,
+    "sohValue": 117.41
+  },
+  "MORI-RUG-200-ECO": {
+    "landedPerUnit": 178.06,
+    "sohQty": 3,
+    "sohValue": 534.18
+  },
+  "NIC-BS-BLK-ECO": {
+    "landedPerUnit": 97.32,
+    "sohQty": 45,
+    "sohValue": 4379.5
+  },
+  "NOAH-BS92-WHT-ECO": {
+    "landedPerUnit": 120.58,
+    "sohQty": 1,
+    "sohValue": 120.58
+  },
+  "NOAH-DB140-WHT-ECO": {
+    "landedPerUnit": 134.97,
+    "sohQty": 2,
+    "sohValue": 269.95
+  },
+  "NOAH-DB160-WHT-ECO": {
+    "landedPerUnit": 149.37,
+    "sohQty": 1,
+    "sohValue": 149.37
+  },
+  "NOAH-DC-WNT-ECO": {
+    "landedPerUnit": 147.76,
+    "sohQty": 4,
+    "sohValue": 591.05
+  },
+  "NOOK-153DARK-BB-Q-2": {
+    "landedPerUnit": 22.16,
+    "sohQty": 2,
+    "sohValue": 44.32
+  },
+  "NOOK-153DARK-BB-Q-3": {
+    "landedPerUnit": 51.19,
+    "sohQty": 2,
+    "sohValue": 102.38
+  },
+  "NOOK-153LIGHT-BB-Q-1": {
+    "landedPerUnit": 156.76,
+    "sohQty": 1,
+    "sohValue": 156.76
+  },
+  "OKL-TV200-ECO-1": {
+    "landedPerUnit": 71.6,
+    "sohQty": 1,
+    "sohValue": 71.6
+  },
+  "OKL-TV200-ECO-2": {
+    "landedPerUnit": 47.86,
+    "sohQty": 1,
+    "sohValue": 47.86
+  },
+  "OKL-TV200-ECO-3": {
+    "landedPerUnit": 79.69,
+    "sohQty": 1,
+    "sohValue": 79.69
+  },
+  "ODEN-3COD-OAK-ECO-1": {
+    "landedPerUnit": 61.97,
+    "sohQty": 1,
+    "sohValue": 61.97
+  },
+  "ODEN-DSK-ADJ-OAK-ECO-1": {
+    "landedPerUnit": 101.7,
+    "sohQty": 25,
+    "sohValue": 2542.4
+  },
+  "ODEN-DSK-ADJ-OAK-ECO-2": {
+    "landedPerUnit": 145.39,
+    "sohQty": 25,
+    "sohValue": 3634.78
+  },
+  "ODEN-BEDROOM-SET-1": {
+    "landedPerUnit": 245.24,
+    "sohQty": 1,
+    "sohValue": 245.24
+  },
+  "ODEN-BEDROOM-SET-2": {
+    "landedPerUnit": 360.32,
+    "sohQty": 1,
+    "sohValue": 360.32
+  },
+  "ODEN-BT-OAK-ECO": {
+    "landedPerUnit": 75.06,
+    "sohQty": 1,
+    "sohValue": 75.06
+  },
+  "ODEN-D120-OAK-ECO-1": {
+    "landedPerUnit": 45.38,
+    "sohQty": 1,
+    "sohValue": 45.38
+  },
+  "ODEN-D120-OAK-ECO-2": {
+    "landedPerUnit": 56.12,
+    "sohQty": 4,
+    "sohValue": 224.46
+  },
+  "ODEN-SC-OAK-ECO": {
+    "landedPerUnit": 174.47,
+    "sohQty": 1,
+    "sohValue": 174.47
+  },
+  "ODEN-SC-OAK-ECO-1": {
+    "landedPerUnit": 56.9,
+    "sohQty": 6,
+    "sohValue": 341.39
+  },
+  "ODEN-SC-OAK-ECO-2": {
+    "landedPerUnit": 55.35,
+    "sohQty": 8,
+    "sohValue": 442.77
+  },
+  "ODEN-SC-OAK-ECO-3": {
+    "landedPerUnit": 30.76,
+    "sohQty": 8,
+    "sohValue": 246.07
+  },
+  "ODEN-TV180-OAK-1": {
+    "landedPerUnit": 71.93,
+    "sohQty": 5,
+    "sohValue": 359.63
+  },
+  "ODEN-TV180-OAK-2": {
+    "landedPerUnit": 71.93,
+    "sohQty": 5,
+    "sohValue": 359.63
+  },
+  "ODEN-TV180-OAK-ECO-1": {
+    "landedPerUnit": 61.32,
+    "sohQty": 1,
+    "sohValue": 61.32
+  },
+  "ODEN-TV180-OAK-ECO-2": {
+    "landedPerUnit": 72.74,
+    "sohQty": 1,
+    "sohValue": 72.74
+  },
+  "OLV-MR18-WNT-ECO": {
+    "landedPerUnit": 198.36,
+    "sohQty": 29,
+    "sohValue": 5752.51
+  },
+  "OSSI-DT120-OAK-1": {
+    "landedPerUnit": 98.23,
+    "sohQty": 2,
+    "sohValue": 196.46
+  },
+  "OSSI-DT120-OAK-2": {
+    "landedPerUnit": 98.23,
+    "sohQty": 1,
+    "sohValue": 98.23
+  },
+  "V2-OB-LIGY": {
+    "landedPerUnit": 141.56,
+    "sohQty": 6,
+    "sohValue": 849.36
+  },
+  "V2-OB-CREAM": {
+    "landedPerUnit": 125.45,
+    "sohQty": 1,
+    "sohValue": 125.45
+  },
+  "V2-OB-DKBL": {
+    "landedPerUnit": 147.22,
+    "sohQty": 9,
+    "sohValue": 1325.01
+  },
+  "V2-OB-DKGY": {
+    "landedPerUnit": 153.69,
+    "sohQty": 4,
+    "sohValue": 614.78
+  },
+  "V2-OB-LGN": {
+    "landedPerUnit": 149.98,
+    "sohQty": 13,
+    "sohValue": 1949.7
+  },
+  "V2-OS-LIGY": {
+    "landedPerUnit": 91.56,
+    "sohQty": 8,
+    "sohValue": 732.45
+  },
+  "V2-OS-CREAM": {
+    "landedPerUnit": 79.58,
+    "sohQty": 3,
+    "sohValue": 238.75
+  },
+  "V2-OS-DKBL": {
+    "landedPerUnit": 93.64,
+    "sohQty": 17,
+    "sohValue": 1591.84
+  },
+  "V2-OS-DKGY": {
+    "landedPerUnit": 98.82,
+    "sohQty": 6,
+    "sohValue": 592.94
+  },
+  "V2-OS-LGN": {
+    "landedPerUnit": 96.19,
+    "sohQty": 24,
+    "sohValue": 2308.47
+  },
+  "OWEN-FLAMP-1": {
+    "landedPerUnit": 32.81,
+    "sohQty": 9,
+    "sohValue": 295.27
+  },
+  "OWEN-FLAMP-2": {
+    "landedPerUnit": 32.47,
+    "sohQty": 11,
+    "sohValue": 357.14
+  },
+  "OWEN-FLAMP-ECO-1": {
+    "landedPerUnit": 34.25,
+    "sohQty": 2,
+    "sohValue": 68.5
+  },
+  "OWEN-FLAMP-ECO-2": {
+    "landedPerUnit": 32.17,
+    "sohQty": 4,
+    "sohValue": 128.67
+  },
+  "PAV-BF-K-ECO-1": {
+    "landedPerUnit": 166.08,
+    "sohQty": 4,
+    "sohValue": 664.33
+  },
+  "PAV-BF-K-ECO-2": {
+    "landedPerUnit": 141.64,
+    "sohQty": 4,
+    "sohValue": 566.57
+  },
+  "PAV-BF-K-ECO-3": {
+    "landedPerUnit": 104.21,
+    "sohQty": 4,
+    "sohValue": 416.84
+  },
+  "PAV-BF-Q-ECO-1": {
+    "landedPerUnit": 169.71,
+    "sohQty": 11,
+    "sohValue": 1866.78
+  },
+  "PAV-BF-Q-ECO-2": {
+    "landedPerUnit": 149.37,
+    "sohQty": 11,
+    "sohValue": 1643.06
+  },
+  "PAV-BF-Q-ECO-3": {
+    "landedPerUnit": 106.22,
+    "sohQty": 11,
+    "sohValue": 1168.44
+  },
+  "PVO-SBCH-140-ECO": {
+    "landedPerUnit": 119.43,
+    "sohQty": 17,
+    "sohValue": 2030.39
+  },
+  "PBLE-D140-WHT-1": {
+    "landedPerUnit": 67.58,
+    "sohQty": 3,
+    "sohValue": 202.73
+  },
+  "PBLE-D140-WHT-2": {
+    "landedPerUnit": 67.58,
+    "sohQty": 6,
+    "sohValue": 405.46
+  },
+  "PBLE-D140-WHT-ECO-1": {
+    "landedPerUnit": 62.01,
+    "sohQty": 2,
+    "sohValue": 124.02
+  },
+  "PBLE-D140-WHT-ECO-2": {
+    "landedPerUnit": 74.78,
+    "sohQty": 1,
+    "sohValue": 74.78
+  },
+  "DD-107KS-PLUSH": {
+    "landedPerUnit": 142.0,
+    "sohQty": 3,
+    "sohValue": 426.01
+  },
+  "DD-153Q-PLUSH": {
+    "landedPerUnit": 176.62,
+    "sohQty": 1,
+    "sohValue": 176.62
+  },
+  "POPY-OC": {
+    "landedPerUnit": 125.04,
+    "sohQty": 1,
+    "sohValue": 125.04
+  },
+  "POPY-OC-ECO": {
+    "landedPerUnit": 155.81,
+    "sohQty": 2,
+    "sohValue": 311.61
+  },
+  "PSM-ST-SLVY-ECO": {
+    "landedPerUnit": 167.46,
+    "sohQty": 1,
+    "sohValue": 167.46
+  },
+  "V2-QB-LIGY-1": {
+    "landedPerUnit": 208.86,
+    "sohQty": 43,
+    "sohValue": 8981.1
+  },
+  "V2-QB-LIGY-2": {
+    "landedPerUnit": 75.86,
+    "sohQty": 43,
+    "sohValue": 3261.95
+  },
+  "V2-QB-CREAM-1": {
+    "landedPerUnit": 189.22,
+    "sohQty": 10,
+    "sohValue": 1892.15
+  },
+  "V2-QB-CREAM-2": {
+    "landedPerUnit": 68.72,
+    "sohQty": 10,
+    "sohValue": 687.25
+  },
+  "V2-QB-DKBL-1": {
+    "landedPerUnit": 221.65,
+    "sohQty": 72,
+    "sohValue": 15958.96
+  },
+  "V2-QB-DKBL-2": {
+    "landedPerUnit": 77.48,
+    "sohQty": 72,
+    "sohValue": 5578.47
+  },
+  "V2-QB-DKGY-1": {
+    "landedPerUnit": 221.06,
+    "sohQty": 24,
+    "sohValue": 5305.39
+  },
+  "V2-QB-DKGY-2": {
+    "landedPerUnit": 80.32,
+    "sohQty": 24,
+    "sohValue": 1927.58
+  },
+  "V2-QB-LGN-1": {
+    "landedPerUnit": 216.26,
+    "sohQty": 145,
+    "sohValue": 31357.6
+  },
+  "V2-QB-LGN-2": {
+    "landedPerUnit": 78.76,
+    "sohQty": 145,
+    "sohValue": 11420.79
+  },
+  "RDNT-D-F": {
+    "landedPerUnit": 22.1,
+    "sohQty": 22,
+    "sohValue": 486.1
+  },
+  "RDNT-D-MF": {
+    "landedPerUnit": 20.32,
+    "sohQty": 45,
+    "sohValue": 914.61
+  },
+  "RDNT-D-S": {
+    "landedPerUnit": 28.75,
+    "sohQty": 29,
+    "sohValue": 833.86
+  },
+  "RDNT-D-BASE": {
+    "landedPerUnit": 243.06,
+    "sohQty": 49,
+    "sohValue": 11909.84
+  },
+  "RDNT-K-MF": {
+    "landedPerUnit": 25.35,
+    "sohQty": 1,
+    "sohValue": 25.35
+  },
+  "RDNT-K-S": {
+    "landedPerUnit": 37.08,
+    "sohQty": 29,
+    "sohValue": 1075.28
+  },
+  "RDNT-K-BASE": {
+    "landedPerUnit": 328.29,
+    "sohQty": 98,
+    "sohValue": 32172
+  },
+  "RDNT-PROT-D": {
+    "landedPerUnit": 13.2,
+    "sohQty": 30,
+    "sohValue": 395.95
+  },
+  "RDNT-PROT-Q": {
+    "landedPerUnit": 14.14,
+    "sohQty": 26,
+    "sohValue": 367.66
+  },
+  "RDNT-Q-F": {
+    "landedPerUnit": 24.16,
+    "sohQty": 40,
+    "sohValue": 966.5
+  },
+  "RDNT-Q-MF": {
+    "landedPerUnit": 22.44,
+    "sohQty": 32,
+    "sohValue": 718.07
+  },
+  "RDNT-Q-S": {
+    "landedPerUnit": 33.15,
+    "sohQty": 63,
+    "sohValue": 2088.2
+  },
+  "RDNT-Q-BASE": {
+    "landedPerUnit": 285.4,
+    "sohQty": 163,
+    "sohValue": 46519.95
+  },
+  "RAI-DT100-OAK-1": {
+    "landedPerUnit": 98.81,
+    "sohQty": 1,
+    "sohValue": 98.81
+  },
+  "RAI-DT100-OAK-2": {
+    "landedPerUnit": 98.96,
+    "sohQty": 1,
+    "sohValue": 98.96
+  },
+  "RDNT-PROT-K": {
+    "landedPerUnit": 16.18,
+    "sohQty": 34,
+    "sohValue": 550.24
+  },
+  "RNBW-BH-D": {
+    "landedPerUnit": 128.4,
+    "sohQty": 1,
+    "sohValue": 128.4
+  },
+  "RILY-SB-160-1": {
+    "landedPerUnit": 114.41,
+    "sohQty": 9,
+    "sohValue": 1029.68
+  },
+  "RILY-SB-160-2": {
+    "landedPerUnit": 71.78,
+    "sohQty": 1,
+    "sohValue": 71.78
+  },
+  "SENA-CT-DKGN-ECO": {
+    "landedPerUnit": 98.61,
+    "sohQty": 17,
+    "sohValue": 1676.39
+  },
+  "SILA-DS-GREY-ECO-2": {
+    "landedPerUnit": 73.65,
+    "sohQty": 3,
+    "sohValue": 220.95
+  },
+  "SILA-DS-GREY-ECO-3": {
+    "landedPerUnit": 147.81,
+    "sohQty": 1,
+    "sohValue": 147.81
+  },
+  "SILV-MR16-OW-ECO": {
+    "landedPerUnit": 177.87,
+    "sohQty": 37,
+    "sohValue": 6581.28
+  },
+  "SISI-RUG-160": {
+    "landedPerUnit": 96.34,
+    "sohQty": 1,
+    "sohValue": 96.34
+  },
+  "CUSB-D-DNM-1": {
+    "landedPerUnit": 171.11,
+    "sohQty": 17,
+    "sohValue": 2908.86
+  },
+  "CUSB-D-DNM-2": {
+    "landedPerUnit": 13.24,
+    "sohQty": 17,
+    "sohValue": 225.12
+  },
+  "V3-DB-DKBL-1": {
+    "landedPerUnit": 180.03,
+    "sohQty": 32,
+    "sohValue": 5760.9
+  },
+  "V3-DB-DKBL-2": {
+    "landedPerUnit": 13.95,
+    "sohQty": 32,
+    "sohValue": 446.5
+  },
+  "CUSB-D-LTGN-1": {
+    "landedPerUnit": 168.34,
+    "sohQty": 8,
+    "sohValue": 1346.74
+  },
+  "CUSB-D-LTGN-2": {
+    "landedPerUnit": 13.03,
+    "sohQty": 8,
+    "sohValue": 104.25
+  },
+  "V3-DB-LGN-1": {
+    "landedPerUnit": 181.82,
+    "sohQty": 36,
+    "sohValue": 6545.43
+  },
+  "V3-DB-LGN-2": {
+    "landedPerUnit": 14.09,
+    "sohQty": 36,
+    "sohValue": 507.28
+  },
+  "CUSB-D-TBRN-1": {
+    "landedPerUnit": 168.34,
+    "sohQty": 4,
+    "sohValue": 673.37
+  },
+  "CUSB-D-TBRN-2": {
+    "landedPerUnit": 13.03,
+    "sohQty": 4,
+    "sohValue": 52.13
+  },
+  "V3-DB-TBRN-1": {
+    "landedPerUnit": 180.63,
+    "sohQty": 20,
+    "sohValue": 3612.65
+  },
+  "V3-DB-TBRN-2": {
+    "landedPerUnit": 14.0,
+    "sohQty": 20,
+    "sohValue": 279.99
+  },
+  "CUSB-D-TWHT-1": {
+    "landedPerUnit": 169.65,
+    "sohQty": 12,
+    "sohValue": 2035.79
+  },
+  "CUSB-D-TWHT-2": {
+    "landedPerUnit": 13.13,
+    "sohQty": 12,
+    "sohValue": 157.57
+  },
+  "V3-DB-TWHT-1": {
+    "landedPerUnit": 180.7,
+    "sohQty": 19,
+    "sohValue": 3433.31
+  },
+  "V3-DB-TWHT-2": {
+    "landedPerUnit": 14.01,
+    "sohQty": 19,
+    "sohValue": 266.11
+  },
+  "CUSB-K-DNM-1": {
+    "landedPerUnit": 212.23,
+    "sohQty": 6,
+    "sohValue": 1273.37
+  },
+  "CUSB-K-DNM-2": {
+    "landedPerUnit": 15.07,
+    "sohQty": 6,
+    "sohValue": 90.4
+  },
+  "V3-KB-DKBL-1": {
+    "landedPerUnit": 237.28,
+    "sohQty": 24,
+    "sohValue": 5694.7
+  },
+  "V3-KB-DKBL-2": {
+    "landedPerUnit": 17.28,
+    "sohQty": 24,
+    "sohValue": 414.68
+  },
+  "CUSB-K-LTGN-1": {
+    "landedPerUnit": 215.53,
+    "sohQty": 18,
+    "sohValue": 3879.52
+  },
+  "CUSB-K-LTGN-2": {
+    "landedPerUnit": 15.29,
+    "sohQty": 18,
+    "sohValue": 275.31
+  },
+  "V3-KB-LGN-1": {
+    "landedPerUnit": 240.05,
+    "sohQty": 27,
+    "sohValue": 6481.42
+  },
+  "V3-KB-LGN-2": {
+    "landedPerUnit": 17.48,
+    "sohQty": 27,
+    "sohValue": 471.92
+  },
+  "CUSB-K-TBRN-1": {
+    "landedPerUnit": 213.64,
+    "sohQty": 7,
+    "sohValue": 1495.5
+  },
+  "CUSB-K-TBRN-2": {
+    "landedPerUnit": 15.16,
+    "sohQty": 7,
+    "sohValue": 106.15
+  },
+  "V3-KB-TBRN-1": {
+    "landedPerUnit": 239.42,
+    "sohQty": 15,
+    "sohValue": 3591.28
+  },
+  "V3-KB-TBRN-2": {
+    "landedPerUnit": 17.43,
+    "sohQty": 15,
+    "sohValue": 261.48
+  },
+  "CUSB-K-TWHT-1": {
+    "landedPerUnit": 215.72,
+    "sohQty": 17,
+    "sohValue": 3667.29
+  },
+  "CUSB-K-TWHT-2": {
+    "landedPerUnit": 15.31,
+    "sohQty": 17,
+    "sohValue": 260.25
+  },
+  "V3-KB-TWHT-1": {
+    "landedPerUnit": 241.84,
+    "sohQty": 14,
+    "sohValue": 3385.82
+  },
+  "V3-KB-TWHT-2": {
+    "landedPerUnit": 17.61,
+    "sohQty": 14,
+    "sohValue": 246.51
+  },
+  "CUSB-Q-DNM-1": {
+    "landedPerUnit": 185.55,
+    "sohQty": 27,
+    "sohValue": 5009.84
+  },
+  "CUSB-Q-DNM-2": {
+    "landedPerUnit": 13.98,
+    "sohQty": 27,
+    "sohValue": 377.49
+  },
+  "V3-QB-DKBL-1": {
+    "landedPerUnit": 194.29,
+    "sohQty": 68,
+    "sohValue": 13211.49
+  },
+  "V3-QB-DKBL-2": {
+    "landedPerUnit": 14.65,
+    "sohQty": 68,
+    "sohValue": 996.53
+  },
+  "CUSB-Q-LTGN-1": {
+    "landedPerUnit": 182.71,
+    "sohQty": 20,
+    "sohValue": 3654.25
+  },
+  "CUSB-Q-LTGN-2": {
+    "landedPerUnit": 13.77,
+    "sohQty": 19,
+    "sohValue": 261.62
+  },
+  "V3-QB-LGN-1": {
+    "landedPerUnit": 193.73,
+    "sohQty": 72,
+    "sohValue": 13948.74
+  },
+  "V3-QB-LGN-2": {
+    "landedPerUnit": 14.61,
+    "sohQty": 72,
+    "sohValue": 1052.17
+  },
+  "CUSB-Q-TBRN-1": {
+    "landedPerUnit": 182.71,
+    "sohQty": 7,
+    "sohValue": 1278.99
+  },
+  "CUSB-Q-TBRN-2": {
+    "landedPerUnit": 13.77,
+    "sohQty": 7,
+    "sohValue": 96.39
+  },
+  "V3-QB-TBRN-1": {
+    "landedPerUnit": 193.24,
+    "sohQty": 38,
+    "sohValue": 7342.99
+  },
+  "V3-QB-TBRN-2": {
+    "landedPerUnit": 14.58,
+    "sohQty": 39,
+    "sohValue": 568.7
+  },
+  "CUSB-Q-TWHT-1": {
+    "landedPerUnit": 186.28,
+    "sohQty": 31,
+    "sohValue": 5774.73
+  },
+  "CUSB-Q-TWHT-2": {
+    "landedPerUnit": 14.04,
+    "sohQty": 31,
+    "sohValue": 435.11
+  },
+  "V3-QB-TWHT-1": {
+    "landedPerUnit": 192.71,
+    "sohQty": 39,
+    "sohValue": 7515.55
+  },
+  "V3-QB-TWHT-2": {
+    "landedPerUnit": 14.54,
+    "sohQty": 39,
+    "sohValue": 566.93
+  },
+  "CUSB-ARST-SET-DNM": {
+    "landedPerUnit": 103.04,
+    "sohQty": 70,
+    "sohValue": 7212.82
+  },
+  "CUSB-ARST-SET-LTGN": {
+    "landedPerUnit": 103.43,
+    "sohQty": 58,
+    "sohValue": 5998.91
+  },
+  "CUSB-ARST-SET-TBRN": {
+    "landedPerUnit": 98.57,
+    "sohQty": 31,
+    "sohValue": 3055.52
+  },
+  "CUSB-ARST-SET-TWHT": {
+    "landedPerUnit": 103.93,
+    "sohQty": 77,
+    "sohValue": 8002.7
+  },
+  "V3-ARM-DKBL": {
+    "landedPerUnit": 114.35,
+    "sohQty": 160,
+    "sohValue": 18295.35
+  },
+  "V3-ARM-LGN": {
+    "landedPerUnit": 112.94,
+    "sohQty": 172,
+    "sohValue": 19426.32
+  },
+  "V3-ARM-TBRN": {
+    "landedPerUnit": 140.93,
+    "sohQty": 90,
+    "sohValue": 12684.13
+  },
+  "V3-ARM-TWHT": {
+    "landedPerUnit": 114.82,
+    "sohQty": 89,
+    "sohValue": 10219.26
+  },
+  "CUSB-TW-DNM-1": {
+    "landedPerUnit": 129.92,
+    "sohQty": 14,
+    "sohValue": 1818.85
+  },
+  "CUSB-TW-DNM-2": {
+    "landedPerUnit": 10.38,
+    "sohQty": 14,
+    "sohValue": 145.39
+  },
+  "V3-TB-DKBL-1": {
+    "landedPerUnit": 135.27,
+    "sohQty": 32,
+    "sohValue": 4328.57
+  },
+  "V3-TB-DKBL-2": {
+    "landedPerUnit": 10.81,
+    "sohQty": 32,
+    "sohValue": 345.99
+  },
+  "CUSB-TW-LTGN-1": {
+    "landedPerUnit": 129.56,
+    "sohQty": 13,
+    "sohValue": 1684.23
+  },
+  "CUSB-TW-LTGN-2": {
+    "landedPerUnit": 10.36,
+    "sohQty": 13,
+    "sohValue": 134.63
+  },
+  "V3-TB-LGN-1": {
+    "landedPerUnit": 136.34,
+    "sohQty": 36,
+    "sohValue": 4908.27
+  },
+  "V3-TB-LGN-2": {
+    "landedPerUnit": 10.9,
+    "sohQty": 36,
+    "sohValue": 392.32
+  },
+  "CUSB-TW-TBRN-1": {
+    "landedPerUnit": 128.64,
+    "sohQty": 6,
+    "sohValue": 771.82
+  },
+  "CUSB-TW-TBRN-2": {
+    "landedPerUnit": 10.28,
+    "sohQty": 6,
+    "sohValue": 61.7
+  },
+  "V3-TB-TBRN-1": {
+    "landedPerUnit": 135.86,
+    "sohQty": 20,
+    "sohValue": 2717.29
+  },
+  "V3-TB-TBRN-2": {
+    "landedPerUnit": 10.86,
+    "sohQty": 20,
+    "sohValue": 217.19
+  },
+  "CUSB-TW-TWHT-1": {
+    "landedPerUnit": 129.13,
+    "sohQty": 12,
+    "sohValue": 1549.61
+  },
+  "CUSB-TW-TWHT-2": {
+    "landedPerUnit": 10.32,
+    "sohQty": 12,
+    "sohValue": 123.88
+  },
+  "V3-TB-TWHT-1": {
+    "landedPerUnit": 135.86,
+    "sohQty": 20,
+    "sohValue": 2717.29
+  },
+  "V3-TB-TWHT-2": {
+    "landedPerUnit": 10.86,
+    "sohQty": 20,
+    "sohValue": 217.19
+  },
+  "SRT-BT-WHT": {
+    "landedPerUnit": 60.39,
+    "sohQty": 1,
+    "sohValue": 60.39
+  },
+  "SRT-DT-BLK-1": {
+    "landedPerUnit": 112.66,
+    "sohQty": 3,
+    "sohValue": 337.98
+  },
+  "SRT-DT-WHT-1": {
+    "landedPerUnit": 84.45,
+    "sohQty": 15,
+    "sohValue": 1266.74
+  },
+  "SRT-DT-WHT-ECO-1": {
+    "landedPerUnit": 149.36,
+    "sohQty": 3,
+    "sohValue": 448.08
+  },
+  "SRT-DT-WHT-ECO-2": {
+    "landedPerUnit": 125.1,
+    "sohQty": 1,
+    "sohValue": 125.1
+  },
+  "SRT-DS100-WHT-1": {
+    "landedPerUnit": 98.63,
+    "sohQty": 2,
+    "sohValue": 197.26
+  },
+  "SRT-DS100-WHT-2": {
+    "landedPerUnit": 98.63,
+    "sohQty": 1,
+    "sohValue": 98.63
+  },
+  "SRT-DS100-WHT-ECO-1": {
+    "landedPerUnit": 96.51,
+    "sohQty": 4,
+    "sohValue": 386.04
+  },
+  "SRT-DS100-WHT-ECO-2": {
+    "landedPerUnit": 107.92,
+    "sohQty": 3,
+    "sohValue": 323.75
+  },
+  "SRT-SB130-WHT-1": {
+    "landedPerUnit": 73.62,
+    "sohQty": 2,
+    "sohValue": 147.25
+  },
+  "MS-SF153": {
+    "landedPerUnit": 122.97,
+    "sohQty": 70,
+    "sohValue": 8607.95
+  },
+  "MS-SF183": {
+    "landedPerUnit": 132.06,
+    "sohQty": 63,
+    "sohValue": 8319.94
+  },
+  "MS-SA153": {
+    "landedPerUnit": 55.82,
+    "sohQty": 70,
+    "sohValue": 3907.4
+  },
+  "MS-SA183": {
+    "landedPerUnit": 65.33,
+    "sohQty": 78,
+    "sohValue": 5095.74
+  },
+  "STLA-FLAMP-ECO-2": {
+    "landedPerUnit": 25.27,
+    "sohQty": 5,
+    "sohValue": 126.37
+  },
+  "DD-137D5Z": {
+    "landedPerUnit": 150.88,
+    "sohQty": 1,
+    "sohValue": 150.88
+  },
+  "DD-183K5Z": {
+    "landedPerUnit": 210.63,
+    "sohQty": 1,
+    "sohValue": 210.63
+  },
+  "DD-107KS5Z": {
+    "landedPerUnit": 135.43,
+    "sohQty": 2,
+    "sohValue": 270.86
+  },
+  "DD-153Q5Z": {
+    "landedPerUnit": 174.81,
+    "sohQty": 6,
+    "sohValue": 1048.86
+  },
+  "TATE-TV-BLACK-1": {
+    "landedPerUnit": 108.37,
+    "sohQty": 6,
+    "sohValue": 650.2
+  },
+  "TATE-TV-BLACK-2": {
+    "landedPerUnit": 108.37,
+    "sohQty": 2,
+    "sohValue": 216.74
+  },
+  "TATE-TV-NATURAL-2": {
+    "landedPerUnit": 116.11,
+    "sohQty": 4,
+    "sohValue": 464.45
+  },
+  "TATE-TV-NATURAL-ECO-1": {
+    "landedPerUnit": 121.55,
+    "sohQty": 2,
+    "sohValue": 243.1
+  },
+  "TATE-RODT220-BLACK-1": {
+    "landedPerUnit": 92.64,
+    "sohQty": 13,
+    "sohValue": 1204.33
+  },
+  "TATE-RODT220-BLACK-3": {
+    "landedPerUnit": 92.22,
+    "sohQty": 18,
+    "sohValue": 1659.89
+  },
+  "TATE-RODT220-BLACK-ECO-1": {
+    "landedPerUnit": 102.21,
+    "sohQty": 3,
+    "sohValue": 306.64
+  },
+  "TATE-RODT220-BLACK-ECO-2": {
+    "landedPerUnit": 102.21,
+    "sohQty": 1,
+    "sohValue": 102.21
+  },
+  "TATE-RODT220-BLACK-ECO-3": {
+    "landedPerUnit": 102.21,
+    "sohQty": 3,
+    "sohValue": 306.64
+  },
+  "TATE-RODT220-NATURAL-1": {
+    "landedPerUnit": 92.42,
+    "sohQty": 14,
+    "sohValue": 1293.92
+  },
+  "TATE-RODT220-NATURAL-3": {
+    "landedPerUnit": 92.42,
+    "sohQty": 9,
+    "sohValue": 831.81
+  },
+  "TATE-RODT220-NATURAL-ECO-1": {
+    "landedPerUnit": 102.21,
+    "sohQty": 6,
+    "sohValue": 613.29
+  },
+  "TATE-RODT220-NATURAL-ECO-2": {
+    "landedPerUnit": 102.21,
+    "sohQty": 1,
+    "sohValue": 102.21
+  },
+  "TATE-RODT220-NATURAL-ECO-3": {
+    "landedPerUnit": 102.21,
+    "sohQty": 5,
+    "sohValue": 511.07
+  },
+  "TATE-CT120-OAK-1": {
+    "landedPerUnit": 69.82,
+    "sohQty": 2,
+    "sohValue": 139.64
+  },
+  "TATE-CT120-OAK-2": {
+    "landedPerUnit": 69.82,
+    "sohQty": 5,
+    "sohValue": 349.11
+  },
+  "TATE-CT120-OAK-ECO-1": {
+    "landedPerUnit": 93.8,
+    "sohQty": 1,
+    "sohValue": 93.8
+  },
+  "TATE-CT120-OAK-ECO-2": {
+    "landedPerUnit": 81.61,
+    "sohQty": 2,
+    "sohValue": 163.21
+  },
+  "TATE-CST-BLK-2": {
+    "landedPerUnit": 80.78,
+    "sohQty": 4,
+    "sohValue": 323.12
+  },
+  "TATE-CD160-OAK-1": {
+    "landedPerUnit": 108.17,
+    "sohQty": 6,
+    "sohValue": 649
+  },
+  "TATE-D120-OAK-ECO": {
+    "landedPerUnit": 172.53,
+    "sohQty": 2,
+    "sohValue": 345.07
+  },
+  "TATE-ED120-OAK-WHT-1": {
+    "landedPerUnit": 253.19,
+    "sohQty": 10,
+    "sohValue": 2531.9
+  },
+  "TATE-ED120-OAK-WHT-ECO-2": {
+    "landedPerUnit": 137.58,
+    "sohQty": 1,
+    "sohValue": 137.58
+  },
+  "TATE-EDT-BLK-1": {
+    "landedPerUnit": 108.61,
+    "sohQty": 10,
+    "sohValue": 1086.11
+  },
+  "TATE-EDT-BLK-2": {
+    "landedPerUnit": 108.61,
+    "sohQty": 9,
+    "sohValue": 977.5
+  },
+  "TATE-EDT-BLK-ECO-1": {
+    "landedPerUnit": 92.73,
+    "sohQty": 1,
+    "sohValue": 92.73
+  },
+  "TATE-EDT-BLK-ECO-2": {
+    "landedPerUnit": 88.08,
+    "sohQty": 2,
+    "sohValue": 176.15
+  },
+  "TATE-EDT-NAL-2": {
+    "landedPerUnit": 107.6,
+    "sohQty": 6,
+    "sohValue": 645.58
+  },
+  "TATE-EDT-NAL-3": {
+    "landedPerUnit": 107.59,
+    "sohQty": 2,
+    "sohValue": 215.19
+  },
+  "TATE-EDT-NAL-ECO-1": {
+    "landedPerUnit": 93.92,
+    "sohQty": 4,
+    "sohValue": 375.68
+  },
+  "TATE-EDT-NAL-ECO-2": {
+    "landedPerUnit": 89.32,
+    "sohQty": 2,
+    "sohValue": 178.64
+  },
+  "TATE-EDT-WNT-ECO-1": {
+    "landedPerUnit": 137.89,
+    "sohQty": 3,
+    "sohValue": 413.68
+  },
+  "TATE-EDT-WNT-ECO-2": {
+    "landedPerUnit": 94.45,
+    "sohQty": 4,
+    "sohValue": 377.8
+  },
+  "TATE-EDT-WNT-ECO-3": {
+    "landedPerUnit": 94.74,
+    "sohQty": 3,
+    "sohValue": 284.21
+  },
+  "TATE-CT-NATURAL": {
+    "landedPerUnit": 135.35,
+    "sohQty": 1,
+    "sohValue": 135.35
+  },
+  "TATE-CT-NATURAL-ECO": {
+    "landedPerUnit": 140.95,
+    "sohQty": 3,
+    "sohValue": 422.84
+  },
+  "TATE-CT-BLACK": {
+    "landedPerUnit": 134.92,
+    "sohQty": 2,
+    "sohValue": 269.84
+  },
+  "TATE-RODT-BLACK": {
+    "landedPerUnit": 269.4,
+    "sohQty": 4,
+    "sohValue": 1077.6
+  },
+  "TATE-RODT-BLACK-1": {
+    "landedPerUnit": 89.82,
+    "sohQty": 21,
+    "sohValue": 1886.28
+  },
+  "TATE-RODT-BLACK-3": {
+    "landedPerUnit": 89.83,
+    "sohQty": 23,
+    "sohValue": 2066.16
+  },
+  "TATE-RODT-BLACK-ECO": {
+    "landedPerUnit": 298.22,
+    "sohQty": 1,
+    "sohValue": 298.22
+  },
+  "TATE-RODT-BLACK-ECO-1": {
+    "landedPerUnit": 94.49,
+    "sohQty": 10,
+    "sohValue": 944.91
+  },
+  "TATE-RODT-BLACK-ECO-2": {
+    "landedPerUnit": 95.04,
+    "sohQty": 1,
+    "sohValue": 95.04
+  },
+  "TATE-RODT-BLACK-ECO-3": {
+    "landedPerUnit": 94.49,
+    "sohQty": 9,
+    "sohValue": 850.42
+  },
+  "TATE-RODT-NATURAL-1": {
+    "landedPerUnit": 89.79,
+    "sohQty": 3,
+    "sohValue": 269.38
+  },
+  "TATE-RODT-NATURAL-3": {
+    "landedPerUnit": 89.79,
+    "sohQty": 13,
+    "sohValue": 1167.32
+  },
+  "TATE-RODT-NATURAL-ECO-1": {
+    "landedPerUnit": 92.24,
+    "sohQty": 3,
+    "sohValue": 276.72
+  },
+  "TATE-RODT-NATURAL-ECO-2": {
+    "landedPerUnit": 92.4,
+    "sohQty": 3,
+    "sohValue": 277.21
+  },
+  "TATE-RDT-BLACK-1": {
+    "landedPerUnit": 105.18,
+    "sohQty": 2,
+    "sohValue": 210.36
+  },
+  "TATE-RDT-NATURAL-1": {
+    "landedPerUnit": 104.19,
+    "sohQty": 2,
+    "sohValue": 208.39
+  },
+  "TATE-RDT-NATURAL-ECO-1": {
+    "landedPerUnit": 104.03,
+    "sohQty": 6,
+    "sohValue": 624.18
+  },
+  "TATE-RDT-NATURAL-ECO-2": {
+    "landedPerUnit": 104.03,
+    "sohQty": 27,
+    "sohValue": 2808.85
+  },
+  "TATE-ST-BLACK": {
+    "landedPerUnit": 82.83,
+    "sohQty": 1,
+    "sohValue": 82.83
+  },
+  "TATE-SB160-NATURAL-1": {
+    "landedPerUnit": 117.54,
+    "sohQty": 1,
+    "sohValue": 117.54
+  },
+  "TATE-SB160-NATURAL-2": {
+    "landedPerUnit": 119.62,
+    "sohQty": 1,
+    "sohValue": 119.62
+  },
+  "TATE-SB160-NATURAL-ECO": {
+    "landedPerUnit": 256.1,
+    "sohQty": 3,
+    "sohValue": 768.29
+  },
+  "TATE-SB-BLACK-ECO": {
+    "landedPerUnit": 195.69,
+    "sohQty": 1,
+    "sohValue": 195.69
+  },
+  "TATE-SB-NATURAL-ECO": {
+    "landedPerUnit": 194.62,
+    "sohQty": 3,
+    "sohValue": 583.86
+  },
+  "TATE-TV200-BLACK-1": {
+    "landedPerUnit": 129.0,
+    "sohQty": 2,
+    "sohValue": 258.01
+  },
+  "TATE-TV200-BLACK-ECO-1": {
+    "landedPerUnit": 131.19,
+    "sohQty": 7,
+    "sohValue": 918.31
+  },
+  "TATE-TV200-BLACK-ECO-2": {
+    "landedPerUnit": 126.73,
+    "sohQty": 6,
+    "sohValue": 760.35
+  },
+  "TATE-TV200-NATURAL-ECO-2": {
+    "landedPerUnit": 130.8,
+    "sohQty": 3,
+    "sohValue": 392.4
+  },
+  "TATE-DT180-WNT-1": {
+    "landedPerUnit": 81.39,
+    "sohQty": 1,
+    "sohValue": 81.39
+  },
+  "TATE-DT180-WNT-3": {
+    "landedPerUnit": 99.08,
+    "sohQty": 9,
+    "sohValue": 891.72
+  },
+  "TATE-DT180-WNT-ECO-1": {
+    "landedPerUnit": 94.5,
+    "sohQty": 2,
+    "sohValue": 189
+  },
+  "TATE-DT180-WNT-ECO-3": {
+    "landedPerUnit": 94.5,
+    "sohQty": 5,
+    "sohValue": 472.51
+  },
+  "TATE-SB160-WNT-1": {
+    "landedPerUnit": 117.66,
+    "sohQty": 1,
+    "sohValue": 117.66
+  },
+  "TATE-SB160-WNT-2": {
+    "landedPerUnit": 117.66,
+    "sohQty": 1,
+    "sohValue": 117.66
+  },
+  "TATE-SB160-WNT-ECO-1": {
+    "landedPerUnit": 117.56,
+    "sohQty": 1,
+    "sohValue": 117.56
+  },
+  "MS-TA153": {
+    "landedPerUnit": 97.87,
+    "sohQty": 75,
+    "sohValue": 7340.25
+  },
+  "MS-TA183": {
+    "landedPerUnit": 115.76,
+    "sohQty": 79,
+    "sohValue": 9145.04
+  },
+  "THEO-SB180-ASH-ECO-1": {
+    "landedPerUnit": 193.26,
+    "sohQty": 1,
+    "sohValue": 193.26
+  },
+  "THEO-SB180-ASH-ECO-3": {
+    "landedPerUnit": 68.62,
+    "sohQty": 2,
+    "sohValue": 137.24
+  },
+  "THEO-TV200-ASH-ECO-1": {
+    "landedPerUnit": 171.39,
+    "sohQty": 2,
+    "sohValue": 342.78
+  },
+  "THEO-TV200-ASH-ECO-2": {
+    "landedPerUnit": 105.76,
+    "sohQty": 5,
+    "sohValue": 528.78
+  },
+  "TIM-OC-BRN-ECO": {
+    "landedPerUnit": 282.05,
+    "sohQty": 1,
+    "sohValue": 282.05
+  },
+  "TOB-BCH-ECO": {
+    "landedPerUnit": 149.23,
+    "sohQty": 4,
+    "sohValue": 596.92
+  },
+  "TNTY-CT-OAK-1": {
+    "landedPerUnit": 24.21,
+    "sohQty": 3,
+    "sohValue": 72.63
+  },
+  "TNTY-CT-OAK-2": {
+    "landedPerUnit": 36.31,
+    "sohQty": 2,
+    "sohValue": 72.63
+  },
+  "TNTY-CST-OAK-ECO-1": {
+    "landedPerUnit": 92.08,
+    "sohQty": 2,
+    "sohValue": 184.15
+  },
+  "TNTY-CST-OAK-ECO-2": {
+    "landedPerUnit": 91.79,
+    "sohQty": 1,
+    "sohValue": 91.79
+  },
+  "V2-TB-LIGY-1": {
+    "landedPerUnit": 144.82,
+    "sohQty": 38,
+    "sohValue": 5503.17
+  },
+  "V2-TB-LIGY-2": {
+    "landedPerUnit": 50.12,
+    "sohQty": 38,
+    "sohValue": 1904.5
+  },
+  "V2-TB-CREAM-1": {
+    "landedPerUnit": 129.43,
+    "sohQty": 14,
+    "sohValue": 1811.98
+  },
+  "V2-TB-CREAM-2": {
+    "landedPerUnit": 44.8,
+    "sohQty": 14,
+    "sohValue": 627.26
+  },
+  "V2-TB-DKBL-1": {
+    "landedPerUnit": 146.78,
+    "sohQty": 53,
+    "sohValue": 7779.46
+  },
+  "V2-TB-DKBL-2": {
+    "landedPerUnit": 50.98,
+    "sohQty": 53,
+    "sohValue": 2701.69
+  },
+  "V2-TB-DKGY-1": {
+    "landedPerUnit": 141.2,
+    "sohQty": 14,
+    "sohValue": 1976.86
+  },
+  "V2-TB-DKGY-2": {
+    "landedPerUnit": 48.85,
+    "sohQty": 14,
+    "sohValue": 683.91
+  },
+  "V2-TB-LGN-1": {
+    "landedPerUnit": 145.47,
+    "sohQty": 124,
+    "sohValue": 18038.88
+  },
+  "V2-TB-LGN-2": {
+    "landedPerUnit": 50.46,
+    "sohQty": 124,
+    "sohValue": 6256.51
+  },
+  "TX-BT-GRY-ECO": {
+    "landedPerUnit": 111.0,
+    "sohQty": 5,
+    "sohValue": 554.98
+  },
+  "VRT-B140-FNG-ECO-1": {
+    "landedPerUnit": 60.54,
+    "sohQty": 1,
+    "sohValue": 60.54
+  },
+  "VRT-B140-FNG-ECO-2": {
+    "landedPerUnit": 76.2,
+    "sohQty": 1,
+    "sohValue": 76.2
+  },
+  "WIBR-DSK-ECO-1": {
+    "landedPerUnit": 99.4,
+    "sohQty": 12,
+    "sohValue": 1192.83
+  },
+  "WIBR-DSK-ECO-2": {
+    "landedPerUnit": 84.14,
+    "sohQty": 13,
+    "sohValue": 1093.84
+  },
+  "WILY-ED160-BLK-1": {
+    "landedPerUnit": 130.09,
+    "sohQty": 11,
+    "sohValue": 1430.99
+  },
+  "WILY-ED160-BLK-2": {
+    "landedPerUnit": 129.94,
+    "sohQty": 5,
+    "sohValue": 649.68
+  },
+  "WILY-ED160-BLK-3": {
+    "landedPerUnit": 129.94,
+    "sohQty": 5,
+    "sohValue": 649.68
+  },
+  "WILY-ED160-BLK-ECO-1": {
+    "landedPerUnit": 137.76,
+    "sohQty": 9,
+    "sohValue": 1239.8
+  },
+  "WILY-ED160-BLK-ECO-2": {
+    "landedPerUnit": 137.75,
+    "sohQty": 2,
+    "sohValue": 275.51
+  },
+  "WILY-ED160-BLK-ECO-3": {
+    "landedPerUnit": 137.76,
+    "sohQty": 3,
+    "sohValue": 413.27
+  },
+  "WILY-ED160-WNT-ECO": {
+    "landedPerUnit": 367.43,
+    "sohQty": 4,
+    "sohValue": 1469.73
+  },
+  "WILY-ED160-WNT-ECO-1": {
+    "landedPerUnit": 144.81,
+    "sohQty": 1,
+    "sohValue": 144.81
+  },
+  "WILY-ED160-WNT-ECO-2": {
+    "landedPerUnit": 109.77,
+    "sohQty": 2,
+    "sohValue": 219.53
+  },
+  "WILY-ED160-WNT-ECO-3": {
+    "landedPerUnit": 114.57,
+    "sohQty": 1,
+    "sohValue": 114.57
+  },
+  "ZACH-BF-D-1": {
+    "landedPerUnit": 26.32,
+    "sohQty": 3,
+    "sohValue": 78.96
+  },
+  "ZACH-BF-D-2": {
+    "landedPerUnit": 60.34,
+    "sohQty": 3,
+    "sohValue": 181.03
+  },
+  "ZACH-BF-K-1": {
+    "landedPerUnit": 84.58,
+    "sohQty": 6,
+    "sohValue": 507.48
+  },
+  "ZACH-BF-K-3": {
+    "landedPerUnit": 18.25,
+    "sohQty": 6,
+    "sohValue": 109.5
+  }
+}

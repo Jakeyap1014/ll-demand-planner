@@ -113,6 +113,13 @@ let dataCache = {
   shopifyInventory: {} // store -> {sku -> inventory_level}
 };
 
+// Load Excel-derived landed costs (SOH Stock Value ÷ SOH Stock Qty from CIN7 report)
+let excelLandedCosts = {};
+try {
+  excelLandedCosts = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'data', 'landed-costs.json'), 'utf8'));
+  console.log(`Loaded ${Object.keys(excelLandedCosts).length} Excel landed costs`);
+} catch (e) { console.log('No Excel landed costs file found — will use estimated only'); }
+
 // ===== LIVE FX RATE =====
 let fxRate = { USDAUD: 1.45, lastFetch: null }; // fallback
 async function refreshFxRate() {
@@ -781,19 +788,40 @@ function buildCKData(ckId) {
     if (inactiveSet.has(sku)) { delete velocity[sku]; }
   }
 
-  // === Per-SKU landed cost calculation (CBM-based freight allocation) ===
+  // === Per-SKU landed cost calculation ===
+  // Source 1: Excel report (SOH Stock Value / SOH Stock Qty) = actual landed cost for existing stock
+  // Source 2: CBM-based freight estimation for incoming POs
   // Skip swatches, covers, protectors — only main CK products
   const SKIP_LANDED = sku => /(-CV-|-CV$|-CS-|-CS$|-FS-|PROTECTOR|SWATCH|PACK$|SAMPLE)/i.test(sku);
   const landedCosts = {};
   
-  // For each non-received PO, calculate freight share per SKU by CBM proportion
+  // Step 1: Load actual landed costs from Excel for all matching SKUs
+  for (const sku of Object.keys(cin7)) {
+    if (SKIP_LANDED(sku)) continue;
+    const fob = (costs ? costs[sku] : 0) || 0;
+    const xl = excelLandedCosts[sku];
+    if (xl && xl.landedPerUnit > 0) {
+      const freightTariff = Math.max(0, xl.landedPerUnit - fob);
+      landedCosts[sku] = {
+        fob,
+        freightPerUnit: freightTariff,
+        tariffPerUnit: 0, // combined in freightPerUnit since Excel doesn't split them
+        landedPerUnit: xl.landedPerUnit,
+        cbm: cbmMap[sku] || 0,
+        source: 'actual',
+        sohQty: xl.sohQty,
+        sohValue: xl.sohValue
+      };
+    }
+  }
+  
+  // Step 2: For SKUs NOT in Excel, use CBM-based estimation from open POs
   for (const po of allPos) {
     if (po.stage === 'Received') continue;
     const destination = inferDestination(po);
     const landed = estimateLandedCost(po, destination);
     const containerFreight = landed.freight || 0;
     const tariffRate = landed.tariffRate || 0;
-    const freightCurrency = landed.freightCurrency || 'AUD';
     
     // Calculate total CBM for this PO
     let totalPoCbm = 0;
@@ -806,9 +834,11 @@ function buildCKData(ckId) {
     
     if (totalPoCbm <= 0 || containerFreight <= 0) continue;
     
-    // Allocate freight to each SKU by its CBM share
+    // Allocate freight to each SKU by its CBM share (only for SKUs without Excel data)
     for (const [sku, qty] of skuItems) {
       if (SKIP_LANDED(sku) || !cbmMap[sku]) continue;
+      if (landedCosts[sku]?.source === 'actual') continue; // Already have real data
+      
       const skuCbm = cbmMap[sku];
       const cbmShare = (skuCbm * qty) / totalPoCbm;
       const freightForSku = containerFreight * cbmShare / qty; // per unit
@@ -816,9 +846,8 @@ function buildCKData(ckId) {
       const tariffPerUnit = fob * tariffRate;
       const landedPerUnit = fob + freightForSku + tariffPerUnit;
       
-      // Average across multiple POs if SKU appears in more than one
       if (!landedCosts[sku]) {
-        landedCosts[sku] = { fob, freightPerUnit: freightForSku, tariffPerUnit, landedPerUnit, cbm: skuCbm, poCount: 1 };
+        landedCosts[sku] = { fob, freightPerUnit: freightForSku, tariffPerUnit, landedPerUnit, cbm: skuCbm, source: 'estimated', poCount: 1 };
       } else {
         const lc = landedCosts[sku];
         lc.freightPerUnit = (lc.freightPerUnit * lc.poCount + freightForSku) / (lc.poCount + 1);
