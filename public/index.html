@@ -531,6 +531,17 @@ function renderPurchaseOrders(allPOs) {
     if (poIsInTransit(po)) return '<span class="badge ok">IN TRANSIT</span>';
     return '<span class="badge low">OPEN</span>';
   };
+  const qualityBadge = po => {
+    const q = po.quality;
+    if (!q) return '';
+    const pct = q.pct;
+    const missing = (q.checks || []).filter(c => !c.filled).map(c => c.name).join(', ');
+    const tip = missing ? 'Missing: ' + missing : 'All fields complete';
+    if (pct >= 90) return `<span class="badge healthy" title="${tip}" style="cursor:help;font-size:9px">🟢 ${pct}%</span>`;
+    if (pct >= 70) return `<span class="badge" style="background:#FEF3C7;color:#92400E;cursor:help;font-size:9px" title="${tip}">🟡 ${pct}%</span>`;
+    if (pct >= 50) return `<span class="badge" style="background:#FFEDD5;color:#9A3412;cursor:help;font-size:9px" title="${tip}">🟠 ${pct}%</span>`;
+    return `<span class="badge" style="background:#FEE2E2;color:#991B1B;cursor:help;font-size:9px" title="${tip}">🔴 ${pct}%</span>`;
+  };
   // Summary cards
   const productionPOs = (allPOs||[]).filter(p => p.stage !== 'Received' && !poIsInTransit(p) && !poIsOverdue(p));
   const transitPOs = (allPOs||[]).filter(p => poIsInTransit(p));
@@ -553,12 +564,18 @@ function renderPurchaseOrders(allPOs) {
   const overdueValue = overduePOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
   const overdueFreight = overduePOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
   const fmtVal = v => sym + v.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  // Average quality score for active (non-received) POs
+  const activePOsWithScore = pos.filter(p => p.stage !== 'Received' && p.quality);
+  const avgQuality = activePOsWithScore.length > 0 ? Math.round(activePOsWithScore.reduce((t, p) => t + p.quality.pct, 0) / activePOsWithScore.length) : 0;
+  const qIcon = avgQuality >= 90 ? '🟢' : avgQuality >= 70 ? '🟡' : avgQuality >= 50 ? '🟠' : '🔴';
+  const criticalPOs = activePOsWithScore.filter(p => p.quality.pct < 50).length;
   document.getElementById('poSummaryCards').innerHTML = `
     <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(totalFreight)} freight${totalTariff ? ' + ' + fmtVal(totalTariff) + ' tariff' : ''}</div></div>
     <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionPOs.length}</div><div class="sub">${fmtVal(productionValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(productionFreight)} freight</div></div>
     <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${transitPOs.length}</div><div class="sub">${fmtVal(transitValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(transitFreight)} freight</div></div>
     ${overduePOs.length > 0 ? `<div class="card" style="border-left:3px solid #991B1B"><div class="label">⚠️ Overdue</div><div class="value">${overduePOs.length}</div><div class="sub">${fmtVal(overdueValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(overdueFreight)} freight</div></div>` : ''}
     <div class="card"><div class="label">✅ Received</div><div class="value">${receivedCount}</div><div class="sub">Completed</div></div>
+    <div class="card" style="border-left:3px solid ${avgQuality>=90?'#5BAB31':avgQuality>=70?'#D4930D':avgQuality>=50?'#EA580C':'#991B1B'}"><div class="label">${qIcon} Data Quality</div><div class="value">${avgQuality}%</div><div class="sub">${activePOsWithScore.length} active POs${criticalPOs > 0 ? ' · <span style="color:#991B1B;font-weight:600">' + criticalPOs + ' critical</span>' : ''}</div></div>
   `;
   container.innerHTML = pos.map((po, i) => {
     const items = Object.entries(po.items || {}).sort(([a],[b]) => a.localeCompare(b));
@@ -566,9 +583,10 @@ function renderPurchaseOrders(allPOs) {
     const etd = po.etd ? fmt(po.etd) : '—';
     const originalEta = po.customFields?.orders_1000 || '—';
     return `<div style="border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--bg-card);overflow:hidden">
-      <div onclick="this.parentElement.querySelector('.po-items').classList.toggle('open')" style="display:grid;grid-template-columns:minmax(100px,1.2fr) 85px minmax(120px,2fr) minmax(80px,1fr) minmax(90px,1fr) minmax(100px,1.2fr) minmax(90px,1fr) minmax(75px,0.9fr) minmax(75px,0.9fr) 60px minmax(75px,0.9fr) 24px;align-items:center;padding:12px 18px;cursor:pointer;user-select:none;font-size:11px;gap:6px">
+      <div onclick="this.parentElement.querySelector('.po-items').classList.toggle('open')" style="display:grid;grid-template-columns:minmax(100px,1.2fr) 85px 55px minmax(120px,2fr) minmax(80px,1fr) minmax(90px,1fr) minmax(100px,1.2fr) minmax(90px,1fr) minmax(75px,0.9fr) minmax(75px,0.9fr) 60px minmax(75px,0.9fr) 24px;align-items:center;padding:12px 18px;cursor:pointer;user-select:none;font-size:11px;gap:6px">
         <span style="font-family:monospace;font-weight:700;font-size:12px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${po.reference}</span>
         <span style="text-align:center">${stageBadge(po)}</span>
+        <span style="text-align:center">${qualityBadge(po)}</span>
         <span style="color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${po.company || ''}</span>
         <span style="font-size:10px;color:var(--text-dim)">${po.deliveryCountry || ''}</span>
         <span style="color:var(--text-dim)" title="ETD (Departure)">🚢 ${etd}</span>

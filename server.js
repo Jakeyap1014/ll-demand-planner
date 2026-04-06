@@ -237,6 +237,9 @@ async function fetchCin7POs() {
             logisticsCarrier: po.logisticsCarrier || '',
             internalComments: po.internalComments || '',
             freightTotal: po.freightTotal || 0,
+            createdBy: po.createdBy || null,
+            invoiceDate: po.invoiceDate || null,
+            supplierInvoiceReference: po.supplierInvoiceReference || '',
             items
           });
         }
@@ -1013,10 +1016,48 @@ function estimateLandedCost(po, destination) {
   return { freight, freightCurrency, tariffRate, tariffAmount, tariffNote, isEstimated, landedTotal: productValue + freight + tariffAmount };
 }
 
+// PO Data Quality Score
+function scorePO(po) {
+  const isInTransitOrReceived = po.stage === 'Received' || (po.etd && po.estimatedArrivalDate && new Date(po.etd) <= new Date() && (po.stage !== 'Draft' && po.stage !== 'Confirmed'));
+  const isReceived = po.stage === 'Received';
+  
+  let score = 0;
+  let maxScore = 0;
+  const checks = [];
+  
+  // Always evaluated
+  const addCheck = (name, points, filled) => { maxScore += points; if (filled) score += points; checks.push({ name, points, filled }); };
+  
+  addCheck('Created By', 5, !!po.createdBy);
+  addCheck('ETA', 20, !!(po.estimatedArrivalDate || po.arrival));
+  addCheck('Original ETA', 15, !!(po.customFields?.orders_1000));
+  addCheck('ETD', 15, !!po.etd);
+  addCheck('Port', 10, !!po.port);
+  
+  // Tracking code: only if in transit or received
+  if (isInTransitOrReceived) {
+    addCheck('Tracking Code', 15, !!po.trackingCode);
+  }
+  
+  // Landed costs: check if freightTotal > 0 (actual landed cost entered)
+  addCheck('Landed Costs', 10, po.freightTotal > 0);
+  
+  // Received-only checks
+  if (isReceived) {
+    addCheck('Fully Received Date', 5, !!po.fullyReceivedDate);
+    addCheck('Invoice Date', 5, !!po.invoiceDate);
+    addCheck('Supplier Inv No', 5, !!po.supplierInvoiceReference);
+  }
+  
+  const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+  return { score, maxScore, pct, checks };
+}
+
 app.get('/api/all-pos', requireAuth, (req, res) => {
   const pos = dataCache.cin7POs.map(po => {
     const destination = inferDestination(po);
     const landed = estimateLandedCost(po, destination);
+    const quality = scorePO(po);
     return {
       reference: po.reference,
       stage: po.stage || '',
@@ -1037,6 +1078,12 @@ app.get('/api/all-pos', requireAuth, (req, res) => {
       tariffNote: landed.tariffNote,
       isEstFreight: landed.isEstimated,
       landedTotal: landed.landedTotal,
+      createdBy: po.createdBy || null,
+      invoiceDate: po.invoiceDate || null,
+      supplierInvoiceReference: po.supplierInvoiceReference || '',
+      port: po.port || '',
+      freightTotal: po.freightTotal || 0,
+      quality,
       items: po.items || {}
     };
   });
