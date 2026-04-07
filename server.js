@@ -491,6 +491,11 @@ function normalizeSwatchPack(cin7) {
 // A SET = BASE + topper. Buildable = min(BASE, topper)
 function normalizeRadiant(cin7, shopifySkus) {
   const result = {};
+  // Preserve raw RDNT component SKUs so POs and drilldown can resolve them.
+  // SET keys are added alongside and used for display/reorder.
+  for (const [sku, data] of Object.entries(cin7)) {
+    if (sku.startsWith('RDNT-')) result[sku] = data;
+  }
   const sizes = ['D', 'K', 'Q'];
   const types = ['S', 'MF', 'F'];
   
