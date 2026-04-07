@@ -87,7 +87,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div class="sidebar">
   <div class="sidebar-header">
     <h1>🚢 Shipment Tracker</h1>
-    <a href="/">← Demand Planner</a>
+    <a href="/" id="backToDashboard">← Demand Planner</a>
   </div>
   <div class="summary-bar" id="summaryBar">
     <div class="summary-item"><div class="num" id="prodUnits">-</div><div class="lbl">Production Units</div></div>
@@ -133,9 +133,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
 </div>
 <script>
-const SESSION=sessionStorage.getItem('session');
+const SESSION=new URLSearchParams(window.location.search).get('session')||sessionStorage.getItem('session');
 if(!SESSION)window.location.href='/login';
+sessionStorage.setItem('session',SESSION);
+if(window.location.search)history.replaceState({},'','/tracker');
 const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
+// Back link needs session as query param since GET / requires auth
+document.getElementById('backToDashboard').href='/?session='+encodeURIComponent(SESSION);
 
 // Init map
 const map=L.map('map',{center:[20,180],zoom:2,zoomControl:true,attributionControl:false,worldCopyJump:false,maxBounds:[[-85,-30],[85,400]],maxBoundsViscosity:1.0});
