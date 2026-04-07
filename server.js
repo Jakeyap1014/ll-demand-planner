@@ -1506,3 +1506,206 @@ app.listen(PORT, () => {
 });
 
 
+
+// ===== INCOMING POs TAB =====
+const DD_21CM_SKUS = new Set(['DD-21107CF','DD-21137CF','DD-21153CF','DD-21183CF','DD-21915CF']);
+
+function classifySKU(code, destCountry) {
+  const c = (code || '').toUpperCase();
+  // NZ uses LLAU- SKUs — check destination first
+  if (destCountry === 'NZ' && c.startsWith('LLAU-') && !c.includes('-CV')) return 'LL Beds — NZ';
+  if (destCountry === 'NZ' && c.startsWith('LLAU-') && c.includes('-CV')) return 'LL Covers — NZ';
+  
+  if (c.startsWith('LLAU-CB-') && !c.includes('-CV') && !c.includes('-CS-') && !c.includes('-FS-') && !c.includes('CBCF')) return 'LL Beds — AU';
+  if (c.startsWith('LLAU-CB-') && c.includes('-CV')) return 'LL Covers — AU';
+  if (c.startsWith('LLAU-CB-CS-') || c.startsWith('LLAU-CB-FS-')) return null; // swatches
+  if (c.startsWith('LLNA-CB-') && !c.includes('-CV') && !c.includes('CFDS') && !c.includes('CBCF')) return 'LL Beds — US/CA';
+  if (c.startsWith('LLNA-CB-') && c.includes('-CV')) return 'LL Covers — US/CA';
+  if (c.startsWith('LLNA-CFDS-') || c.startsWith('LLNA-CBCF-')) return null; // combo sku shouldn't be in POs
+  if (c.startsWith('LLUK-CB-') && !c.includes('-CV')) return 'LL Beds — UK';
+  if (c.startsWith('LLUK-CB-') && c.includes('-CV')) return 'LL Covers — UK';
+  if (c.startsWith('LLSG-') && !c.includes('-CV')) return 'LL Beds — SG';
+  if (c.startsWith('LLSG-') && c.includes('-CV')) return 'LL Covers — SG';
+  if (DD_21CM_SKUS.has(code)) return 'Deep Dream 21CM';
+  if (c.startsWith('DD-')) return 'Deep Dream Other';
+  if (c.startsWith('V2-')) return 'Cushie V2 — ' + (destCountry || 'US');
+  if (c.startsWith('V3-')) return 'Snuggle V3 — ' + (destCountry || 'AU');
+  if ((c.startsWith('CUSB-') || c.startsWith('LFSB-')) && c.includes('-UK')) return 'Cushie V2 — UK';
+  if (c.startsWith('CUSB-') || c.startsWith('LFSB-')) return 'Cushie V2 — ' + (destCountry || 'AU');
+  if (c.startsWith('CMSS-')) return 'Modular Sleeper';
+  if (c.startsWith('LIFELY-') || c.startsWith('LFSF-')) return 'Lifely Sofa';
+  if (c.startsWith('RDNT-')) return 'Radiant';
+  if (c.startsWith('COCOON-')) return 'Cocoon Bed';
+  if (c.startsWith('WFHCR-')) return 'WFH Chair';
+  return 'Case Goods';
+}
+
+function destToCountryCode(dest) {
+  if (!dest) return 'AU';
+  const d = dest.toLowerCase();
+  if (d.includes('united states') || d.includes('usa')) return 'US';
+  if (d.includes('canada')) return 'CA';
+  if (d.includes('united kingdom')) return 'UK';
+  if (d.includes('singapore')) return 'SG';
+  if (d.includes('new zealand')) return 'NZ';
+  if (d.includes('australia')) return 'AU';
+  // Fallback from PO reference
+  return 'AU';
+}
+
+function destFromRef(ref) {
+  const r = (ref || '').toUpperCase();
+  if (r.startsWith('PO-AU') || r.startsWith('PO-LF')) return 'Australia';
+  if (r.startsWith('PO-US') || r.startsWith('PO-10')) return 'United States';
+  if (r.startsWith('PO-CA')) return 'Canada';
+  if (r.startsWith('PO-UK')) return 'United Kingdom';
+  if (r.startsWith('PO-NZ')) return 'New Zealand';
+  if (r.startsWith('PO-SG')) return 'Singapore';
+  return null;
+}
+
+app.get('/api/incoming-pos', requireAuth, (req, res) => {
+  const allCKGroups = new Set();
+  const allMonths = new Set();
+  const allCountries = new Set();
+  
+  // Get product costs from cin7Products cache for per-unit FOB
+  const productCosts = {};
+  for (const [sku, data] of Object.entries(dataCache.cin7Products || {})) {
+    if (typeof data === 'object' && data.costAUD) productCosts[sku] = data.costAUD;
+  }
+  
+  const pos = [];
+  for (const po of (dataCache.cin7POs || [])) {
+    // Skip received
+    if (po.fullyReceivedDate || po.stage === 'Received') continue;
+    
+    // Determine destination
+    let destination = inferDestination(po);
+    if (!destination || destination === 'Australia') {
+      const refDest = destFromRef(po.reference);
+      if (refDest) destination = refDest;
+      else destination = 'Australia';
+    }
+    const countryCode = destToCountryCode(destination);
+    allCountries.add(countryCode);
+    
+    // ETA
+    const etaRaw = po.estimatedArrivalDate || po.arrival || null;
+    let eta = null, etaMonth = 'TBD';
+    if (etaRaw) {
+      const dt = new Date(etaRaw);
+      if (!isNaN(dt)) {
+        if (dt < new Date('2026-04-01')) {
+          eta = '2026-04-01';
+          etaMonth = 'April 2026';
+        } else {
+          eta = dt.toISOString().split('T')[0];
+          const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+          etaMonth = months[dt.getMonth()] + ' ' + dt.getFullYear();
+        }
+      }
+    }
+    allMonths.add(etaMonth);
+    
+    // Product total (already AUD — NO conversion)
+    const productTotal = po.total || 0;
+    
+    // Container estimate: $30K AUD per container
+    const containers = Math.max(1, Math.ceil(productTotal / 30000));
+    
+    // Freight + tariff
+    const dest = FREIGHT_TARIFF[destination];
+    const freightPerContainer = dest ? dest.freight : 7000;
+    const freightEst = freightPerContainer * containers;
+    const tariffRate = dest ? dest.tariff : 0;
+    const tariffEst = productTotal * tariffRate;
+    const landedTotal = productTotal + freightEst + tariffEst;
+    
+    // Line items with CK classification
+    const lineItems = [];
+    const poGroups = new Set();
+    let totalUnits = 0;
+    
+    for (const [sku, qty] of Object.entries(po.items || {})) {
+      const ckGroup = classifySKU(sku, countryCode);
+      if (!ckGroup) continue; // skip swatches etc
+      
+      poGroups.add(ckGroup);
+      allCKGroups.add(ckGroup);
+      totalUnits += qty;
+      
+      // FOB per unit from cin7Products cache
+      const fobPerUnit = productCosts[sku] || 0;
+      // Freight per unit = total freight / total units across PO (estimated later)
+      
+      lineItems.push({
+        sku,
+        name: sku, // Will be enriched on frontend if needed
+        qty,
+        fobPerUnit: Math.round(fobPerUnit * 100) / 100,
+        ckGroup
+      });
+    }
+    
+    if (lineItems.length === 0) continue;
+    
+    // Calculate freight per unit (spread across all units)
+    const freightPerUnit = totalUnits > 0 ? freightEst / totalUnits : 0;
+    for (const li of lineItems) {
+      li.freightPerUnit = Math.round(freightPerUnit * 100) / 100;
+      li.landedPerUnit = Math.round((li.fobPerUnit + li.freightPerUnit + (li.fobPerUnit * tariffRate)) * 100) / 100;
+    }
+    
+    pos.push({
+      reference: po.reference,
+      supplier: po.company || '',
+      destination: countryCode,
+      destinationFull: destination,
+      eta,
+      etaMonth,
+      containers,
+      productTotal: Math.round(productTotal),
+      freightEst: Math.round(freightEst),
+      tariffRate,
+      tariffEst: Math.round(tariffEst),
+      landedTotal: Math.round(landedTotal),
+      stage: po.stage || 'Open',
+      totalUnits,
+      ckGroups: [...poGroups].sort(),
+      lineItems
+    });
+  }
+  
+  // Sort by ETA
+  pos.sort((a, b) => {
+    if (!a.eta && !b.eta) return 0;
+    if (!a.eta) return 1;
+    if (!b.eta) return -1;
+    return a.eta.localeCompare(b.eta);
+  });
+  
+  // Summary totals
+  const summary = {
+    totalProductAUD: pos.reduce((s, p) => s + p.productTotal, 0),
+    totalFreightAUD: pos.reduce((s, p) => s + p.freightEst, 0),
+    totalTariffAUD: pos.reduce((s, p) => s + p.tariffEst, 0),
+    totalLandedAUD: pos.reduce((s, p) => s + p.landedTotal, 0),
+    totalUnits: pos.reduce((s, p) => s + p.totalUnits, 0),
+    totalContainers: pos.reduce((s, p) => s + p.containers, 0),
+    poCount: pos.length
+  };
+  
+  res.json({
+    pos,
+    summary,
+    months: [...allMonths].sort(),
+    countries: [...allCountries].sort(),
+    ckGroups: [...allCKGroups].sort()
+  });
+});
+
+// Serve incoming-pos page
+app.get('/incoming-pos', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'incoming-pos.html'));
+});

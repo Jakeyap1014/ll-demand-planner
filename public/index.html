@@ -84,6 +84,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
   <div class="sidebar-label">Tools</div>
   <div class="sidebar-item" onclick="showAllPOs()" id="poNavItem">📋 <span>Purchase Orders</span></div>
   <div style="padding:8px"><a href="/tracker" id="trackerLink" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;font-size:13px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.15);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">🚢 Shipment Tracker</a></div>
+  <div style="padding:0 8px 8px"><a href="/incoming-pos" id="incomingLink" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;font-size:13px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.15);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">📦 Incoming POs</a></div>
   <div class="sidebar-footer" id="sidebarFooter">Loading...</div>
   <div style="padding:4px 8px 0"><a href="https://docs.google.com/document/d/1GTVkikz4bhFILlPM1ys2IlT0Xh-ZCBfwNIArEW8BBew/edit" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:12px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.1);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">📖 User Guide</a></div>
   <div style="padding:4px 8px 12px"><a href="https://docs.google.com/spreadsheets/d/1X4aa4h_SQR0W1ffgFcJqvS92MCpM0ONLoxG-n6WjbSE" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:12px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.1);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">📊 Data Sources</a></div>
@@ -187,7 +188,8 @@ const SESSION=new URLSearchParams(window.location.search).get('session')||sessio
 if(!SESSION){window.location.href='/login';}
 else{sessionStorage.setItem('session',SESSION);if(window.location.search)history.replaceState({},'','/');
   // Append session to tracker link so back-nav works even without sessionStorage
-  const tl=document.getElementById('trackerLink');if(tl)tl.href='/tracker?session='+encodeURIComponent(SESSION);}
+  const tl=document.getElementById('trackerLink');if(tl)tl.href='/tracker?session='+encodeURIComponent(SESSION);
+  const il=document.getElementById('incomingLink');if(il)il.href='/incoming-pos?session='+encodeURIComponent(SESSION);}
 const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
 let DATA={cin7:{},shopify:{},velocity:{},pos:[],allPos:[],names:{},sizes:{},cbmMap:{},landedCosts:{}},currentCK=null,charts={},dashFilter={size:'All'},heatmapSortMode='risk';
 const TODAY=new Date();

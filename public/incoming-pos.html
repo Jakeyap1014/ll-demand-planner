@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incoming POs — LL Demand Planner</title>
+<style>
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#242835;--text:#e4e6eb;--text-dim:#8b8fa3;--green:#5bab31;--yellow:#d4930d;--alert:#c33252;--border:#2d3040;--accent:#4a9eff;--card-bg:#1e2130}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.nav-logo{font-size:18px;font-weight:700;color:var(--green)}
+.nav-link{color:var(--text-dim);font-size:13px;padding:6px 12px;border-radius:6px;transition:all .2s}
+.nav-link:hover,.nav-link.active{color:var(--text);background:var(--surface2)}
+.container{max-width:1400px;margin:0 auto;padding:20px}
+
+/* Header cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:16px}
+.card-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.card-value{font-size:22px;font-weight:700}
+.card-sub{font-size:11px;color:var(--text-dim);margin-top:2px}
+.card--green .card-value{color:var(--green)}
+.card--yellow .card-value{color:var(--yellow)}
+.card--accent .card-value{color:var(--accent)}
+
+/* Filters */
+.filters{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-group{display:flex;flex-direction:column;gap:4px}
+.filter-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px}
+select{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;min-width:180px;cursor:pointer}
+select:focus{outline:none;border-color:var(--accent)}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--surface2);color:var(--text-dim);text-align:left;padding:10px 12px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0}
+td{padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+tr:hover>td{background:rgba(74,158,255,.04)}
+.mono{font-family:'SF Mono',Monaco,Consolas,monospace;font-size:11px}
+.right{text-align:right}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
+.badge-green{background:rgba(91,171,49,.15);color:var(--green)}
+.badge-yellow{background:rgba(212,147,13,.15);color:var(--yellow)}
+.badge-red{background:rgba(195,50,82,.15);color:var(--alert)}
+.badge-blue{background:rgba(74,158,255,.15);color:var(--accent)}
+.ck-tags{display:flex;flex-wrap:wrap;gap:3px}
+.ck-tag{background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:9px;color:var(--text-dim);white-space:nowrap}
+.expand-btn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;padding:2px 6px}
+.expand-btn:hover{color:var(--text)}
+.sub-table{background:var(--bg);margin:4px 0;border-radius:6px;overflow:hidden}
+.sub-table th{background:var(--surface);font-size:9px}
+.sub-table td{font-size:11px;padding:6px 10px}
+.hidden{display:none}
+.loading{text-align:center;padding:40px;color:var(--text-dim)}
+.total-row td{font-weight:700;border-top:2px solid var(--border);background:var(--surface2)}
+.eta-badge{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:600}
+.footer{margin-top:20px;padding:12px;font-size:10px;color:var(--text-dim);text-align:center}
+</style>
+</head>
+<body>
+<div class="nav">
+  <span class="nav-logo">📦 Incoming POs</span>
+  <a href="/" class="nav-link">← Dashboard</a>
+  <a href="/tracker" class="nav-link">🚢 Shipment Tracker</a>
+</div>
+<div class="container">
+  <div class="cards" id="cards">
+    <div class="card card--accent"><div class="card-label">Product Value</div><div class="card-value" id="c-product">—</div><div class="card-sub" id="c-pos">— POs</div></div>
+    <div class="card card--yellow"><div class="card-label">Freight Est</div><div class="card-value" id="c-freight">—</div><div class="card-sub" id="c-containers">— containers</div></div>
+    <div class="card"><div class="card-label">Tariff Est</div><div class="card-value" id="c-tariff">—</div><div class="card-sub">Based on destination tariff rate</div></div>
+    <div class="card card--green"><div class="card-label">Total Landed</div><div class="card-value" id="c-landed">—</div><div class="card-sub" id="c-units">— units</div></div>
+  </div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <span class="filter-label">Destination</span>
+      <select id="f-country"><option value="">All Countries</option></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">ETA Month</span>
+      <select id="f-month"><option value="">All Months</option></select>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Category Killer</span>
+      <select id="f-ck"><option value="">All CKs</option></select>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30px"></th>
+          <th>PO Ref</th>
+          <th>Supplier</th>
+          <th>Dest</th>
+          <th>ETA</th>
+          <th>CK Groups</th>
+          <th class="right">Units</th>
+          <th class="right">Product (A$)</th>
+          <th class="right">Freight</th>
+          <th class="right">Tariff</th>
+          <th class="right">Landed Total</th>
+          <th>Stage</th>
+        </tr>
+      </thead>
+      <tbody id="po-body">
+        <tr><td colspan="12" class="loading">Loading...</td></tr>
+      </tbody>
+      <tfoot id="po-foot"></tfoot>
+    </table>
+  </div>
+  <div class="footer">Data from CIN7 PurchaseOrders API · All values in AUD · Freight estimated at $30K/container · Last refresh: <span id="ts">—</span></div>
+</div>
+
+<script>
+let DATA = null;
+const $ = s => document.querySelector(s);
+const fmt = n => n != null ? 'A$' + Math.round(n).toLocaleString() : '—';
+const fmtShort = n => {
+  if (n >= 1e6) return 'A$' + (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return 'A$' + (n/1e3).toFixed(0) + 'K';
+  return 'A$' + Math.round(n).toLocaleString();
+};
+
+function etaBadge(eta) {
+  if (!eta) return '<span class="eta-badge badge-yellow">TBD</span>';
+  const d = new Date(eta);
+  const now = new Date();
+  const weeks = (d - now) / (7*24*60*60*1000);
+  const dateStr = d.toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'2-digit'});
+  if (weeks < 0) return `<span class="eta-badge badge-red">${dateStr} (overdue)</span>`;
+  if (weeks < 4) return `<span class="eta-badge badge-red">${dateStr}</span>`;
+  if (weeks < 8) return `<span class="eta-badge badge-yellow">${dateStr}</span>`;
+  return `<span class="eta-badge badge-green">${dateStr}</span>`;
+}
+
+function stageBadge(s) {
+  if (!s || s === 'None' || s === 'Open') return '<span class="badge badge-blue">OPEN</span>';
+  if (s === 'Received') return '<span class="badge badge-green">RECEIVED</span>';
+  return `<span class="badge badge-yellow">${s.toUpperCase()}</span>`;
+}
+
+function applyFilters() {
+  if (!DATA) return;
+  const fc = $('#f-country').value;
+  const fm = $('#f-month').value;
+  const fk = $('#f-ck').value;
+  
+  const filtered = DATA.pos.filter(po => {
+    if (fc && po.destination !== fc) return false;
+    if (fm && po.etaMonth !== fm) return false;
+    if (fk && !po.ckGroups.includes(fk)) return false;
+    return true;
+  });
+  
+  // Update cards
+  const s = {p:0,f:0,t:0,l:0,u:0,c:0};
+  for (const po of filtered) { s.p+=po.productTotal; s.f+=po.freightEst; s.t+=po.tariffEst; s.l+=po.landedTotal; s.u+=po.totalUnits; s.c+=po.containers; }
+  $('#c-product').textContent = fmtShort(s.p);
+  $('#c-freight').textContent = fmtShort(s.f);
+  $('#c-tariff').textContent = fmtShort(s.t);
+  $('#c-landed').textContent = fmtShort(s.l);
+  $('#c-pos').textContent = filtered.length + ' POs';
+  $('#c-containers').textContent = s.c + ' containers (est)';
+  $('#c-units').textContent = s.u.toLocaleString() + ' units';
+  
+  // Render table
+  const tbody = $('#po-body');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="12" class="loading">No POs match filters</td></tr>';
+    $('#po-foot').innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  for (const po of filtered) {
+    const rid = 'r-' + po.reference.replace(/[^a-zA-Z0-9]/g,'_');
+    html += `<tr>
+      <td><button class="expand-btn" onclick="toggle('${rid}')">▶</button></td>
+      <td class="mono" style="font-weight:600">${po.reference}</td>
+      <td style="font-size:11px;color:var(--text-dim)">${(po.supplier||'').substring(0,25)}</td>
+      <td><span class="badge badge-blue">${po.destination}</span></td>
+      <td>${etaBadge(po.eta)}</td>
+      <td><div class="ck-tags">${po.ckGroups.map(g=>'<span class="ck-tag">'+g+'</span>').join('')}</div></td>
+      <td class="right mono">${po.totalUnits.toLocaleString()}</td>
+      <td class="right mono">${fmt(po.productTotal)}</td>
+      <td class="right mono" style="color:var(--yellow)">${fmt(po.freightEst)}</td>
+      <td class="right mono">${fmt(po.tariffEst)}</td>
+      <td class="right mono" style="font-weight:700;color:var(--green)">${fmt(po.landedTotal)}</td>
+      <td>${stageBadge(po.stage)}</td>
+    </tr>
+    <tr class="hidden" id="${rid}"><td colspan="12" style="padding:4px 12px 12px 40px">
+      <table class="sub-table"><thead><tr>
+        <th>SKU</th><th>CK Group</th><th class="right">Qty</th><th class="right">FOB/unit</th><th class="right">Freight/unit</th><th class="right">Landed/unit</th>
+      </tr></thead><tbody>
+      ${po.lineItems.map(li => `<tr>
+        <td class="mono">${li.sku}</td>
+        <td><span class="ck-tag">${li.ckGroup}</span></td>
+        <td class="right">${li.qty}</td>
+        <td class="right mono">A$${li.fobPerUnit.toFixed(2)}</td>
+        <td class="right mono" style="color:var(--yellow)">A$${li.freightPerUnit.toFixed(2)}</td>
+        <td class="right mono" style="color:var(--green)">A$${li.landedPerUnit.toFixed(2)}</td>
+      </tr>`).join('')}
+      </tbody></table>
+    </td></tr>`;
+  }
+  tbody.innerHTML = html;
+  
+  // Footer totals
+  $('#po-foot').innerHTML = `<tr class="total-row">
+    <td></td><td colspan="5" style="font-size:11px">TOTAL (${filtered.length} POs)</td>
+    <td class="right mono">${s.u.toLocaleString()}</td>
+    <td class="right mono">${fmt(s.p)}</td>
+    <td class="right mono" style="color:var(--yellow)">${fmt(s.f)}</td>
+    <td class="right mono">${fmt(s.t)}</td>
+    <td class="right mono" style="color:var(--green)">${fmt(s.l)}</td>
+    <td></td>
+  </tr>`;
+}
+
+function toggle(id) {
+  const row = document.getElementById(id);
+  const btn = row.previousElementSibling.querySelector('.expand-btn');
+  if (row.classList.contains('hidden')) {
+    row.classList.remove('hidden');
+    btn.textContent = '▼';
+  } else {
+    row.classList.add('hidden');
+    btn.textContent = '▶';
+  }
+}
+
+async function load() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const session = params.get('session') || '';
+    const r = await fetch('/api/incoming-pos?session=' + encodeURIComponent(session));
+    if (r.status === 401) { window.location.href = '/'; return; }
+    DATA = await r.json();
+    
+    // Populate filters
+    const fc = $('#f-country');
+    for (const c of DATA.countries) { const o = document.createElement('option'); o.value = c; o.textContent = c; fc.appendChild(o); }
+    
+    const fm = $('#f-month');
+    // Sort months chronologically
+    const monthOrder = DATA.months.filter(m=>m!=='TBD').sort((a,b) => new Date('1 '+a) - new Date('1 '+b));
+    if (DATA.months.includes('TBD')) monthOrder.push('TBD');
+    for (const m of monthOrder) { const o = document.createElement('option'); o.value = m; o.textContent = m; fm.appendChild(o); }
+    
+    const fk = $('#f-ck');
+    for (const g of DATA.ckGroups) { const o = document.createElement('option'); o.value = g; o.textContent = g; fk.appendChild(o); }
+    
+    $('#ts').textContent = new Date().toLocaleString('en-AU');
+    
+    applyFilters();
+  } catch(e) {
+    $('#po-body').innerHTML = `<tr><td colspan="12" class="loading">Error loading data: ${e.message}</td></tr>`;
+  }
+}
+
+$('#f-country').addEventListener('change', applyFilters);
+$('#f-month').addEventListener('change', applyFilters);
+$('#f-ck').addEventListener('change', applyFilters);
+
+load();
+</script>
+</body>
+</html>
