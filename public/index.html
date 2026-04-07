@@ -557,14 +557,14 @@ function renderPurchaseOrders(allPOs) {
     return fromCurrency === 'USD' ? val : val / _poFxRate;
   };
   const totalUnits = pos.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
-  const totalValue = pos.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const totalValue = pos.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
   const totalFreight = pos.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
-  const totalTariff = pos.reduce((t, po) => t + cx(po.tariffAmount || 0, po.currencyCode || 'USD'), 0);
-  const productionValue = productionPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const totalTariff = pos.reduce((t, po) => t + cx(po.tariffAmount || 0, 'AUD'), 0);
+  const productionValue = productionPOs.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
   const productionFreight = productionPOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
-  const transitValue = transitPOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const transitValue = transitPOs.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
   const transitFreight = transitPOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
-  const overdueValue = overduePOs.reduce((t, po) => t + cx(po.total, po.currencyCode || 'USD'), 0);
+  const overdueValue = overduePOs.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
   const overdueFreight = overduePOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
   const fmtVal = v => sym + v.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
   // Average quality score for active (non-received) POs
@@ -595,7 +595,7 @@ function renderPurchaseOrders(allPOs) {
         <span style="color:var(--text-dim)" title="ETD (Departure)">🚢 ${etd}</span>
         <span style="color:var(--text);font-weight:600" title="ETA (Updated Arrival)">📅 ${eta}</span>
         <span style="color:var(--text-dim);font-size:10px" title="Original ETA">📌 ${originalEta}</span>
-        <span style="font-weight:700;color:var(--text);text-align:right">${po.total ? fmtVal(cx(po.total, po.currencyCode || 'USD')) : '—'}</span>
+        <span style="font-weight:700;color:var(--text);text-align:right">${po.total ? fmtVal(cx(po.total, 'AUD')) : '—'}</span>
         <span style="text-align:right;color:var(--text-dim);white-space:nowrap" title="Freight${po.isEstFreight ? ' (estimated)' : ''}${po.tariffRate ? ' + ' + (po.tariffRate*100) + '% tariff' : ''}">🚛 ${po.freight ? (po.isEstFreight ? '<span style="font-size:8px;padding:1px 3px;border-radius:3px;background:#FEF3C7;color:#92400E">est</span> ' : '') + fmtVal(cx(po.freight, po.freightCurrency || 'USD')) : '—'}</span>
         <span style="text-align:right;color:var(--text-dim);white-space:nowrap" title="${po.tariffNote || ''}">${po.tariffRate ? (po.tariffRate*100) + '%' : '0%'}</span>
         <span style="color:var(--text-dim);text-align:right;white-space:nowrap">${skuCount(po)} SKUs · ${totalItems(po)}</span>
