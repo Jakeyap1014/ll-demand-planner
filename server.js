@@ -1569,10 +1569,17 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
   const allMonths = new Set();
   const allCountries = new Set();
   
-  // Get product costs from cin7Products cache for per-unit FOB
-  const productCosts = {};
-  for (const [sku, data] of Object.entries(dataCache.cin7Products || {})) {
-    if (typeof data === 'object' && data.costAUD) productCosts[sku] = data.costAUD;
+  // Build global landed cost lookup from ALL CK panels
+  const globalLanded = {};
+  for (const ckId of Object.keys(CK_DEFS)) {
+    try {
+      const ckData = buildCKData(ckId);
+      if (ckData && ckData.landedCosts) {
+        for (const [sku, lc] of Object.entries(ckData.landedCosts)) {
+          if (!globalLanded[sku] || lc.source === 'actual') globalLanded[sku] = lc;
+        }
+      }
+    } catch(e) { /* skip if CK fails */ }
   }
   
   const pos = [];
@@ -1608,54 +1615,49 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
     }
     allMonths.add(etaMonth);
     
-    // Product total (already AUD — NO conversion)
-    const productTotal = po.total || 0;
-    
-    // Container estimate: $30K AUD per container
-    const containers = Math.max(1, Math.ceil(productTotal / 30000));
-    
-    // Freight + tariff
-    const dest = FREIGHT_TARIFF[destination];
-    const freightPerContainer = dest ? dest.freight : 7000;
-    const freightEst = freightPerContainer * containers;
-    const tariffRate = dest ? dest.tariff : 0;
-    const tariffEst = productTotal * tariffRate;
-    const landedTotal = productTotal + freightEst + tariffEst;
-    
-    // Line items with CK classification
+    // Line items with CK classification + landed costs from CK panels
     const lineItems = [];
     const poGroups = new Set();
     let totalUnits = 0;
+    let totalFOB = 0, totalFreight = 0, totalTariff = 0;
     
     for (const [sku, qty] of Object.entries(po.items || {})) {
       const ckGroup = classifySKU(sku, countryCode);
-      if (!ckGroup) continue; // skip swatches etc
+      if (!ckGroup) continue;
       
       poGroups.add(ckGroup);
       allCKGroups.add(ckGroup);
       totalUnits += qty;
       
-      // FOB per unit from cin7Products cache
-      const fobPerUnit = productCosts[sku] || 0;
-      // Freight per unit = total freight / total units across PO (estimated later)
+      // Use landed costs from CK panels
+      const lc = globalLanded[sku];
+      const fobPerUnit = lc ? lc.fob : 0;
+      const freightPerUnit = lc ? lc.freightPerUnit : 0;
+      const tariffPerUnit = lc ? (lc.tariffPerUnit || 0) : 0;
+      const landedPerUnit = lc ? lc.landedPerUnit : 0;
+      
+      totalFOB += fobPerUnit * qty;
+      totalFreight += freightPerUnit * qty;
+      totalTariff += tariffPerUnit * qty;
       
       lineItems.push({
         sku,
-        name: sku, // Will be enriched on frontend if needed
+        name: sku,
         qty,
         fobPerUnit: Math.round(fobPerUnit * 100) / 100,
-        ckGroup
+        freightPerUnit: Math.round(freightPerUnit * 100) / 100,
+        landedPerUnit: Math.round(landedPerUnit * 100) / 100,
+        ckGroup,
+        source: lc ? lc.source : 'none'
       });
     }
     
     if (lineItems.length === 0) continue;
     
-    // Calculate freight per unit (spread across all units)
-    const freightPerUnit = totalUnits > 0 ? freightEst / totalUnits : 0;
-    for (const li of lineItems) {
-      li.freightPerUnit = Math.round(freightPerUnit * 100) / 100;
-      li.landedPerUnit = Math.round((li.fobPerUnit + li.freightPerUnit + (li.fobPerUnit * tariffRate)) * 100) / 100;
-    }
+    const productTotal = Math.round(totalFOB);
+    const freightEst = Math.round(totalFreight);
+    const tariffEst = Math.round(totalTariff);
+    const landedTotal = productTotal + freightEst + tariffEst;
     
     pos.push({
       reference: po.reference,
@@ -1664,12 +1666,10 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
       destinationFull: destination,
       eta,
       etaMonth,
-      containers,
-      productTotal: Math.round(productTotal),
-      freightEst: Math.round(freightEst),
-      tariffRate,
-      tariffEst: Math.round(tariffEst),
-      landedTotal: Math.round(landedTotal),
+      productTotal,
+      freightEst,
+      tariffEst,
+      landedTotal,
       stage: po.stage || 'Open',
       totalUnits,
       ckGroups: [...poGroups].sort(),
@@ -1692,7 +1692,6 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
     totalTariffAUD: pos.reduce((s, p) => s + p.tariffEst, 0),
     totalLandedAUD: pos.reduce((s, p) => s + p.landedTotal, 0),
     totalUnits: pos.reduce((s, p) => s + p.totalUnits, 0),
-    totalContainers: pos.reduce((s, p) => s + p.containers, 0),
     poCount: pos.length
   };
   

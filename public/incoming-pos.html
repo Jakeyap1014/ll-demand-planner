@@ -68,7 +68,7 @@ tr:hover>td{background:rgba(74,158,255,.04)}
 <div class="container">
   <div class="cards" id="cards">
     <div class="card card--accent"><div class="card-label">Product Value</div><div class="card-value" id="c-product">—</div><div class="card-sub" id="c-pos">— POs</div></div>
-    <div class="card card--yellow"><div class="card-label">Freight Est</div><div class="card-value" id="c-freight">—</div><div class="card-sub" id="c-containers">— containers</div></div>
+    <div class="card card--yellow"><div class="card-label">Freight Est</div><div class="card-value" id="c-freight">—</div><div class="card-sub" id="c-containers">from CK panel data</div></div>
     <div class="card"><div class="card-label">Tariff Est</div><div class="card-value" id="c-tariff">—</div><div class="card-sub">Based on destination tariff rate</div></div>
     <div class="card card--green"><div class="card-label">Total Landed</div><div class="card-value" id="c-landed">—</div><div class="card-sub" id="c-units">— units</div></div>
   </div>
@@ -112,7 +112,7 @@ tr:hover>td{background:rgba(74,158,255,.04)}
       <tfoot id="po-foot"></tfoot>
     </table>
   </div>
-  <div class="footer">Data from CIN7 PurchaseOrders API · All values in AUD · Freight estimated at $30K/container · Last refresh: <span id="ts">—</span></div>
+  <div class="footer">Data from CIN7 PurchaseOrders API · All values in AUD · FOB/Freight/Landed from CK panel calculations · Last refresh: <span id="ts">—</span></div>
 </div>
 
 <script>
@@ -158,13 +158,13 @@ function applyFilters() {
   
   // Update cards
   const s = {p:0,f:0,t:0,l:0,u:0,c:0};
-  for (const po of filtered) { s.p+=po.productTotal; s.f+=po.freightEst; s.t+=po.tariffEst; s.l+=po.landedTotal; s.u+=po.totalUnits; s.c+=po.containers; }
+  for (const po of filtered) { s.p+=po.productTotal; s.f+=po.freightEst; s.t+=po.tariffEst; s.l+=po.landedTotal; s.u+=po.totalUnits; }
   $('#c-product').textContent = fmtShort(s.p);
   $('#c-freight').textContent = fmtShort(s.f);
   $('#c-tariff').textContent = fmtShort(s.t);
   $('#c-landed').textContent = fmtShort(s.l);
   $('#c-pos').textContent = filtered.length + ' POs';
-  $('#c-containers').textContent = s.c + ' containers (est)';
+  $('#c-containers').textContent = 'from CK panel landed costs';
   $('#c-units').textContent = s.u.toLocaleString() + ' units';
   
   // Render table
