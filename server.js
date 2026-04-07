@@ -222,7 +222,7 @@ async function fetchCin7POs() {
             reference: po.reference,
             status: po.status,
             stage: po.stage || '',
-            arrival: po.estimatedArrivalDate || po.estimatedDeliveryDate || null,
+            arrival: po.estimatedArrivalDate || null, // ETA only — never fall back to ETD
             etd: po.estimatedDeliveryDate || null,
             estimatedArrivalDate: po.estimatedArrivalDate || null,
             fullyReceivedDate: po.fullyReceivedDate || null,

@@ -584,7 +584,7 @@ function renderPurchaseOrders(allPOs) {
   `;
   container.innerHTML = pos.map((po, i) => {
     const items = Object.entries(po.items || {}).sort(([a],[b]) => a.localeCompare(b));
-    const eta = po.arrival ? fmt(po.arrival) : (po.customFields?.orders_1000 || '—');
+    const eta = po.arrival ? fmt(po.arrival) : '—';
     const etd = po.etd ? fmt(po.etd) : '—';
     const originalEta = po.customFields?.orders_1000 || '—';
     return `<div style="border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--bg-card);overflow:hidden">
