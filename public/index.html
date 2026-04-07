@@ -485,7 +485,12 @@ function poIsInTransit(po) {
   const now = new Date();
   const etd = po.etd ? new Date(po.etd) : null;
   const eta = po.arrival ? new Date(po.arrival) : null;
-  if (etd && eta && etd <= now && eta > now) return true;
+  // In transit: ETD has passed (shipped) AND not overdue AND not received
+  if (etd && etd <= now) {
+    // If ETA is set and past, it's overdue (not in transit)
+    if (eta && eta <= now) return false;
+    return true;
+  }
   return false;
 }
 function poIsOverdue(po) {

@@ -1393,28 +1393,33 @@ function buildShipmentData() {
     
     // ETD already parsed above from estimatedDeliveryDate
     
-    // Calculate progress (0-1)
+    // Calculate progress (0-1) and status — unified with PO tab logic
     let progress = 0;
     let status = 'production';
     
-    // If it has a received date OR stage is "Received", it's arrived — regardless of other fields
+    // If it has a received date OR stage is "Received", it's arrived
     if (receivedDate || po.stage === 'Received') {
       progress = 1;
       status = 'arrived';
-    } else if (etd && eta) {
-      const totalDays = (eta - etd) / (24 * 60 * 60 * 1000);
-      const elapsedDays = (now - etd) / (24 * 60 * 60 * 1000);
-      if (elapsedDays < 0) {
-        progress = 0;
-        status = 'production';
-      } else if (elapsedDays >= totalDays) {
+    } else if (etd && etd <= now) {
+      // ETD has passed — shipped. Determine if still in transit or overdue.
+      if (eta && eta <= now) {
+        // ETA passed but not received — overdue, still show as in_transit on tracker
         progress = 1;
-        status = 'arrived';
+        status = 'in_transit';
+      } else if (etd && eta) {
+        // Normal in transit: progress based on ETD-ETA window
+        const totalDays = (eta - etd) / (24 * 60 * 60 * 1000);
+        const elapsedDays = (now - etd) / (24 * 60 * 60 * 1000);
+        progress = totalDays > 0 ? Math.min(1, elapsedDays / totalDays) : 0.5;
+        status = 'in_transit';
       } else {
-        progress = elapsedDays / totalDays;
+        // ETD passed but no ETA — still in transit, unknown progress
+        progress = 0.5;
         status = 'in_transit';
       }
     }
+    // else: ETD not set or in future — still in production (default)
     
     // Count items
     const totalUnits = Object.values(po.items || {}).reduce((a, b) => a + b, 0);
