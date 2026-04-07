@@ -480,6 +480,15 @@ async function loadAllPOs() {
   } catch(e) { console.error('PO load error:', e); container.innerHTML = '<p style="color:var(--alert);text-align:center;padding:40px">Failed to load POs — try refreshing</p>'; }
 }
 
+function parseOriginalEta(po) {
+  const raw = po.customFields?.orders_1000;
+  if (!raw) return null;
+  const parsedDdMmYyyy = new Date(String(raw).replace(/(\d+)-(\d+)-(\d+)/, (m, d, mo, y) => `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`));
+  if (!isNaN(parsedDdMmYyyy)) return parsedDdMmYyyy;
+  const parsedDirect = new Date(raw);
+  if (!isNaN(parsedDirect)) return parsedDirect;
+  return null;
+}
 function poIsInTransit(po) {
   if (po.stage === 'Received') return false;
   const now = new Date();
@@ -487,8 +496,7 @@ function poIsInTransit(po) {
   const eta = po.arrival ? new Date(po.arrival) : null;
   // In transit: ETD has passed (shipped) AND not overdue AND not received
   if (etd && etd <= now) {
-    // If ETA is set and past, it's overdue (not in transit)
-    if (eta && eta <= now) return false;
+    if (poIsOverdue(po)) return false;
     return true;
   }
   return false;
@@ -497,8 +505,10 @@ function poIsOverdue(po) {
   if (po.stage === 'Received') return false;
   const now = new Date();
   const eta = po.arrival ? new Date(po.arrival) : null;
-  // Overdue = past ETA but not marked Received
-  if (eta && eta <= now) return true;
+  const originalEta = parseOriginalEta(po);
+  // Overdue if revised ETA is past, or if revised ETA is empty and original ETA is past
+  if (eta) return eta <= now;
+  if (originalEta) return originalEta <= now;
   return false;
 }
 
