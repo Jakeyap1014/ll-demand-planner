@@ -180,6 +180,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 let cin7LastRequestAt = 0;
 let cin7BackoffUntil = 0;
+let cin7RecoveryTimer = null;
 let refreshPromise = null;
 
 async function throttleCin7Request() {
@@ -190,6 +191,23 @@ async function throttleCin7Request() {
 
 function hasCin7Cache() {
   return Object.keys(dataCache.cin7Products || {}).length > 0;
+}
+
+function scheduleCin7Recovery(reason) {
+  if (hasCin7Cache() || cin7RecoveryTimer) return;
+  const delayMs = Math.max(5 * 60 * 1000, cin7BackoffUntil > Date.now() ? cin7BackoffUntil - Date.now() : CIN7_RATE_LIMIT_BACKOFF_MS);
+  console.warn(`Scheduling delayed CIN7 recovery in ${Math.ceil(delayMs / 60000)} min (${reason})`);
+  cin7RecoveryTimer = setTimeout(async () => {
+    cin7RecoveryTimer = null;
+    if (hasCin7Cache()) return;
+    console.log('Running scheduled CIN7 recovery refresh...');
+    try {
+      await refreshAllData();
+    } catch (e) {
+      console.error('Scheduled CIN7 recovery failed:', e.message);
+    }
+  }, delayMs);
+  if (typeof cin7RecoveryTimer.unref === 'function') cin7RecoveryTimer.unref();
 }
 
 function getCin7SkipReason() {
@@ -213,6 +231,7 @@ function markCin7Backoff(reason, retryAfterSeconds) {
     : CIN7_RATE_LIMIT_BACKOFF_MS;
   cin7BackoffUntil = Math.max(cin7BackoffUntil, Date.now() + retryAfterMs);
   console.warn(`CIN7 backoff enabled for ${Math.ceil(retryAfterMs / 60000)} min (${reason})`);
+  scheduleCin7Recovery(reason);
 }
 
 function apiRequest(options, postData, attempt = 0) {
@@ -520,6 +539,10 @@ async function refreshAllData() {
         dataCache.cin7Products = cin7Products;
         dataCache.lastCin7Refresh = new Date().toISOString();
         cin7BackoffUntil = 0;
+        if (cin7RecoveryTimer) {
+          clearTimeout(cin7RecoveryTimer);
+          cin7RecoveryTimer = null;
+        }
         updated = true;
       } else if (Object.keys(dataCache.cin7Products).length > 0) {
         console.warn(`CIN7 products returned empty — preserving existing cache (${Object.keys(dataCache.cin7Products).length} SKUs)`);
