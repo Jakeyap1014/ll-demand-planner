@@ -343,6 +343,7 @@ async function fetchCin7POs() {
   if (!CIN7_USER || !CIN7_KEY) return [];
   const auth = Buffer.from(`${CIN7_USER}:${CIN7_KEY}`).toString('base64');
   const results = [];
+  const cleanPoReference = ref => (ref || '').replace(/-cover$/i, '');
   for (let page = 1; page <= 5; page++) {
     try {
       await throttleCin7Request();
@@ -364,7 +365,7 @@ async function fetchCin7POs() {
         }
         if (Object.keys(items).length > 0) {
           results.push({
-            reference: po.reference,
+            reference: cleanPoReference(po.reference),
             status: po.status,
             stage: po.stage || '',
             arrival: po.estimatedArrivalDate || null, // ETA only — never fall back to ETD

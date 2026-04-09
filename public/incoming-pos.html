@@ -118,6 +118,7 @@ tr:hover>td{background:rgba(74,158,255,.04)}
 <script>
 let DATA = null;
 const $ = s => document.querySelector(s);
+const cleanPoRef = ref => (ref || '').replace(/-cover$/i, '');
 const fmt = n => n != null ? 'A$' + Math.round(n).toLocaleString() : '—';
 const fmtShort = n => {
   if (n >= 1e6) return 'A$' + (n/1e6).toFixed(1) + 'M';
@@ -177,10 +178,10 @@ function applyFilters() {
   
   let html = '';
   for (const po of filtered) {
-    const rid = 'r-' + po.reference.replace(/[^a-zA-Z0-9]/g,'_');
+    const rid = 'r-' + cleanPoRef(po.reference).replace(/[^a-zA-Z0-9]/g,'_');
     html += `<tr>
       <td><button class="expand-btn" onclick="toggle('${rid}')">▶</button></td>
-      <td class="mono" style="font-weight:600">${po.reference}</td>
+      <td class="mono" style="font-weight:600">${cleanPoRef(po.reference)}</td>
       <td style="font-size:11px;color:var(--text-dim)">${(po.supplier||'').substring(0,25)}</td>
       <td><span class="badge badge-blue">${po.destination}</span></td>
       <td>${etaBadge(po.eta)}</td>

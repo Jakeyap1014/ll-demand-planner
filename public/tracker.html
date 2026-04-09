@@ -148,6 +148,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{ma
 // Custom icons
 function shipIcon(status){
   const colors={in_transit:'#5BAB31',production:'#D4930D',arrived:'#2C474B',unknown:'#999'};
+const cleanPoRef=ref=>(ref||'').replace(/-cover$/i,'');
   const color=colors[status]||'#999';
   return L.divIcon({className:'',html:`<div style="font-size:20px;filter:drop-shadow(1px 1px 2px rgba(0,0,0,0.3))">${status==='in_transit'?'🚢':status==='production'?'🏭':'📦'}</div>`,iconSize:[24,24],iconAnchor:[12,12]});
 }
@@ -258,7 +259,7 @@ function renderSidebar(){
     const progressColor=s.shipmentStatus==='in_transit'?'var(--green)':s.shipmentStatus==='production'?'var(--yellow)':'var(--teal)';
     
     return`<div class="shipment-card ${selectedRef===s.reference?'active':''}" onclick="selectShipment('${s.reference}')">
-      <div class="sc-header"><span class="sc-ref">${s.reference}</span><span class="sc-status ${s.shipmentStatus}">${statusLabel}</span></div>
+      <div class="sc-header"><span class="sc-ref">${cleanPoRef(s.reference)}</span><span class="sc-status ${s.shipmentStatus}">${statusLabel}</span></div>
       <div class="sc-supplier">${s.supplier.substring(0,40)}</div>
       <div class="sc-route"><span>${s.origin.port||s.origin.city}</span><span class="arrow">→</span><span>${s.destination.port||s.destination.city}</span></div>
       ${s.vesselName?'<div style="font-size:11px;color:var(--dim)">🚢 '+s.vesselName+(s.vesselPosition?' <span style="color:var(--green)">● LIVE</span>':'')+'</div>':''}
@@ -484,7 +485,7 @@ function getPointAlongRoute(points,progress){
 }
 
 function buildPopup(s){
-  return`<div style="font-size:12px"><b>${s.reference}</b><br>${s.origin.port||s.origin.city} → ${s.destination.port||s.destination.city}<br>${s.totalUnits} units</div>`;
+  return`<div style="font-size:12px"><b>${cleanPoRef(s.reference)}</b><br>${s.origin.port||s.origin.city} → ${s.destination.port||s.destination.city}<br>${s.totalUnits} units</div>`;
 }
 
 function showDetail(s){
@@ -495,7 +496,7 @@ function showDetail(s){
   const origEtaDisplay=s.originalEta?new Date(s.originalEta).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):null;
   const etdDisplay=s.etd?new Date(s.etd).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):'Not set';
 
-  document.getElementById('dpTitle').textContent=s.reference;
+  document.getElementById('dpTitle').textContent=cleanPoRef(s.reference);
   document.getElementById('dpBody').innerHTML=`
     <div style="margin-bottom:12px"><span style="font-size:11px;padding:3px 10px;border-radius:10px;background:${s.shipmentStatus==='in_transit'?'#d4edda':s.shipmentStatus==='production'?'#fff3cd':'rgba(44,71,75,0.1)'};font-weight:600">${statusLabel}</span></div>
     <table>

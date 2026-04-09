@@ -490,6 +490,7 @@ async function loadAllPOs() {
   } catch(e) { const cached=cacheGet(CACHE_KEYS.allPos); if(cached?.data){const d=cached.data;_allPOsCache=d.pos||[];if(d.fx?.USDAUD)_poFxRate=d.fx.USDAUD;const dests=[...new Set(_allPOsCache.map(p=>p.deliveryCountry||'').filter(Boolean))].sort();const dd=document.getElementById('poDestFilter');const prev=dd.value;dd.innerHTML='<option value="all">All Destinations</option>'+dests.map(x=>`<option value="${x}"${x===prev?' selected':''}>${x}</option>`).join('');container.innerHTML=`<p style="color:var(--yellow);text-align:center;padding:12px">Using cached PO data from ${fmtCacheTime(cached.ts)} because live PO data is unavailable</p>`;renderPurchaseOrders(_allPOsCache);return}console.error('PO load error:', e); container.innerHTML = '<p style="color:var(--alert);text-align:center;padding:40px">Failed to load POs — try refreshing</p>'; }
 }
 
+function cleanPoRef(ref){return(ref||'').replace(/-cover$/i,'')}
 function parseOriginalEta(po) {
   const raw = po.customFields?.orders_1000;
   if (!raw) return null;
@@ -537,7 +538,7 @@ function renderPurchaseOrders(allPOs) {
   }
   if (search) {
     pos = pos.filter(po => {
-      if ((po.reference || '').toLowerCase().includes(search)) return true;
+      if (cleanPoRef(po.reference || '').toLowerCase().includes(search)) return true;
       if ((po.company || '').toLowerCase().includes(search)) return true;
       if (Object.keys(po.items || {}).some(sku => sku.toLowerCase().includes(search))) return true;
       return false;
@@ -614,7 +615,7 @@ function renderPurchaseOrders(allPOs) {
     const originalEta = po.customFields?.orders_1000 || '—';
     return `<div style="border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--bg-card);overflow:hidden">
       <div onclick="this.parentElement.querySelector('.po-items').classList.toggle('open')" style="display:grid;grid-template-columns:minmax(100px,1.2fr) 85px 55px minmax(120px,2fr) minmax(80px,1fr) minmax(90px,1fr) minmax(100px,1.2fr) minmax(90px,1fr) minmax(75px,0.9fr) minmax(75px,0.9fr) 60px minmax(75px,0.9fr) 24px;align-items:center;padding:12px 18px;cursor:pointer;user-select:none;font-size:11px;gap:6px">
-        <span style="font-family:monospace;font-weight:700;font-size:12px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${po.reference}</span>
+        <span style="font-family:monospace;font-weight:700;font-size:12px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cleanPoRef(po.reference)}</span>
         <span style="text-align:center">${stageBadge(po)}</span>
         <span style="text-align:center">${qualityBadge(po)}</span>
         <span style="color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${po.company || ''}</span>
@@ -790,7 +791,7 @@ function toggleInboundDrilldown() {
     for (const [sku, qty] of Object.entries(items)) {
       if (skus.includes(sku) || Object.keys(DATA.cin7).includes(sku) || Object.keys(DATA.velocity).includes(sku)) {
         rows.push({
-          po: po.reference || '?',
+          po: cleanPoRef(po.reference) || '?',
           sku,
           qty,
           eta: po.arrival ? new Date(po.arrival).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}) : (po.customFields?.orders_1000 || 'No ETA'),
