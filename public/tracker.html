@@ -146,9 +146,9 @@ const map=L.map('map',{center:[20,180],zoom:2,zoomControl:true,attributionContro
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:18,noWrap:false}).addTo(map);
 
 // Custom icons
+const cleanPoRef=ref=>(ref||'').replace(/-cover$/i,'');
 function shipIcon(status){
   const colors={in_transit:'#5BAB31',production:'#D4930D',arrived:'#2C474B',unknown:'#999'};
-const cleanPoRef=ref=>(ref||'').replace(/-cover$/i,'');
   const color=colors[status]||'#999';
   return L.divIcon({className:'',html:`<div style="font-size:20px;filter:drop-shadow(1px 1px 2px rgba(0,0,0,0.3))">${status==='in_transit'?'🚢':status==='production'?'🏭':'📦'}</div>`,iconSize:[24,24],iconAnchor:[12,12]});
 }
