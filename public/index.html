@@ -197,7 +197,7 @@ function cacheGet(key){try{const raw=localStorage.getItem(key);return raw?JSON.p
 function fmtCacheTime(ts){try{return new Date(ts).toLocaleString()}catch(e){return 'earlier'}}
 let DATA={cin7:{},shopify:{},velocity:{},pos:[],allPos:[],names:{},sizes:{},cbmMap:{},landedCosts:{}},currentCK=null,charts={},dashFilter={size:'All'},heatmapSortMode='risk';
 const TODAY=new Date();
-function getSkus(){return[...new Set([...Object.keys(DATA.cin7),...Object.keys(DATA.velocity)])]}
+function getSkus(){return[...new Set([...Object.keys(DATA.cin7),...Object.keys(DATA.velocity)])].filter(s=>!(s.includes('-CS-')&&!s.includes('PACK')))}
 function getNet(s){return(DATA.cin7[s]||0)+Math.min(DATA.shopify[s]||0,0)}
 function getIncoming(s){return(DATA.pos||[]).reduce((t,po)=>(po.items?.[s]||0)+t,0)}
 function getVel(s){let v=DATA.velocity[s]||0;if(v===0&&(DATA.trendData||{})[s]?.lastInStockVel){return DATA.trendData[s].lastInStockVel}return v}
