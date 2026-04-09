@@ -119,6 +119,7 @@ tr:hover>td{background:rgba(74,158,255,.04)}
 let DATA = null;
 const $ = s => document.querySelector(s);
 const cleanPoRef = ref => (ref || '').replace(/-cover$/i, '');
+const uniquePoCount = rows => new Set((rows||[]).map(po => cleanPoRef(po.reference)).filter(Boolean)).size;
 const fmt = n => n != null ? 'A$' + Math.round(n).toLocaleString() : '—';
 const fmtShort = n => {
   if (n >= 1e6) return 'A$' + (n/1e6).toFixed(1) + 'M';
@@ -164,7 +165,7 @@ function applyFilters() {
   $('#c-freight').textContent = fmtShort(s.f);
   $('#c-tariff').textContent = fmtShort(s.t);
   $('#c-landed').textContent = fmtShort(s.l);
-  $('#c-pos').textContent = filtered.length + ' POs';
+  $('#c-pos').textContent = uniquePoCount(filtered) + ' POs';
   $('#c-containers').textContent = 'from CK panel landed costs';
   $('#c-units').textContent = s.u.toLocaleString() + ' units';
   
@@ -212,7 +213,7 @@ function applyFilters() {
   
   // Footer totals
   $('#po-foot').innerHTML = `<tr class="total-row">
-    <td></td><td colspan="5" style="font-size:11px">TOTAL (${filtered.length} POs)</td>
+    <td></td><td colspan="5" style="font-size:11px">TOTAL (${uniquePoCount(filtered)} POs)</td>
     <td class="right mono">${s.u.toLocaleString()}</td>
     <td class="right mono">${fmt(s.p)}</td>
     <td class="right mono" style="color:var(--yellow)">${fmt(s.f)}</td>

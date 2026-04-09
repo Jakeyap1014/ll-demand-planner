@@ -147,6 +147,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{ma
 
 // Custom icons
 const cleanPoRef=ref=>(ref||'').replace(/-cover$/i,'');
+const uniqueShipmentCount=list=>new Set((list||[]).map(s=>cleanPoRef(s.reference)).filter(Boolean)).size;
 function shipIcon(status){
   const colors={in_transit:'#5BAB31',production:'#D4930D',arrived:'#2C474B',unknown:'#999'};
   const color=colors[status]||'#999';
@@ -224,10 +225,10 @@ async function loadShipments(){
 
 function updateTabCounts(){
   const f=s=>matchesSubFilters(s);
-  const active=shipments.filter(s=>s.shipmentStatus!=='arrived'&&f(s)).length;
-  const transit=shipments.filter(s=>s.shipmentStatus==='in_transit'&&f(s)).length;
-  const prod=shipments.filter(s=>s.shipmentStatus==='production'&&f(s)).length;
-  const arrived=shipments.filter(s=>s.shipmentStatus==='arrived'&&f(s)).length;
+  const active=uniqueShipmentCount(shipments.filter(s=>s.shipmentStatus!=='arrived'&&f(s)));
+  const transit=uniqueShipmentCount(shipments.filter(s=>s.shipmentStatus==='in_transit'&&f(s)));
+  const prod=uniqueShipmentCount(shipments.filter(s=>s.shipmentStatus==='production'&&f(s)));
+  const arrived=uniqueShipmentCount(shipments.filter(s=>s.shipmentStatus==='arrived'&&f(s)));
   document.getElementById('cnt-active').textContent='('+active+')';
   document.getElementById('cnt-in_transit').textContent='('+transit+')';
   document.getElementById('cnt-production').textContent='('+prod+')';
