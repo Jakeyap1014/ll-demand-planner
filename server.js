@@ -1756,6 +1756,7 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
   const allCKGroups = new Set();
   const allMonths = new Set();
   const allCountries = new Set();
+  const cleanPoReference = ref => (ref || '').replace(/-cover$/i, '');
   
   // Build global landed cost lookup from ALL CK panels
   const globalLanded = {};
@@ -1778,7 +1779,7 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
     // Determine destination
     let destination = inferDestination(po);
     if (!destination || destination === 'Australia') {
-      const refDest = destFromRef(po.reference);
+      const refDest = destFromRef(cleanPoReference(po.reference));
       if (refDest) destination = refDest;
       else destination = 'Australia';
     }
@@ -1848,7 +1849,7 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
     const landedTotal = productTotal + freightEst + tariffEst;
     
     pos.push({
-      reference: po.reference,
+      reference: cleanPoReference(po.reference),
       supplier: po.company || '',
       destination: countryCode,
       destinationFull: destination,
