@@ -1,6 +1,7 @@
 const express = require('express');
 const https = require('https');
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 
@@ -110,13 +111,47 @@ let dataCache = {
   cin7Products: {},   // sku -> {soh, available}
   cin7POs: [],        // [{reference, status, stage, arrival, items: {sku: qty}}]
   shopifyVelocity: {}, // store -> {sku -> weekly_velocity}
-  shopifyInventory: {} // store -> {sku -> inventory_level}
+  shopifyInventory: {}, // store -> {sku -> inventory_level}
+  error: null
 };
+const CACHE_SNAPSHOT_PATH = path.join(__dirname, 'data', 'cache-snapshot.json');
+
+function loadCacheSnapshot() {
+  try {
+    const snap = JSON.parse(fs.readFileSync(CACHE_SNAPSHOT_PATH, 'utf8'));
+    if (snap && snap.cin7Products && Object.keys(snap.cin7Products).length > 0) {
+      dataCache = { ...dataCache, ...snap, error: null };
+      console.log(`Loaded cache snapshot: ${Object.keys(dataCache.cin7Products).length} CIN7 SKUs, ${dataCache.cin7POs.length} POs`);
+    } else {
+      console.log('Cache snapshot empty — ignoring');
+    }
+  } catch (e) {
+    console.log('No cache snapshot found — starting cold');
+  }
+}
+
+function saveCacheSnapshot() {
+  try {
+    fs.mkdirSync(path.dirname(CACHE_SNAPSHOT_PATH), { recursive: true });
+    fs.writeFileSync(CACHE_SNAPSHOT_PATH, JSON.stringify({
+      lastRefresh: dataCache.lastRefresh,
+      cin7Products: dataCache.cin7Products,
+      cin7POs: dataCache.cin7POs,
+      shopifyVelocity: dataCache.shopifyVelocity,
+      shopifyInventory: dataCache.shopifyInventory
+    }));
+    console.log('Saved cache snapshot');
+  } catch (e) {
+    console.error('Cache snapshot save failed:', e.message);
+  }
+}
+
+loadCacheSnapshot();
 
 // Load Excel-derived landed costs (SOH Stock Value ÷ SOH Stock Qty from CIN7 report)
 let excelLandedCosts = {};
 try {
-  excelLandedCosts = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'data', 'landed-costs.json'), 'utf8'));
+  excelLandedCosts = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'landed-costs.json'), 'utf8'));
   console.log(`Loaded ${Object.keys(excelLandedCosts).length} Excel landed costs`);
 } catch (e) { console.log('No Excel landed costs file found — will use estimated only'); }
 
@@ -136,14 +171,32 @@ refreshFxRate();
 setInterval(refreshFxRate, 6 * 60 * 60 * 1000); // Refresh every 6 hours
 
 // ===== HTTPS REQUEST HELPER =====
-function apiRequest(options, postData) {
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function apiRequest(options, postData, attempt = 0) {
   return new Promise((resolve, reject) => {
     const req = https.request(options, res => {
       let data = '';
       res.on('data', c => data += c);
-      res.on('end', () => {
-        try { resolve({ body: JSON.parse(data), headers: res.headers, status: res.statusCode }); }
-        catch(e) { resolve({ body: data, headers: res.headers, status: res.statusCode }); }
+      res.on('end', async () => {
+        const status = res.statusCode || 0;
+
+        // Cin7 can return 429 during cold starts or concurrent refreshes.
+        // Honor Retry-After and retry a few times instead of returning empty data.
+        if (options.hostname === 'api.cin7.com' && status === 429 && attempt < 5) {
+          const retryAfter = Math.max(1, parseInt(res.headers['retry-after'] || '2', 10));
+          console.warn(`Cin7 429 for ${options.path} — retrying in ${retryAfter}s (attempt ${attempt + 1}/5)`);
+          await sleep(retryAfter * 1000);
+          try {
+            const retried = await apiRequest(options, postData, attempt + 1);
+            return resolve(retried);
+          } catch (e) {
+            return reject(e);
+          }
+        }
+
+        try { resolve({ body: JSON.parse(data), headers: res.headers, status }); }
+        catch(e) { resolve({ body: data, headers: res.headers, status }); }
       });
     });
     req.on('error', reject);
@@ -380,29 +433,63 @@ async function refreshAllData() {
   const start = Date.now();
   
   try {
-    const [cin7Products, cin7POs, lifelyVel, cushieVel, lifelyInv, cushieInv] = await Promise.all([
-      fetchCin7AllProducts(),
-      fetchCin7POs(),
+    // Keep Cin7 sequential to reduce burst pressure on their strict rate limits.
+    const [lifelyVel, cushieVel, lifelyInv, cushieInv] = await Promise.all([
       fetchShopifyVelocity('lifely'),
       fetchShopifyVelocity('cushie'),
       fetchShopifyInventory('lifely'),
       fetchShopifyInventory('cushie')
     ]);
-    
-    dataCache.cin7Products = cin7Products;
+    const cin7Products = await fetchCin7AllProducts();
+    const cin7POs = await fetchCin7POs();
 
-    dataCache.cin7POs = cin7POs;
-    dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
-    dataCache.shopifyInventory = { lifely: lifelyInv, cushie: cushieInv };
-    dataCache.lastRefresh = new Date().toISOString();
-    
+    const fetchedCin7Count = Object.keys(cin7Products).length;
+    const fetchedPoCount = cin7POs.length;
+    let updated = false;
+
+    if (fetchedCin7Count > 0) {
+      dataCache.cin7Products = cin7Products;
+      updated = true;
+    } else if (Object.keys(dataCache.cin7Products).length > 0) {
+      console.warn(`CIN7 products returned empty — preserving existing cache (${Object.keys(dataCache.cin7Products).length} SKUs)`);
+    }
+
+    if (fetchedPoCount > 0) {
+      dataCache.cin7POs = cin7POs;
+      updated = true;
+    } else if (dataCache.cin7POs.length > 0) {
+      console.warn(`CIN7 POs returned empty — preserving existing cache (${dataCache.cin7POs.length} POs)`);
+    }
+
+    if (Object.keys(lifelyVel).length > 0 || Object.keys(cushieVel).length > 0) {
+      dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
+      updated = true;
+    } else if (Object.keys(dataCache.shopifyVelocity).length > 0) {
+      console.warn('Shopify velocity returned empty — preserving existing cache');
+    }
+
+    if (Object.keys(lifelyInv).length > 0 || Object.keys(cushieInv).length > 0) {
+      dataCache.shopifyInventory = { lifely: lifelyInv, cushie: cushieInv };
+      updated = true;
+    } else if (Object.keys(dataCache.shopifyInventory).length > 0) {
+      console.warn('Shopify inventory returned empty — preserving existing cache');
+    }
+
+    if (updated) {
+      dataCache.lastRefresh = new Date().toISOString();
+      const liveCin7Count = Object.keys(dataCache.cin7Products).length;
+      dataCache.error = liveCin7Count > 0 ? null : 'CIN7 data unavailable (likely rate limited)';
+      if (liveCin7Count > 0) saveCacheSnapshot();
+      refreshAIS(); // Update vessel tracking after data refresh
+    }
+
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-    const cin7Count = Object.keys(cin7Products).length;
-    console.log(`Data refresh complete in ${elapsed}s. CIN7: ${cin7Count} SKUs, ${cin7POs.length} POs. Shopify: Lifely ${Object.keys(lifelyVel).length} SKUs, Cushie ${Object.keys(cushieVel).length} SKUs.`);
-    refreshAIS(); // Update vessel tracking after data refresh
+    const liveCin7Count = Object.keys(dataCache.cin7Products).length;
+    const livePoCount = dataCache.cin7POs.length;
+    console.log(`Data refresh complete in ${elapsed}s. Fetched CIN7: ${fetchedCin7Count} SKUs, ${fetchedPoCount} POs. Live cache: ${liveCin7Count} SKUs, ${livePoCount} POs.`);
     
     // Auto-retry with escalating delays if data is empty (cold start / rate limit recovery)
-    if (cin7Count === 0 && !dataCache._retrying) {
+    if (fetchedCin7Count === 0 && liveCin7Count === 0 && !dataCache._retrying) {
       dataCache._retrying = true;
       const retryDelays = [60000, 120000, 300000]; // 1 min, 2 min, 5 min
       (async function retryLoop() {
@@ -416,6 +503,8 @@ async function refreshAllData() {
               const retryPOs = await fetchCin7POs();
               if (retryPOs.length > 0) dataCache.cin7POs = retryPOs;
               dataCache.lastRefresh = new Date().toISOString();
+              dataCache.error = null;
+              saveCacheSnapshot();
               console.log('CIN7 retry SUCCESS: ' + Object.keys(retryProducts).length + ' SKUs, ' + retryPOs.length + ' POs');
               break;
             }
@@ -1488,7 +1577,7 @@ app.get('/tracker', (req, res) => res.sendFile(path.join(__dirname, 'public', 't
 app.get('/api/health', (req, res) => {
   const cin7Count = Object.keys(dataCache.cin7Products).length;
   const poCount = dataCache.cin7POs.length;
-  res.json({ ok: cin7Count > 0, cin7: cin7Count, pos: poCount, lastRefresh: dataCache.lastRefresh, uptime: Math.round(process.uptime()) });
+  res.json({ ok: cin7Count > 0, cin7: cin7Count, pos: poCount, lastRefresh: dataCache.lastRefresh, error: dataCache.error || null, uptime: Math.round(process.uptime()) });
 });
 
 // Main app

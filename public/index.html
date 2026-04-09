@@ -12,9 +12,9 @@
 .sidebar{width:var(--sidebar-w);position:fixed;top:0;left:0;bottom:0;background:var(--bg-secondary);color:#F6F8F4;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
 .sidebar-brand{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,0.1)}.sidebar-brand h2{font-size:14px;font-weight:700}.sidebar-brand small{display:block;font-size:11px;color:#A8C5C8;margin-top:2px}
 .sidebar-label{padding:16px 16px 6px;font-size:10px;font-weight:600;color:#A8C5C8;text-transform:uppercase;letter-spacing:0.5px}
-.sidebar-item{display:flex;align-items:center;gap:10px;padding:8px 12px;margin:1px 8px;border-radius:8px;cursor:pointer;font-size:13px;color:#A8C5C8;transition:all 0.15s}
+.sidebar-item{display:grid;grid-template-columns:90px minmax(0,1fr);align-items:center;column-gap:10px;padding:8px 12px;margin:1px 8px;border-radius:8px;cursor:pointer;font-size:13px;color:#A8C5C8;transition:all 0.15s}
 .sidebar-item:hover{background:rgba(255,255,255,0.08);color:#fff}.sidebar-item.active{background:rgba(255,255,255,0.15);color:#fff;font-weight:600}
-.sidebar-item img{height:14px;max-width:90px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.7}.sidebar-item.active img{opacity:1}
+.sidebar-item img{width:90px;height:14px;object-fit:contain;object-position:left center;filter:brightness(0) invert(1);opacity:0.7}.sidebar-item.active img{opacity:1}.sidebar-item span{min-width:0}.sidebar-mark{width:90px;display:flex;align-items:center;justify-content:flex-start;font-size:16px;line-height:1;opacity:0.85}
 .sidebar-footer{margin-top:auto;padding:12px 16px;font-size:10px;color:#A8C5C8;border-top:1px solid rgba(255,255,255,0.1)}
 .main{margin-left:var(--sidebar-w);flex:1;min-height:100vh}
 .mobile-menu{display:none;align-items:center;justify-content:center;width:40px;height:40px;border:none;background:rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;font-size:20px;color:#fff;margin-right:12px;flex-shrink:0}
@@ -82,7 +82,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
   <div class="sidebar-label">Category Killers</div>
   <div id="sidebarNav"></div>
   <div class="sidebar-label">Tools</div>
-  <div class="sidebar-item" onclick="showAllPOs()" id="poNavItem">📋 <span>Purchase Orders</span></div>
+  <div class="sidebar-item" onclick="showAllPOs()" id="poNavItem"><span class="sidebar-mark">📋</span><span>Purchase Orders</span></div>
   <div style="padding:8px"><a href="/tracker" id="trackerLink" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;font-size:13px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.15);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">🚢 Shipment Tracker</a></div>
   <div style="padding:0 8px 8px"><a href="/incoming-pos" id="incomingLink" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;font-size:13px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.15);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">📦 Incoming POs</a></div>
   <div class="sidebar-footer" id="sidebarFooter">Loading...</div>
