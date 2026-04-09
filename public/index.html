@@ -584,27 +584,32 @@ function renderPurchaseOrders(allPOs) {
     if (_poCurrency === 'AUD') return fromCurrency === 'AUD' ? val : val * _poFxRate;
     return fromCurrency === 'USD' ? val : val / _poFxRate;
   };
-  const totalUnits = pos.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
-  const totalValue = pos.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
-  const totalFreight = pos.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
-  const totalTariff = pos.reduce((t, po) => t + cx(po.tariffAmount || 0, 'AUD'), 0);
-  const productionValue = productionPOs.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
-  const productionFreight = productionPOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
-  const transitValue = transitPOs.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
-  const transitFreight = transitPOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
-  const overdueValue = overduePOs.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
-  const overdueFreight = overduePOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
+  const uniqueByPoRef = rows => [...new Map((rows||[]).map(po => [cleanPoRef(po.reference), po])).values()];
+  const shownPOs = uniqueByPoRef(pos);
+  const productionPOsUnique = uniqueByPoRef(productionPOs);
+  const transitPOsUnique = uniqueByPoRef(transitPOs);
+  const overduePOsUnique = uniqueByPoRef(overduePOs);
+  const totalUnits = shownPOs.reduce((t, po) => t + Object.values(po.items||{}).reduce((s,q)=>s+q,0), 0);
+  const totalValue = shownPOs.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
+  const totalFreight = shownPOs.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
+  const totalTariff = shownPOs.reduce((t, po) => t + cx(po.tariffAmount || 0, 'AUD'), 0);
+  const productionValue = productionPOsUnique.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
+  const productionFreight = productionPOsUnique.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
+  const transitValue = transitPOsUnique.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
+  const transitFreight = transitPOsUnique.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
+  const overdueValue = overduePOsUnique.reduce((t, po) => t + cx(po.total, 'AUD'), 0);
+  const overdueFreight = overduePOsUnique.reduce((t, po) => t + cx(po.freight || 0, po.freightCurrency || 'AUD'), 0);
   const fmtVal = v => sym + v.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
   // Average quality score for active (non-received) POs
-  const activePOsWithScore = pos.filter(p => p.stage !== 'Received' && p.quality);
+  const activePOsWithScore = shownPOs.filter(p => p.stage !== 'Received' && p.quality);
   const avgQuality = activePOsWithScore.length > 0 ? Math.round(activePOsWithScore.reduce((t, p) => t + p.quality.pct, 0) / activePOsWithScore.length) : 0;
   const qIcon = avgQuality >= 90 ? '🟢' : avgQuality >= 70 ? '🟡' : avgQuality >= 50 ? '🟠' : '🔴';
   const criticalPOs = activePOsWithScore.filter(p => p.quality.pct < 50).length;
   document.getElementById('poSummaryCards').innerHTML = `
-    <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(totalFreight)} freight${totalTariff ? ' + ' + fmtVal(totalTariff) + ' tariff' : ''}</div></div>
-    <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${uniquePoCount(productionPOs)}</div><div class="sub">${fmtVal(productionValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(productionFreight)} freight</div></div>
-    <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${uniquePoCount(transitPOs)}</div><div class="sub">${fmtVal(transitValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(transitFreight)} freight</div></div>
-    ${overduePOs.length > 0 ? `<div class="card" style="border-left:3px solid #991B1B"><div class="label">⚠️ Overdue</div><div class="value">${uniquePoCount(overduePOs)}</div><div class="sub">${fmtVal(overdueValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(overdueFreight)} freight</div></div>` : ''}
+    <div class="card blue"><div class="label">Showing</div><div class="value">${shownPOs.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(totalFreight)} freight${totalTariff ? ' + ' + fmtVal(totalTariff) + ' tariff' : ''}</div></div>
+    <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionPOsUnique.length}</div><div class="sub">${fmtVal(productionValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(productionFreight)} freight</div></div>
+    <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${transitPOsUnique.length}</div><div class="sub">${fmtVal(transitValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(transitFreight)} freight</div></div>
+    ${overduePOsUnique.length > 0 ? `<div class="card" style="border-left:3px solid #991B1B"><div class="label">⚠️ Overdue</div><div class="value">${overduePOsUnique.length}</div><div class="sub">${fmtVal(overdueValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(overdueFreight)} freight</div></div>` : ''}
     <div class="card"><div class="label">✅ Received</div><div class="value">${receivedCount}</div><div class="sub">Completed</div></div>
     <div class="card" style="border-left:3px solid ${avgQuality>=90?'#5BAB31':avgQuality>=70?'#D4930D':avgQuality>=50?'#EA580C':'#991B1B'}"><div class="label">${qIcon} Data Quality</div><div class="value">${avgQuality}%</div><div class="sub">${activePOsWithScore.length} active POs${criticalPOs > 0 ? ' · <span style="color:#991B1B;font-weight:600">' + criticalPOs + ' critical</span>' : ''}</div></div>
   `;
