@@ -119,32 +119,52 @@ let dataCache = {
   error: null
 };
 const CACHE_SNAPSHOT_PATH = path.join(__dirname, 'data', 'cache-snapshot.json');
+const CACHE_SNAPSHOT_BACKUP_PATH = path.join(__dirname, 'data', 'cache-snapshot.last-good.json');
+
+function snapshotHasCin7Data(snap) {
+  return !!(snap && (
+    (snap.cin7Products && Object.keys(snap.cin7Products).length > 0) ||
+    (Array.isArray(snap.cin7POs) && snap.cin7POs.length > 0)
+  ));
+}
 
 function loadCacheSnapshot() {
-  try {
-    const snap = JSON.parse(fs.readFileSync(CACHE_SNAPSHOT_PATH, 'utf8'));
-    if (snap && snap.cin7Products && Object.keys(snap.cin7Products).length > 0) {
-      dataCache = { ...dataCache, ...snap, error: null };
-      console.log(`Loaded cache snapshot: ${Object.keys(dataCache.cin7Products).length} CIN7 SKUs, ${dataCache.cin7POs.length} POs`);
-    } else {
-      console.log('Cache snapshot empty — ignoring');
+  for (const snapPath of [CACHE_SNAPSHOT_PATH, CACHE_SNAPSHOT_BACKUP_PATH]) {
+    try {
+      const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
+      if (snapshotHasCin7Data(snap)) {
+        dataCache = { ...dataCache, ...snap, error: null };
+        console.log(`Loaded cache snapshot from ${path.basename(snapPath)}: ${Object.keys(dataCache.cin7Products).length} CIN7 SKUs, ${dataCache.cin7POs.length} POs`);
+        return;
+      }
+      console.log(`Cache snapshot empty at ${path.basename(snapPath)} — ignoring`);
+    } catch (e) {
+      // try next path
     }
-  } catch (e) {
-    console.log('No cache snapshot found — starting cold');
   }
+  console.log('No usable cache snapshot found — starting cold');
 }
 
 function saveCacheSnapshot() {
   try {
-    fs.mkdirSync(path.dirname(CACHE_SNAPSHOT_PATH), { recursive: true });
-    fs.writeFileSync(CACHE_SNAPSHOT_PATH, JSON.stringify({
+    const snapshot = {
       lastRefresh: dataCache.lastRefresh,
       lastCin7Refresh: dataCache.lastCin7Refresh,
       cin7Products: dataCache.cin7Products,
       cin7POs: dataCache.cin7POs,
       shopifyVelocity: dataCache.shopifyVelocity,
       shopifyInventory: dataCache.shopifyInventory
-    }));
+    };
+
+    if (!snapshotHasCin7Data(snapshot)) {
+      console.warn('Refusing to save empty Cin7 snapshot — keeping last good cache on disk');
+      return;
+    }
+
+    fs.mkdirSync(path.dirname(CACHE_SNAPSHOT_PATH), { recursive: true });
+    const payload = JSON.stringify(snapshot);
+    fs.writeFileSync(CACHE_SNAPSHOT_PATH, payload);
+    fs.writeFileSync(CACHE_SNAPSHOT_BACKUP_PATH, payload);
     console.log('Saved cache snapshot');
   } catch (e) {
     console.error('Cache snapshot save failed:', e.message);
