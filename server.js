@@ -17,6 +17,9 @@ const CIN7_USER = process.env.CIN7_USER || '';
 const CIN7_KEY = process.env.CIN7_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const AIS_API_KEY = process.env.AIS_API_KEY || '';
+const CIN7_REQUEST_SPACING_MS = 1500;
+const CIN7_MIN_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+const CIN7_RATE_LIMIT_BACKOFF_MS = 15 * 60 * 1000;
 
 // Shopify stores
 const SHOPIFY_STORES = {
@@ -108,6 +111,7 @@ function requireAuth(req, res, next) {
 // ===== DATA CACHE =====
 let dataCache = {
   lastRefresh: null,
+  lastCin7Refresh: null,
   cin7Products: {},   // sku -> {soh, available}
   cin7POs: [],        // [{reference, status, stage, arrival, items: {sku: qty}}]
   shopifyVelocity: {}, // store -> {sku -> weekly_velocity}
@@ -135,6 +139,7 @@ function saveCacheSnapshot() {
     fs.mkdirSync(path.dirname(CACHE_SNAPSHOT_PATH), { recursive: true });
     fs.writeFileSync(CACHE_SNAPSHOT_PATH, JSON.stringify({
       lastRefresh: dataCache.lastRefresh,
+      lastCin7Refresh: dataCache.lastCin7Refresh,
       cin7Products: dataCache.cin7Products,
       cin7POs: dataCache.cin7POs,
       shopifyVelocity: dataCache.shopifyVelocity,
@@ -172,6 +177,43 @@ setInterval(refreshFxRate, 6 * 60 * 60 * 1000); // Refresh every 6 hours
 
 // ===== HTTPS REQUEST HELPER =====
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+let cin7LastRequestAt = 0;
+let cin7BackoffUntil = 0;
+let refreshPromise = null;
+
+async function throttleCin7Request() {
+  const waitMs = Math.max(0, cin7LastRequestAt + CIN7_REQUEST_SPACING_MS - Date.now());
+  if (waitMs > 0) await sleep(waitMs);
+  cin7LastRequestAt = Date.now();
+}
+
+function hasCin7Cache() {
+  return Object.keys(dataCache.cin7Products || {}).length > 0;
+}
+
+function getCin7SkipReason() {
+  const now = Date.now();
+  const lastCin7RefreshMs = dataCache.lastCin7Refresh ? new Date(dataCache.lastCin7Refresh).getTime() : 0;
+
+  if (cin7BackoffUntil > now && hasCin7Cache()) {
+    return `rate limit backoff active for ${Math.ceil((cin7BackoffUntil - now) / 60000)} more min`;
+  }
+
+  if (lastCin7RefreshMs && hasCin7Cache() && (now - lastCin7RefreshMs) < CIN7_MIN_REFRESH_INTERVAL_MS) {
+    return `last CIN7 refresh was ${Math.round((now - lastCin7RefreshMs) / 60000)} min ago`;
+  }
+
+  return null;
+}
+
+function markCin7Backoff(reason, retryAfterSeconds) {
+  const retryAfterMs = Number.isFinite(retryAfterSeconds)
+    ? Math.max(CIN7_RATE_LIMIT_BACKOFF_MS, retryAfterSeconds * 1000)
+    : CIN7_RATE_LIMIT_BACKOFF_MS;
+  cin7BackoffUntil = Math.max(cin7BackoffUntil, Date.now() + retryAfterMs);
+  console.warn(`CIN7 backoff enabled for ${Math.ceil(retryAfterMs / 60000)} min (${reason})`);
+}
 
 function apiRequest(options, postData, attempt = 0) {
   return new Promise((resolve, reject) => {
@@ -216,8 +258,9 @@ async function fetchCin7AllProducts() {
   for (let page = 1; page <= 50; page++) {
     try {
       console.log('CIN7 Products: fetching page ' + page);
-      let body, status;
+      let body, status, headers;
       try {
+        await throttleCin7Request();
         const resp = await apiRequest({
           hostname: 'api.cin7.com',
           path: `/api/v1/Products?page=${page}&rows=250`,
@@ -225,14 +268,17 @@ async function fetchCin7AllProducts() {
         });
         body = resp.body;
         status = resp.status;
+        headers = resp.headers || {};
       } catch (fetchErr) {
         console.error(`CIN7 Products page ${page} failed:`, fetchErr.message);
         break; // Don't retry individual pages — save calls
       }
       console.log('CIN7 Products page ' + page + ': status=' + status + ' isArray=' + Array.isArray(body) + ' length=' + (Array.isArray(body) ? body.length : 'N/A'));
+      if (status === 429) {
+        markCin7Backoff(`Products page ${page}`, parseInt(headers['retry-after'] || '0', 10));
+        break;
+      }
       if (!Array.isArray(body) || body.length === 0) break;
-      // Rate limit: CIN7 allows 3 req/sec, 60/min — pace at 1 req/sec
-      await new Promise(r => setTimeout(r, 1000));
       for (const product of body) {
         const variants = product.productOptions || [];
         const cbm = product.volume || 0; // CBM at product level
@@ -260,11 +306,16 @@ async function fetchCin7POs() {
   const results = [];
   for (let page = 1; page <= 5; page++) {
     try {
-      const { body } = await apiRequest({
+      await throttleCin7Request();
+      const { body, status, headers } = await apiRequest({
         hostname: 'api.cin7.com',
         path: `/api/v1/PurchaseOrders?page=${page}&rows=250`,
         headers: { 'Authorization': `Basic ${auth}` }
       });
+      if (status === 429) {
+        markCin7Backoff(`PurchaseOrders page ${page}`, parseInt(headers['retry-after'] || '0', 10));
+        break;
+      }
       if (!Array.isArray(body) || body.length === 0) break;
       for (const po of body) {
         if (po.isVoid) continue; // Skip void POs only — keep Received for shipment tracker
@@ -431,94 +482,92 @@ async function fetchShopifyInventory(storeKey) {
 
 // ===== FULL DATA REFRESH =====
 async function refreshAllData() {
-  console.log('Starting full data refresh...');
-  const start = Date.now();
-  
-  try {
-    // Keep Cin7 sequential to reduce burst pressure on their strict rate limits.
-    const [lifelyVel, cushieVel, lifelyInv, cushieInv] = await Promise.all([
-      fetchShopifyVelocity('lifely'),
-      fetchShopifyVelocity('cushie'),
-      fetchShopifyInventory('lifely'),
-      fetchShopifyInventory('cushie')
-    ]);
-    const cin7Products = await fetchCin7AllProducts();
-    const cin7POs = await fetchCin7POs();
-
-    const fetchedCin7Count = Object.keys(cin7Products).length;
-    const fetchedPoCount = cin7POs.length;
-    let updated = false;
-
-    if (fetchedCin7Count > 0) {
-      dataCache.cin7Products = cin7Products;
-      updated = true;
-    } else if (Object.keys(dataCache.cin7Products).length > 0) {
-      console.warn(`CIN7 products returned empty — preserving existing cache (${Object.keys(dataCache.cin7Products).length} SKUs)`);
-    }
-
-    if (fetchedPoCount > 0) {
-      dataCache.cin7POs = cin7POs;
-      updated = true;
-    } else if (dataCache.cin7POs.length > 0) {
-      console.warn(`CIN7 POs returned empty — preserving existing cache (${dataCache.cin7POs.length} POs)`);
-    }
-
-    if (Object.keys(lifelyVel).length > 0 || Object.keys(cushieVel).length > 0) {
-      dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
-      updated = true;
-    } else if (Object.keys(dataCache.shopifyVelocity).length > 0) {
-      console.warn('Shopify velocity returned empty — preserving existing cache');
-    }
-
-    if (Object.keys(lifelyInv).length > 0 || Object.keys(cushieInv).length > 0) {
-      dataCache.shopifyInventory = { lifely: lifelyInv, cushie: cushieInv };
-      updated = true;
-    } else if (Object.keys(dataCache.shopifyInventory).length > 0) {
-      console.warn('Shopify inventory returned empty — preserving existing cache');
-    }
-
-    if (updated) {
-      dataCache.lastRefresh = new Date().toISOString();
-      const liveCin7Count = Object.keys(dataCache.cin7Products).length;
-      dataCache.error = liveCin7Count > 0 ? null : 'CIN7 data unavailable (likely rate limited)';
-      if (liveCin7Count > 0) saveCacheSnapshot();
-      refreshAIS(); // Update vessel tracking after data refresh
-    }
-
-    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-    const liveCin7Count = Object.keys(dataCache.cin7Products).length;
-    const livePoCount = dataCache.cin7POs.length;
-    console.log(`Data refresh complete in ${elapsed}s. Fetched CIN7: ${fetchedCin7Count} SKUs, ${fetchedPoCount} POs. Live cache: ${liveCin7Count} SKUs, ${livePoCount} POs.`);
-    
-    // Auto-retry with escalating delays if data is empty (cold start / rate limit recovery)
-    if (fetchedCin7Count === 0 && liveCin7Count === 0 && !dataCache._retrying) {
-      dataCache._retrying = true;
-      const retryDelays = [60000, 120000, 300000]; // 1 min, 2 min, 5 min
-      (async function retryLoop() {
-        for (let i = 0; i < retryDelays.length; i++) {
-          console.log(`CIN7 empty — retry ${i + 1}/${retryDelays.length} in ${retryDelays[i] / 1000}s...`);
-          await new Promise(r => setTimeout(r, retryDelays[i]));
-          try {
-            const retryProducts = await fetchCin7AllProducts();
-            if (Object.keys(retryProducts).length > 0) {
-              dataCache.cin7Products = retryProducts;
-              const retryPOs = await fetchCin7POs();
-              if (retryPOs.length > 0) dataCache.cin7POs = retryPOs;
-              dataCache.lastRefresh = new Date().toISOString();
-              dataCache.error = null;
-              saveCacheSnapshot();
-              console.log('CIN7 retry SUCCESS: ' + Object.keys(retryProducts).length + ' SKUs, ' + retryPOs.length + ' POs');
-              break;
-            }
-          } catch (e) { console.error('CIN7 retry ' + (i + 1) + ' failed:', e.message); }
-        }
-        dataCache._retrying = false;
-      })();
-    }
-  } catch (e) {
-    console.error('Data refresh failed:', e.message);
-    dataCache.error = e.message;
+  if (refreshPromise) {
+    console.log('Refresh already in progress — reusing existing run');
+    return refreshPromise;
   }
+
+  refreshPromise = (async () => {
+    console.log('Starting full data refresh...');
+    const start = Date.now();
+    
+    try {
+      const [lifelyVel, cushieVel, lifelyInv, cushieInv] = await Promise.all([
+        fetchShopifyVelocity('lifely'),
+        fetchShopifyVelocity('cushie'),
+        fetchShopifyInventory('lifely'),
+        fetchShopifyInventory('cushie')
+      ]);
+
+      let cin7Products = {};
+      let cin7POs = [];
+      let fetchedCin7Count = 0;
+      let fetchedPoCount = 0;
+      const cin7SkipReason = getCin7SkipReason();
+
+      if (cin7SkipReason) {
+        console.log(`Skipping CIN7 refresh, ${cin7SkipReason}. Reusing cached CIN7 data.`);
+      } else {
+        cin7Products = await fetchCin7AllProducts();
+        cin7POs = await fetchCin7POs();
+        fetchedCin7Count = Object.keys(cin7Products).length;
+        fetchedPoCount = cin7POs.length;
+      }
+
+      let updated = false;
+
+      if (fetchedCin7Count > 0) {
+        dataCache.cin7Products = cin7Products;
+        dataCache.lastCin7Refresh = new Date().toISOString();
+        cin7BackoffUntil = 0;
+        updated = true;
+      } else if (Object.keys(dataCache.cin7Products).length > 0) {
+        console.warn(`CIN7 products returned empty — preserving existing cache (${Object.keys(dataCache.cin7Products).length} SKUs)`);
+      }
+
+      if (fetchedPoCount > 0) {
+        dataCache.cin7POs = cin7POs;
+        dataCache.lastCin7Refresh = new Date().toISOString();
+        updated = true;
+      } else if (dataCache.cin7POs.length > 0) {
+        console.warn(`CIN7 POs returned empty — preserving existing cache (${dataCache.cin7POs.length} POs)`);
+      }
+
+      if (Object.keys(lifelyVel).length > 0 || Object.keys(cushieVel).length > 0) {
+        dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
+        updated = true;
+      } else if (Object.keys(dataCache.shopifyVelocity).length > 0) {
+        console.warn('Shopify velocity returned empty — preserving existing cache');
+      }
+
+      if (Object.keys(lifelyInv).length > 0 || Object.keys(cushieInv).length > 0) {
+        dataCache.shopifyInventory = { lifely: lifelyInv, cushie: cushieInv };
+        updated = true;
+      } else if (Object.keys(dataCache.shopifyInventory).length > 0) {
+        console.warn('Shopify inventory returned empty — preserving existing cache');
+      }
+
+      if (updated) {
+        dataCache.lastRefresh = new Date().toISOString();
+        const liveCin7Count = Object.keys(dataCache.cin7Products).length;
+        dataCache.error = liveCin7Count > 0 ? null : 'CIN7 data unavailable (likely rate limited)';
+        if (liveCin7Count > 0) saveCacheSnapshot();
+        refreshAIS(); // Update vessel tracking after data refresh
+      }
+
+      const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+      const liveCin7Count = Object.keys(dataCache.cin7Products).length;
+      const livePoCount = dataCache.cin7POs.length;
+      console.log(`Data refresh complete in ${elapsed}s. Fetched CIN7: ${fetchedCin7Count} SKUs, ${fetchedPoCount} POs. Live cache: ${liveCin7Count} SKUs, ${livePoCount} POs.`);
+    } catch (e) {
+      console.error('Data refresh failed:', e.message);
+      dataCache.error = e.message;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 // ===== SKU NORMALIZATION =====
