@@ -182,10 +182,12 @@ function apiRequest(options, postData, attempt = 0) {
         const status = res.statusCode || 0;
 
         // Cin7 can return 429 during cold starts or concurrent refreshes.
-        // Honor Retry-After and retry a few times instead of returning empty data.
-        if (options.hostname === 'api.cin7.com' && status === 429 && attempt < 5) {
-          const retryAfter = Math.max(1, parseInt(res.headers['retry-after'] || '2', 10));
-          console.warn(`Cin7 429 for ${options.path} — retrying in ${retryAfter}s (attempt ${attempt + 1}/5)`);
+        // Retry briefly, but never honor giant Retry-After values that can stall
+        // the whole refresh loop for hours and leave the planner empty on restart.
+        if (options.hostname === 'api.cin7.com' && status === 429 && attempt < 2) {
+          const retryAfterHeader = parseInt(res.headers['retry-after'] || '2', 10);
+          const retryAfter = Math.min(15, Math.max(2, Number.isFinite(retryAfterHeader) ? retryAfterHeader : 2));
+          console.warn(`Cin7 429 for ${options.path} — retrying in ${retryAfter}s (attempt ${attempt + 1}/2)`);
           await sleep(retryAfter * 1000);
           try {
             const retried = await apiRequest(options, postData, attempt + 1);
