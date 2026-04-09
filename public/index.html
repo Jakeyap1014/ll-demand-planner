@@ -527,7 +527,7 @@ function renderPurchaseOrders(allPOs) {
   let pos = (allPOs || []).filter(po => {
     if (_poFilter === 'active') return po.stage !== 'Received';
     if (_poFilter === 'production') return po.stage !== 'Received' && !poHasShipped(po);
-    if (_poFilter === 'transit') return poHasShipped(po);
+    if (_poFilter === 'transit') return poHasShipped(po) && !poIsOverdue(po);
     if (_poFilter === 'overdue') return poIsOverdue(po);
     if (_poFilter === 'received') return po.stage === 'Received';
     return true;
@@ -574,9 +574,10 @@ function renderPurchaseOrders(allPOs) {
   };
   // Summary cards
   const productionPOs = (allPOs||[]).filter(p => p.stage !== 'Received' && !poHasShipped(p));
-  const transitPOs = (allPOs||[]).filter(p => poHasShipped(p));
+  const transitPOs = (allPOs||[]).filter(p => poHasShipped(p) && !poIsOverdue(p));
   const overduePOs = (allPOs||[]).filter(p => poIsOverdue(p));
-  const receivedCount = (allPOs||[]).filter(p => p.stage === 'Received').length;
+  const receivedPOs = (allPOs||[]).filter(p => p.stage === 'Received');
+  const receivedCount = uniquePoCount(receivedPOs);
   const sym = _poCurrency === 'AUD' ? 'A$' : 'US$';
   const cx = (val, fromCurrency) => {
     if (!val) return 0;
@@ -601,9 +602,9 @@ function renderPurchaseOrders(allPOs) {
   const criticalPOs = activePOsWithScore.filter(p => p.quality.pct < 50).length;
   document.getElementById('poSummaryCards').innerHTML = `
     <div class="card blue"><div class="label">Showing</div><div class="value">${pos.length}</div><div class="sub">${totalUnits.toLocaleString()} units · ${fmtVal(totalValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(totalFreight)} freight${totalTariff ? ' + ' + fmtVal(totalTariff) + ' tariff' : ''}</div></div>
-    <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${productionPOs.length}</div><div class="sub">${fmtVal(productionValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(productionFreight)} freight</div></div>
-    <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${transitPOs.length}</div><div class="sub">${fmtVal(transitValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(transitFreight)} freight</div></div>
-    ${overduePOs.length > 0 ? `<div class="card" style="border-left:3px solid #991B1B"><div class="label">⚠️ Overdue</div><div class="value">${overduePOs.length}</div><div class="sub">${fmtVal(overdueValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(overdueFreight)} freight</div></div>` : ''}
+    <div class="card yellow"><div class="label">🏭 In Production</div><div class="value">${uniquePoCount(productionPOs)}</div><div class="sub">${fmtVal(productionValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(productionFreight)} freight</div></div>
+    <div class="card green"><div class="label">🚢 In Transit</div><div class="value">${uniquePoCount(transitPOs)}</div><div class="sub">${fmtVal(transitValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(transitFreight)} freight</div></div>
+    ${overduePOs.length > 0 ? `<div class="card" style="border-left:3px solid #991B1B"><div class="label">⚠️ Overdue</div><div class="value">${uniquePoCount(overduePOs)}</div><div class="sub">${fmtVal(overdueValue)}</div><div class="sub" style="font-size:10px;color:var(--text-dim);margin-top:2px">🚛 ${fmtVal(overdueFreight)} freight</div></div>` : ''}
     <div class="card"><div class="label">✅ Received</div><div class="value">${receivedCount}</div><div class="sub">Completed</div></div>
     <div class="card" style="border-left:3px solid ${avgQuality>=90?'#5BAB31':avgQuality>=70?'#D4930D':avgQuality>=50?'#EA580C':'#991B1B'}"><div class="label">${qIcon} Data Quality</div><div class="value">${avgQuality}%</div><div class="sub">${activePOsWithScore.length} active POs${criticalPOs > 0 ? ' · <span style="color:#991B1B;font-weight:600">' + criticalPOs + ' critical</span>' : ''}</div></div>
   `;
