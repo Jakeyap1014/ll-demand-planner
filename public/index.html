@@ -14,7 +14,7 @@
 .sidebar-label{padding:16px 16px 6px;font-size:10px;font-weight:600;color:#A8C5C8;text-transform:uppercase;letter-spacing:0.5px}
 .sidebar-item{display:grid;grid-template-columns:90px minmax(0,1fr);align-items:center;column-gap:10px;padding:8px 12px;margin:1px 8px;border-radius:8px;cursor:pointer;font-size:13px;color:#A8C5C8;transition:all 0.15s}
 .sidebar-item:hover{background:rgba(255,255,255,0.08);color:#fff}.sidebar-item.active{background:rgba(255,255,255,0.15);color:#fff;font-weight:600}
-.sidebar-item img{width:90px;height:14px;object-fit:contain;object-position:left center;filter:brightness(0) invert(1);opacity:0.7}.sidebar-item.active img{opacity:1}.sidebar-item[data-ck="wfhcr"] img{width:70px;height:12px}.sidebar-item span{min-width:0}.sidebar-mark{width:90px;display:flex;align-items:center;justify-content:flex-start;font-size:16px;line-height:1;opacity:0.85}.sidebar-item.tool-box{margin:0 8px 8px;padding:10px 12px;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:8px;grid-template-columns:none}
+.sidebar-item img{width:90px;height:14px;object-fit:contain;object-position:left center;filter:brightness(0) invert(1);opacity:0.7}.sidebar-item.active img{opacity:1}.sidebar-item[data-ck="wfhcr"] img{width:70px;height:12px}.sidebar-item span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sidebar-mark{width:90px;display:flex;align-items:center;justify-content:flex-start;font-size:16px;line-height:1;opacity:0.85}.sidebar-item.tool-box{margin:0 8px 8px;padding:10px 12px;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:8px;grid-template-columns:none}
 .sidebar-footer{margin-top:auto;padding:12px 16px;font-size:10px;color:#A8C5C8;border-top:1px solid rgba(255,255,255,0.1)}
 .main{margin-left:var(--sidebar-w);flex:1;min-height:100vh}
 .mobile-menu{display:none;align-items:center;justify-content:center;width:40px;height:40px;border:none;background:rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;font-size:20px;color:#fff;margin-right:12px;flex-shrink:0}
@@ -502,17 +502,14 @@ function parseOriginalEta(po) {
   if (!isNaN(parsedDirect)) return parsedDirect;
   return null;
 }
-function poIsInTransit(po) {
+function poHasShipped(po) {
   if (po.stage === 'Received') return false;
   const now = new Date();
   const etd = po.etd ? new Date(po.etd) : null;
-  const eta = po.arrival ? new Date(po.arrival) : null;
-  // In transit: ETD has passed (shipped) AND not overdue AND not received
-  if (etd && etd <= now) {
-    if (poIsOverdue(po)) return false;
-    return true;
-  }
-  return false;
+  return !!(etd && etd <= now);
+}
+function poIsInTransit(po) {
+  return poHasShipped(po);
 }
 function poIsOverdue(po) {
   if (po.stage === 'Received') return false;
@@ -529,8 +526,8 @@ function renderPurchaseOrders(allPOs) {
   const search = (document.getElementById('poSearch')?.value || '').toLowerCase().trim();
   let pos = (allPOs || []).filter(po => {
     if (_poFilter === 'active') return po.stage !== 'Received';
-    if (_poFilter === 'production') return po.stage !== 'Received' && !poIsInTransit(po) && !poIsOverdue(po);
-    if (_poFilter === 'transit') return poIsInTransit(po);
+    if (_poFilter === 'production') return po.stage !== 'Received' && !poHasShipped(po);
+    if (_poFilter === 'transit') return poHasShipped(po);
     if (_poFilter === 'overdue') return poIsOverdue(po);
     if (_poFilter === 'received') return po.stage === 'Received';
     return true;
@@ -576,8 +573,8 @@ function renderPurchaseOrders(allPOs) {
     return `<span class="badge" style="background:#FEE2E2;color:#991B1B;cursor:help;font-size:9px" title="${tip}">🔴 ${pct}%</span>`;
   };
   // Summary cards
-  const productionPOs = (allPOs||[]).filter(p => p.stage !== 'Received' && !poIsInTransit(p) && !poIsOverdue(p));
-  const transitPOs = (allPOs||[]).filter(p => poIsInTransit(p));
+  const productionPOs = (allPOs||[]).filter(p => p.stage !== 'Received' && !poHasShipped(p));
+  const transitPOs = (allPOs||[]).filter(p => poHasShipped(p));
   const overduePOs = (allPOs||[]).filter(p => poIsOverdue(p));
   const receivedCount = (allPOs||[]).filter(p => p.stage === 'Received').length;
   const sym = _poCurrency === 'AUD' ? 'A$' : 'US$';
