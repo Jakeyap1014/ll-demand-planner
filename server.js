@@ -941,6 +941,9 @@ function buildCKData(ckId) {
         cbmMap[sku] = data.cbm;
       }
   }
+  if (ckId === 'llnz') {
+    for (const sku of Object.keys(cin7)) cin7[sku] = 0;
+  }
   
   // Shopify inventory
   const shopify = {};
