@@ -120,12 +120,53 @@ let dataCache = {
 };
 const CACHE_SNAPSHOT_PATH = path.join(__dirname, 'data', 'cache-snapshot.json');
 const CACHE_SNAPSHOT_BACKUP_PATH = path.join(__dirname, 'data', 'cache-snapshot.last-good.json');
+const PO_SNAPSHOT_PATH = path.join(__dirname, 'data', 'po-snapshot.json');
+const PO_SNAPSHOT_BACKUP_PATH = path.join(__dirname, 'data', 'po-snapshot.last-good.json');
 
 function snapshotHasCin7Data(snap) {
   return !!(snap && (
     (snap.cin7Products && Object.keys(snap.cin7Products).length > 0) ||
     (Array.isArray(snap.cin7POs) && snap.cin7POs.length > 0)
   ));
+}
+
+function loadPoSnapshot() {
+  for (const snapPath of [PO_SNAPSHOT_PATH, PO_SNAPSHOT_BACKUP_PATH]) {
+    try {
+      const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
+      if (Array.isArray(snap?.cin7POs) && snap.cin7POs.length > 0) {
+        if (!Array.isArray(dataCache.cin7POs) || dataCache.cin7POs.length < snap.cin7POs.length) {
+          dataCache.cin7POs = snap.cin7POs;
+          if (snap.lastCin7Refresh) dataCache.lastCin7Refresh = snap.lastCin7Refresh;
+          if (snap.lastRefresh) dataCache.lastRefresh = snap.lastRefresh;
+          console.log(`Loaded full PO snapshot from ${path.basename(snapPath)}: ${dataCache.cin7POs.length} POs`);
+        }
+        return;
+      }
+    } catch (e) {
+      // try next path
+    }
+  }
+}
+
+function savePoSnapshot() {
+  try {
+    if (!Array.isArray(dataCache.cin7POs) || dataCache.cin7POs.length === 0) {
+      console.warn('Refusing to save empty PO snapshot — keeping last good PO cache on disk');
+      return;
+    }
+    fs.mkdirSync(path.dirname(PO_SNAPSHOT_PATH), { recursive: true });
+    const payload = JSON.stringify({
+      lastRefresh: dataCache.lastRefresh,
+      lastCin7Refresh: dataCache.lastCin7Refresh,
+      cin7POs: dataCache.cin7POs
+    });
+    fs.writeFileSync(PO_SNAPSHOT_PATH, payload);
+    fs.writeFileSync(PO_SNAPSHOT_BACKUP_PATH, payload);
+    console.log(`Saved full PO snapshot (${dataCache.cin7POs.length} POs)`);
+  } catch (e) {
+    console.error('PO snapshot save failed:', e.message);
+  }
 }
 
 function loadCacheSnapshot() {
@@ -135,14 +176,15 @@ function loadCacheSnapshot() {
       if (snapshotHasCin7Data(snap)) {
         dataCache = { ...dataCache, ...snap, error: null };
         console.log(`Loaded cache snapshot from ${path.basename(snapPath)}: ${Object.keys(dataCache.cin7Products).length} CIN7 SKUs, ${dataCache.cin7POs.length} POs`);
-        return;
+        break;
       }
       console.log(`Cache snapshot empty at ${path.basename(snapPath)} — ignoring`);
     } catch (e) {
       // try next path
     }
   }
-  console.log('No usable cache snapshot found — starting cold');
+  loadPoSnapshot();
+  if (!snapshotHasCin7Data(dataCache)) console.log('No usable cache snapshot found — starting cold');
 }
 
 function saveCacheSnapshot() {
@@ -572,6 +614,7 @@ async function refreshAllData(forceCin7 = false) {
       if (fetchedPoCount > 0) {
         dataCache.cin7POs = cin7POs;
         dataCache.lastCin7Refresh = new Date().toISOString();
+        savePoSnapshot();
         updated = true;
       } else if (dataCache.cin7POs.length > 0) {
         console.warn(`CIN7 POs returned empty — preserving existing cache (${dataCache.cin7POs.length} POs)`);
@@ -596,6 +639,7 @@ async function refreshAllData(forceCin7 = false) {
         const liveCin7Count = Object.keys(dataCache.cin7Products).length;
         dataCache.error = liveCin7Count > 0 ? null : 'CIN7 data unavailable (likely rate limited)';
         if (liveCin7Count > 0) saveCacheSnapshot();
+        if (dataCache.cin7POs.length > 0) savePoSnapshot();
         refreshAIS(); // Update vessel tracking after data refresh
       }
 
