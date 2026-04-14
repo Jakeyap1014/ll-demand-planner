@@ -129,6 +129,7 @@ const PO_SNAPSHOT_PATH = path.join(__dirname, 'data', 'po-snapshot.json');
 const PO_SNAPSHOT_BACKUP_PATH = path.join(__dirname, 'data', 'po-snapshot.last-good.json');
 const SNAPSHOT_PUSH_STATE_PATH = path.join(__dirname, 'data', 'snapshot-push-state.json');
 let snapshotPushInFlight = false;
+let cacheSnapshotPushInFlight = false;
 
 function snapshotHasCin7Data(snap) {
   return !!(snap && (
@@ -244,7 +245,7 @@ function loadSnapshotPushState() {
 function maybePushPoSnapshotToGit(reason = 'cin7-refresh') {
   const today = new Date().toISOString().slice(0, 10);
   const state = loadSnapshotPushState();
-  if (state.lastSuccessDate === today || snapshotPushInFlight) return;
+  if (state.poLastSuccessDate === today || snapshotPushInFlight) return;
   snapshotPushInFlight = true;
   const command = [
     'git add data/po-snapshot.json data/po-snapshot.last-good.json',
@@ -260,8 +261,32 @@ function maybePushPoSnapshotToGit(reason = 'cin7-refresh') {
       if (error.code !== 0) console.error('PO snapshot git push failed:', error.message);
       return;
     }
-    saveSnapshotPushState({ lastSuccessDate: today, lastReason: reason, pushedAt: new Date().toISOString() });
+    saveSnapshotPushState({ ...state, poLastSuccessDate: today, poLastReason: reason, poPushedAt: new Date().toISOString() });
     console.log('PO snapshot pushed to GitHub');
+  });
+}
+
+function maybePushCacheSnapshotToGit(reason = 'cin7-refresh') {
+  const today = new Date().toISOString().slice(0, 10);
+  const state = loadSnapshotPushState();
+  if (state.cacheLastSuccessDate === today || cacheSnapshotPushInFlight) return;
+  cacheSnapshotPushInFlight = true;
+  const command = [
+    'git add data/cache-snapshot.json data/cache-snapshot.last-good.json',
+    'git diff --cached --quiet && exit 0',
+    `git commit -m "Update cache snapshot (${reason})"`,
+    'git push'
+  ].join(' && ');
+  exec(command, { cwd: __dirname }, (error, stdout, stderr) => {
+    cacheSnapshotPushInFlight = false;
+    if (stdout) console.log(stdout.trim());
+    if (stderr) console.log(stderr.trim());
+    if (error) {
+      if (error.code !== 0) console.error('Cache snapshot git push failed:', error.message);
+      return;
+    }
+    saveSnapshotPushState({ ...state, cacheLastSuccessDate: today, cacheLastReason: reason, cachePushedAt: new Date().toISOString() });
+    console.log('Cache snapshot pushed to GitHub');
   });
 }
 
@@ -305,16 +330,19 @@ function loadCacheSnapshot() {
   if (!snapshotHasCin7Data(dataCache)) console.log('No usable cache snapshot found — starting cold');
 }
 
-function saveCacheSnapshot() {
+function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
   try {
     const snapshot = {
+      snapshotCreatedAt: new Date().toISOString(),
       lastRefresh: dataCache.lastRefresh,
       lastCin7Refresh: dataCache.lastCin7Refresh,
       cin7Products: dataCache.cin7Products,
       cin7StockByBranch: dataCache.cin7StockByBranch,
       cin7POs: dataCache.cin7POs,
       shopifyVelocity: dataCache.shopifyVelocity,
-      shopifyInventory: dataCache.shopifyInventory
+      shopifyInventory: dataCache.shopifyInventory,
+      error: dataCache.error,
+      fxRate
     };
 
     if (!snapshotHasCin7Data(snapshot)) {
@@ -327,6 +355,7 @@ function saveCacheSnapshot() {
     fs.writeFileSync(CACHE_SNAPSHOT_PATH, payload);
     fs.writeFileSync(CACHE_SNAPSHOT_BACKUP_PATH, payload);
     console.log('Saved cache snapshot');
+    if (pushToGit) maybePushCacheSnapshotToGit(pushReason);
   } catch (e) {
     console.error('Cache snapshot save failed:', e.message);
   }
@@ -810,7 +839,7 @@ async function refreshAllData(forceCin7 = false) {
         dataCache.lastRefresh = new Date().toISOString();
         const liveCin7Count = Object.keys(dataCache.cin7Products).length;
         dataCache.error = liveCin7Count > 0 ? null : 'CIN7 data unavailable (likely rate limited)';
-        if (liveCin7Count > 0) saveCacheSnapshot();
+        if (liveCin7Count > 0) saveCacheSnapshot(true, 'daily-cin7-refresh');
         if (dataCache.cin7POs.length > 0) savePoSnapshot(true, 'daily-cin7-refresh');
         refreshAIS(); // Update vessel tracking after data refresh
       }
