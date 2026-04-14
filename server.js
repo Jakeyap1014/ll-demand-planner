@@ -18,7 +18,7 @@ const CIN7_KEY = process.env.CIN7_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const AIS_API_KEY = process.env.AIS_API_KEY || '';
 const CIN7_REQUEST_SPACING_MS = 1500;
-const CIN7_MIN_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+const CIN7_MIN_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const CIN7_RATE_LIMIT_BACKOFF_MS = 15 * 60 * 1000;
 
 // Shopify stores
@@ -230,7 +230,7 @@ function scheduleCin7Recovery(reason) {
   if (typeof cin7RecoveryTimer.unref === 'function') cin7RecoveryTimer.unref();
 }
 
-function getCin7SkipReason() {
+function getCin7SkipReason(force = false) {
   const now = Date.now();
   const lastCin7RefreshMs = dataCache.lastCin7Refresh ? new Date(dataCache.lastCin7Refresh).getTime() : 0;
 
@@ -238,7 +238,7 @@ function getCin7SkipReason() {
     return `rate limit backoff active for ${Math.ceil((cin7BackoffUntil - now) / 60000)} more min`;
   }
 
-  if (lastCin7RefreshMs && hasCin7Cache() && (now - lastCin7RefreshMs) < CIN7_MIN_REFRESH_INTERVAL_MS) {
+  if (!force && lastCin7RefreshMs && hasCin7Cache() && (now - lastCin7RefreshMs) < CIN7_MIN_REFRESH_INTERVAL_MS) {
     return `last CIN7 refresh was ${Math.round((now - lastCin7RefreshMs) / 60000)} min ago`;
   }
 
@@ -521,7 +521,7 @@ async function fetchShopifyInventory(storeKey) {
 }
 
 // ===== FULL DATA REFRESH =====
-async function refreshAllData() {
+async function refreshAllData(forceCin7 = false) {
   if (refreshPromise) {
     console.log('Refresh already in progress — reusing existing run');
     return refreshPromise;
@@ -543,7 +543,7 @@ async function refreshAllData() {
       let cin7POs = [];
       let fetchedCin7Count = 0;
       let fetchedPoCount = 0;
-      const cin7SkipReason = getCin7SkipReason();
+      const cin7SkipReason = getCin7SkipReason(forceCin7);
 
       if (cin7SkipReason) {
         console.log(`Skipping CIN7 refresh, ${cin7SkipReason}. Reusing cached CIN7 data.`);
@@ -1295,7 +1295,7 @@ app.post('/api/refresh', requireAuth, async (req, res) => {
     return res.json({ ok: false, error: `Please wait ${waitMin} min before refreshing again`, lastRefresh: dataCache.lastRefresh });
   }
   _lastManualRefresh = now;
-  await refreshAllData();
+  await refreshAllData(true);
   res.json({ ok: true, lastRefresh: dataCache.lastRefresh });
 });
 
@@ -1683,7 +1683,7 @@ app.use(requireAuth, express.static(path.join(__dirname, 'public')));
 app.listen(PORT, () => {
   console.log(`Demand Planner running on port ${PORT}`);
   refreshAllData(); // Initial fetch
-  setInterval(refreshAllData, 2 * 60 * 60 * 1000); // Refresh every 2 hours
+  setInterval(refreshAllData, 24 * 60 * 60 * 1000); // Refresh every 24 hours
   
   // Keep-alive: ping self every 10 min to prevent Render free tier spin-down
   setInterval(() => {
