@@ -130,13 +130,81 @@ function snapshotHasCin7Data(snap) {
   ));
 }
 
+function cleanPoReference(ref) {
+  return (ref || '').replace(/-cover$/i, '');
+}
+
+function mergeCin7POsByReference(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const now = Date.now();
+  const grouped = new Map();
+
+  const priority = po => {
+    if (!po) return 0;
+    if (po.fullyReceivedDate || po.stage === 'Received') return 4;
+    const eta = po.estimatedArrivalDate || po.arrival;
+    const etd = po.etd;
+    const etaMs = eta ? new Date(eta).getTime() : NaN;
+    const etdMs = etd ? new Date(etd).getTime() : NaN;
+    if (!Number.isNaN(etaMs) && etaMs <= now) return 3;
+    if (!Number.isNaN(etdMs) && etdMs <= now) return 2;
+    return 1;
+  };
+
+  for (const po of rows) {
+    const key = cleanPoReference(po.reference);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push({ ...po, reference: key });
+  }
+
+  const merged = [];
+  for (const [reference, group] of grouped.entries()) {
+    if (group.length === 1) {
+      merged.push(group[0]);
+      continue;
+    }
+
+    group.sort((a, b) => priority(b) - priority(a));
+    const base = { ...group[0], reference, items: {} };
+
+    for (const po of group) {
+      for (const [sku, qty] of Object.entries(po.items || {})) {
+        base.items[sku] = (base.items[sku] || 0) + qty;
+      }
+      base.total = (base.total || 0) + (po.total || 0);
+      base.freightTotal = (base.freightTotal || 0) + (po.freightTotal || 0);
+      if (!base.company && po.company) base.company = po.company;
+      if (!base.status && po.status) base.status = po.status;
+      if (!base.stage && po.stage) base.stage = po.stage;
+      if (!base.deliveryCountry && po.deliveryCountry) base.deliveryCountry = po.deliveryCountry;
+      if (!base.deliveryCity && po.deliveryCity) base.deliveryCity = po.deliveryCity;
+      if (!base.trackingCode && po.trackingCode) base.trackingCode = po.trackingCode;
+      if (!base.port && po.port) base.port = po.port;
+      if (!base.logisticsCarrier && po.logisticsCarrier) base.logisticsCarrier = po.logisticsCarrier;
+      if (!base.internalComments && po.internalComments) base.internalComments = po.internalComments;
+      if (!base.createdBy && po.createdBy) base.createdBy = po.createdBy;
+      if (!base.invoiceDate && po.invoiceDate) base.invoiceDate = po.invoiceDate;
+      if (!base.supplierInvoiceReference && po.supplierInvoiceReference) base.supplierInvoiceReference = po.supplierInvoiceReference;
+      if ((!base.customFields || Object.keys(base.customFields).length === 0) && po.customFields) base.customFields = po.customFields;
+      if (!base.fullyReceivedDate && po.fullyReceivedDate) base.fullyReceivedDate = po.fullyReceivedDate;
+      if (!base.arrival && po.arrival) base.arrival = po.arrival;
+      if (!base.estimatedArrivalDate && po.estimatedArrivalDate) base.estimatedArrivalDate = po.estimatedArrivalDate;
+      if (!base.etd && po.etd) base.etd = po.etd;
+    }
+
+    merged.push(base);
+  }
+
+  return merged;
+}
+
 function loadPoSnapshot() {
   for (const snapPath of [PO_SNAPSHOT_PATH, PO_SNAPSHOT_BACKUP_PATH]) {
     try {
       const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
       if (Array.isArray(snap?.cin7POs) && snap.cin7POs.length > 0) {
         if (!Array.isArray(dataCache.cin7POs) || dataCache.cin7POs.length < snap.cin7POs.length) {
-          dataCache.cin7POs = snap.cin7POs;
+          dataCache.cin7POs = mergeCin7POsByReference(snap.cin7POs);
           if (snap.lastCin7Refresh) dataCache.lastCin7Refresh = snap.lastCin7Refresh;
           if (snap.lastRefresh) dataCache.lastRefresh = snap.lastRefresh;
           console.log(`Loaded full PO snapshot from ${path.basename(snapPath)}: ${dataCache.cin7POs.length} POs`);
@@ -159,7 +227,7 @@ function savePoSnapshot() {
     const payload = JSON.stringify({
       lastRefresh: dataCache.lastRefresh,
       lastCin7Refresh: dataCache.lastCin7Refresh,
-      cin7POs: dataCache.cin7POs
+      cin7POs: mergeCin7POsByReference(dataCache.cin7POs)
     });
     fs.writeFileSync(PO_SNAPSHOT_PATH, payload);
     fs.writeFileSync(PO_SNAPSHOT_BACKUP_PATH, payload);
@@ -175,6 +243,7 @@ function loadCacheSnapshot() {
       const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
       if (snapshotHasCin7Data(snap)) {
         dataCache = { ...dataCache, ...snap, error: null };
+        dataCache.cin7POs = mergeCin7POsByReference(dataCache.cin7POs || []);
         console.log(`Loaded cache snapshot from ${path.basename(snapPath)}: ${Object.keys(dataCache.cin7Products).length} CIN7 SKUs, ${dataCache.cin7POs.length} POs`);
         break;
       }
@@ -385,7 +454,6 @@ async function fetchCin7POs() {
   if (!CIN7_USER || !CIN7_KEY) return [];
   const auth = Buffer.from(`${CIN7_USER}:${CIN7_KEY}`).toString('base64');
   const results = [];
-  const cleanPoReference = ref => (ref || '').replace(/-cover$/i, '');
   for (let page = 1; page <= 5; page++) {
     try {
       await throttleCin7Request();
@@ -434,7 +502,7 @@ async function fetchCin7POs() {
       }
     } catch (e) { console.error(`CIN7 POs page ${page} error:`, e.message); break; }
   }
-  return results;
+  return mergeCin7POsByReference(results);
 }
 
 // ===== SHOPIFY: FETCH ORDERS & CALCULATE VELOCITY =====
@@ -612,7 +680,7 @@ async function refreshAllData(forceCin7 = false) {
       }
 
       if (fetchedPoCount > 0) {
-        dataCache.cin7POs = cin7POs;
+        dataCache.cin7POs = mergeCin7POsByReference(cin7POs);
         dataCache.lastCin7Refresh = new Date().toISOString();
         savePoSnapshot();
         updated = true;
