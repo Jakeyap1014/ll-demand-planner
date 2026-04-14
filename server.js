@@ -43,11 +43,11 @@ const SHOPIFY_STORES = {
 // ===== CK DEFINITIONS =====
 const CK_DEFS = {
   'llau-cb':   { name: 'Little Lifely AU',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'Australia', stockBranches: LL_AU_BRANCH_IDS, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
-  'llnz':      { name: 'Little Lifely NZ',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'New Zealand', stockBranches: LL_NZ_BRANCH_IDS, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
+  'llnz':      { name: 'Little Lifely NZ',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'New Zealand', stockBranches: LL_NZ_BRANCH_IDS, strictStockBranches: true, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
   'llau-cbcf': { name: 'LL AU Combos',            prefix: 'LLAU-CBCF-', logo: 'little-lifely.png', store: 'lifely', excludeCV: true, stockBranches: LL_AU_BRANCH_IDS, sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
   'llna':     { name: 'Little Lifely NA',       prefix: 'LLNA',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, stockBranches: [60701, 61831], sizes: {'-TW-':'Twin','-F-':'Full'} },
   'lluk':     { name: 'Little Lifely UK',       prefix: 'LLUK',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, stockBranches: [62444], sizes: {'-S-':'Single','-SD-':'Small Double','-D-':'Double'} },
-  'llsg':     { name: 'Little Lifely SG',       prefix: 'LLSG',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, stockBranches: [57843], sizes: {'-SS-':'Super Single','-S-':'Single','-Q-':'Queen'} },
+  'llsg':     { name: 'Little Lifely SG',       prefix: 'LLSG',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, stockBranches: [57843], strictStockBranches: true, sizes: {'-SS-':'Super Single','-S-':'Single','-Q-':'Queen'} },
   'dd':       { name: 'Deep Dream',             prefix: 'DD',     logo: 'deep-dream.png',    store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'915':'Single','107':'King Single','137':'Double','153':'Queen','183':'King'} },
   'cocoon':   { name: 'Cocoon Bed',             prefix: 'COCOON', logo: 'cocoon-bed.png',    store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-DOUBLE-':'Double','-QUEEN-':'Queen','-KING-':'King'} },
   'rdnt':     { name: 'Radiant',                prefix: 'RDNT',   logo: 'radiant.png',       store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-D-':'Double','-Q-':'Queen','-K-':'King'} },
@@ -967,6 +967,7 @@ function buildCKData(ckId) {
   const excludeCV = def.excludeCV || false;
   const poDestination = def.poDestination || null;
   const stockBranches = def.stockBranches || null;
+  const strictStockBranches = def.strictStockBranches || false;
   
   let costs = {};
   // CIN7 stock — first collect raw, then normalize
@@ -986,7 +987,7 @@ function buildCKData(ckId) {
         }, { soh: 0, available: 0, matched: 0 });
         cin7Raw[sku] = branchData.matched > 0
           ? { ...data, soh: branchData.soh, available: branchData.available }
-          : data;
+          : (strictStockBranches ? { ...data, soh: 0, available: 0 } : data);
       } else {
         cin7Raw[sku] = data;
       }
