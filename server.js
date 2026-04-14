@@ -936,7 +936,7 @@ function buildCKData(ckId) {
   const pos = [];
   const allPos = [];
   for (const po of dataCache.cin7POs) {
-    if (poDestination && inferDestination(po) !== poDestination) continue;
+    if (poDestination && resolvePoDestination(po) !== poDestination) continue;
     const relevantItems = {};
     for (const [sku, qty] of Object.entries(po.items)) {
       if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
@@ -1868,6 +1868,16 @@ function destFromRef(ref) {
   return null;
 }
 
+function resolvePoDestination(po) {
+  let destination = inferDestination(po);
+  if (!destination || destination === 'Australia') {
+    const refDest = destFromRef(cleanPoReference(po.reference));
+    if (refDest) destination = refDest;
+    else destination = 'Australia';
+  }
+  return destination;
+}
+
 app.get('/api/incoming-pos', requireAuth, (req, res) => {
   const allCKGroups = new Set();
   const allMonths = new Set();
@@ -1893,12 +1903,7 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
     if (po.fullyReceivedDate || po.stage === 'Received') continue;
     
     // Determine destination
-    let destination = inferDestination(po);
-    if (!destination || destination === 'Australia') {
-      const refDest = destFromRef(cleanPoReference(po.reference));
-      if (refDest) destination = refDest;
-      else destination = 'Australia';
-    }
+    let destination = resolvePoDestination(po);
     const countryCode = destToCountryCode(destination);
     allCountries.add(countryCode);
     
