@@ -21,6 +21,8 @@ const AIS_API_KEY = process.env.AIS_API_KEY || '';
 const CIN7_REQUEST_SPACING_MS = 1500;
 const CIN7_MIN_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const CIN7_RATE_LIMIT_BACKOFF_MS = 15 * 60 * 1000;
+const LL_AU_BRANCH_IDS = [3, 60976];
+const LL_NZ_BRANCH_IDS = [48391];
 
 // Shopify stores
 const SHOPIFY_STORES = {
@@ -40,9 +42,9 @@ const SHOPIFY_STORES = {
 
 // ===== CK DEFINITIONS =====
 const CK_DEFS = {
-  'llau-cb':   { name: 'Little Lifely AU',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'Australia', filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
-  'llnz':      { name: 'Little Lifely NZ',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'New Zealand', filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
-  'llau-cbcf': { name: 'LL AU Combos',            prefix: 'LLAU-CBCF-', logo: 'little-lifely.png', store: 'lifely', excludeCV: true, sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
+  'llau-cb':   { name: 'Little Lifely AU',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'Australia', stockBranches: LL_AU_BRANCH_IDS, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
+  'llnz':      { name: 'Little Lifely NZ',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'New Zealand', stockBranches: LL_NZ_BRANCH_IDS, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
+  'llau-cbcf': { name: 'LL AU Combos',            prefix: 'LLAU-CBCF-', logo: 'little-lifely.png', store: 'lifely', excludeCV: true, stockBranches: LL_AU_BRANCH_IDS, sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
   'llna':     { name: 'Little Lifely NA',       prefix: 'LLNA',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, sizes: {'-TW-':'Twin','-F-':'Full'} },
   'lluk':     { name: 'Little Lifely UK',       prefix: 'LLUK',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, sizes: {'-S-':'Single','-SD-':'Small Double','-D-':'Double'} },
   'llsg':     { name: 'Little Lifely SG',       prefix: 'LLSG',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, sizes: {'-SS-':'Super Single','-S-':'Single','-Q-':'Queen'} },
@@ -114,7 +116,8 @@ function requireAuth(req, res, next) {
 let dataCache = {
   lastRefresh: null,
   lastCin7Refresh: null,
-  cin7Products: {},   // sku -> {soh, available}
+  cin7Products: {},   // sku -> {soh, available, costAUD, cbm}
+  cin7StockByBranch: {}, // sku -> { branchId -> { soh, available, branchName } }
   cin7POs: [],        // [{reference, status, stage, arrival, items: {sku: qty}}]
   shopifyVelocity: {}, // store -> {sku -> weekly_velocity}
   shopifyInventory: {}, // store -> {sku -> inventory_level}
@@ -308,6 +311,7 @@ function saveCacheSnapshot() {
       lastRefresh: dataCache.lastRefresh,
       lastCin7Refresh: dataCache.lastCin7Refresh,
       cin7Products: dataCache.cin7Products,
+      cin7StockByBranch: dataCache.cin7StockByBranch,
       cin7POs: dataCache.cin7POs,
       shopifyVelocity: dataCache.shopifyVelocity,
       shopifyInventory: dataCache.shopifyInventory
@@ -448,9 +452,11 @@ function apiRequest(options, postData, attempt = 0) {
 
 // ===== CIN7: FETCH ALL PRODUCTS =====
 async function fetchCin7AllProducts() {
-  if (!CIN7_USER || !CIN7_KEY) { console.log('CIN7 SKIPPED: no credentials. USER=' + (CIN7_USER ? 'set' : 'empty') + ' KEY=' + (CIN7_KEY ? 'set' : 'empty')); return {}; }
+  if (!CIN7_USER || !CIN7_KEY) { console.log('CIN7 SKIPPED: no credentials. USER=' + (CIN7_USER ? 'set' : 'empty') + ' KEY=' + (CIN7_KEY ? 'set' : 'empty')); return { products: {}, stockByBranch: {} }; }
   const auth = Buffer.from(`${CIN7_USER}:${CIN7_KEY}`).toString('base64');
-  const results = {};
+  const products = {};
+  const stockByBranch = {};
+
   for (let page = 1; page <= 50; page++) {
     try {
       console.log('CIN7 Products: fetching page ' + page);
@@ -467,7 +473,7 @@ async function fetchCin7AllProducts() {
         headers = resp.headers || {};
       } catch (fetchErr) {
         console.error(`CIN7 Products page ${page} failed:`, fetchErr.message);
-        break; // Don't retry individual pages — save calls
+        break;
       }
       console.log('CIN7 Products page ' + page + ': status=' + status + ' isArray=' + Array.isArray(body) + ' length=' + (Array.isArray(body) ? body.length : 'N/A'));
       if (status === 429) {
@@ -477,22 +483,70 @@ async function fetchCin7AllProducts() {
       if (!Array.isArray(body) || body.length === 0) break;
       for (const product of body) {
         const variants = product.productOptions || [];
-        const cbm = product.volume || 0; // CBM at product level
+        const cbm = product.volume || 0;
         for (const v of variants) {
           if (v.code) {
             const pc = v.priceColumns || {};
             const costAUD = pc.costAUD || (pc.costUSD ? pc.costUSD * fxRate.USDAUD : 0);
-            results[v.code] = { soh: v.stockOnHand || 0, available: v.stockAvailable || 0, costAUD, cbm };
+            products[v.code] = { soh: v.stockOnHand || 0, available: v.stockAvailable || 0, costAUD, cbm };
           }
         }
-        // Also store parent level if it has SOH
         if (product.styleCode && product.stockOnHand > 0) {
-          results[product.styleCode] = { soh: product.stockOnHand, available: product.stockAvailable || 0, cbm };
+          products[product.styleCode] = { soh: product.stockOnHand, available: product.stockAvailable || 0, cbm };
         }
       }
     } catch (e) { console.error(`CIN7 Products page ${page} error:`, e.message); continue; }
   }
-  return results;
+
+  for (let page = 1; page <= 50; page++) {
+    try {
+      console.log('CIN7 Stock: fetching page ' + page);
+      let body, status, headers;
+      try {
+        await throttleCin7Request();
+        const resp = await apiRequest({
+          hostname: 'api.cin7.com',
+          path: `/api/v1/Stock?page=${page}&rows=250`,
+          headers: { 'Authorization': `Basic ${auth}` }
+        });
+        body = resp.body;
+        status = resp.status;
+        headers = resp.headers || {};
+      } catch (fetchErr) {
+        console.error(`CIN7 Stock page ${page} failed:`, fetchErr.message);
+        break;
+      }
+      if (status === 429) {
+        markCin7Backoff(`Stock page ${page}`, parseInt(headers['retry-after'] || '0', 10));
+        break;
+      }
+      if (!Array.isArray(body) || body.length === 0) break;
+      for (const row of body) {
+        const sku = row.code;
+        const branchId = Number(row.branchId || 0);
+        if (!sku || !branchId) continue;
+        if (!stockByBranch[sku]) stockByBranch[sku] = {};
+        stockByBranch[sku][branchId] = {
+          soh: Number(row.stockOnHand || 0),
+          available: Number(row.available || 0),
+          branchName: row.branchName || ''
+        };
+      }
+    } catch (e) { console.error(`CIN7 Stock page ${page} error:`, e.message); continue; }
+  }
+
+  for (const [sku, branches] of Object.entries(stockByBranch)) {
+    const totalSoh = Object.values(branches).reduce((sum, b) => sum + (Number(b.soh) || 0), 0);
+    const totalAvailable = Object.values(branches).reduce((sum, b) => sum + (Number(b.available) || 0), 0);
+    if (products[sku]) {
+      products[sku].soh = totalSoh;
+      products[sku].available = totalAvailable;
+    } else {
+      products[sku] = { soh: totalSoh, available: totalAvailable, costAUD: 0, cbm: 0 };
+    }
+  }
+
+  return { products, stockByBranch };
 }
 
 // ===== CIN7: FETCH PURCHASE ORDERS =====
@@ -696,6 +750,7 @@ async function refreshAllData(forceCin7 = false) {
       ]);
 
       let cin7Products = {};
+      let cin7StockByBranch = {};
       let cin7POs = [];
       let fetchedCin7Count = 0;
       let fetchedPoCount = 0;
@@ -704,7 +759,9 @@ async function refreshAllData(forceCin7 = false) {
       if (cin7SkipReason) {
         console.log(`Skipping CIN7 refresh, ${cin7SkipReason}. Reusing cached CIN7 data.`);
       } else {
-        cin7Products = await fetchCin7AllProducts();
+        const cin7Data = await fetchCin7AllProducts();
+        cin7Products = cin7Data.products || {};
+        cin7StockByBranch = cin7Data.stockByBranch || {};
         cin7POs = await fetchCin7POs();
         fetchedCin7Count = Object.keys(cin7Products).length;
         fetchedPoCount = cin7POs.length;
@@ -714,6 +771,7 @@ async function refreshAllData(forceCin7 = false) {
 
       if (fetchedCin7Count > 0) {
         dataCache.cin7Products = cin7Products;
+        dataCache.cin7StockByBranch = cin7StockByBranch;
         dataCache.lastCin7Refresh = new Date().toISOString();
         cin7BackoffUntil = 0;
         if (cin7RecoveryTimer) {
@@ -908,6 +966,7 @@ function buildCKData(ckId) {
   const filter = def.filter || (() => true);
   const excludeCV = def.excludeCV || false;
   const poDestination = def.poDestination || null;
+  const stockBranches = def.stockBranches || null;
   
   let costs = {};
   // CIN7 stock — first collect raw, then normalize
@@ -915,9 +974,19 @@ function buildCKData(ckId) {
   for (const [sku, data] of Object.entries(dataCache.cin7Products)) {
     if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
       if (excludeCV && sku.includes('-CV')) continue;
-      
-      
-      cin7Raw[sku] = data;
+      if (stockBranches && Array.isArray(stockBranches)) {
+        const branchRows = dataCache.cin7StockByBranch?.[sku] || {};
+        const branchData = stockBranches.reduce((acc, branchId) => {
+          const row = branchRows[branchId];
+          if (!row) return acc;
+          acc.soh += Number(row.soh || 0);
+          acc.available += Number(row.available || 0);
+          return acc;
+        }, { soh: 0, available: 0 });
+        cin7Raw[sku] = { ...data, soh: branchData.soh, available: branchData.available };
+      } else {
+        cin7Raw[sku] = data;
+      }
     }
   }
   
@@ -940,9 +1009,6 @@ function buildCKData(ckId) {
       if (typeof data === 'object' && data.cbm > 0) {
         cbmMap[sku] = data.cbm;
       }
-  }
-  if (ckId === 'llnz') {
-    for (const sku of Object.keys(cin7)) cin7[sku] = 0;
   }
   
   // Shopify inventory
