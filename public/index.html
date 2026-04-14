@@ -191,10 +191,6 @@ else{sessionStorage.setItem('session',SESSION);if(window.location.search)history
   const tl=document.getElementById('trackerLink');if(tl)tl.href='/tracker?session='+encodeURIComponent(SESSION);
   const il=document.getElementById('incomingLink');if(il)il.href='/incoming-pos?session='+encodeURIComponent(SESSION);}
 const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
-const CACHE_KEYS={ckPrefix:'dp_ck_',allPos:'dp_all_pos'};
-function cachePut(key,data){try{localStorage.setItem(key,JSON.stringify({ts:Date.now(),data}))}catch(e){console.warn('Cache save failed',e)}}
-function cacheGet(key){try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw):null}catch(e){return null}}
-function fmtCacheTime(ts){try{return new Date(ts).toLocaleString()}catch(e){return 'earlier'}}
 let DATA={cin7:{},shopify:{},velocity:{},pos:[],allPos:[],names:{},sizes:{},cbmMap:{},landedCosts:{}},currentCK=null,charts={},dashFilter={size:'All'},heatmapSortMode='risk';
 const TODAY=new Date();
 function getSkus(){return[...new Set([...Object.keys(DATA.cin7),...Object.keys(DATA.velocity)])].filter(s=>!(s.includes('-CS-')&&!s.includes('PACK')))}
@@ -232,16 +228,15 @@ async function selectCK(ckId){
   document.getElementById('poNavItem').classList.remove('active');
   currentCK=ckId;document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.ck===ckId));
   document.getElementById('loadingScreen').style.display='block';document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
-  try{const r=await fetch(`/api/ck/${ckId}`,{headers:H()});if(r.status===401)return window.location.href='/login';let d=await r.json();
-  const cached=cacheGet(CACHE_KEYS.ckPrefix+ckId);const liveEmpty=!Object.keys(d.cin7||{}).length&&!((d.pos||[]).length);const usingCached=liveEmpty&&cached?.data;if(usingCached)d=cached.data;else if(!liveEmpty)cachePut(CACHE_KEYS.ckPrefix+ckId,d);
+  try{const r=await fetch(`/api/ck/${ckId}`,{headers:H()});if(r.status===401)return window.location.href='/login';const d=await r.json();
   DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],allPos:d.allPos||d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,costs:d.costs||{},trendData:d.trendData||{},weeklyData:d.weeklyData||null,cbmMap:d.cbmMap||{},landedCosts:d.landedCosts||{}};
   document.getElementById('headerTitle').innerHTML=`<img src="/logos/${d.ck.logo}" style="height:32px;filter:brightness(0) invert(1)"> ${d.ck.name}`;
   document.getElementById('headerSub').textContent=`${Object.keys(DATA.cin7).length} CIN7 SKUs · ${Object.keys(DATA.velocity).length} with velocity · ${uniquePoCount(DATA.pos)} open POs`;
-  document.getElementById('headerMeta').textContent=usingCached?`Using cached data from ${fmtCacheTime(cached.ts)} because Cin7 is rate limited`:(d.lastRefresh?'Last refresh: '+new Date(d.lastRefresh).toLocaleString():'');
+  document.getElementById('headerMeta').textContent=d.lastRefresh?'Last refresh: '+new Date(d.lastRefresh).toLocaleString():'';
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};dashFilter.size='All';
   document.getElementById('loadingScreen').style.display='none';document.getElementById('dashboard').classList.add('active');
   document.querySelector('.tab.active')?.classList.remove('active');document.querySelector('[data-view="dashboard"]').classList.add('active');
-  try{renderDashboard()}catch(e){console.error('Dashboard error:',e);document.getElementById('summary-cards').innerHTML='<div class="card red"><div class="label">Dashboard Error</div><div class="value">'+e.message+'</div></div>'};if(DATA.bomData){try{renderBOM()}catch(e){console.error('BOM error:',e);document.getElementById('summary-cards').innerHTML='<div class="card red"><div class="label">BOM Error</div><div class="value">'+e.message+'</div></div>'}}}catch(e){const cached=cacheGet(CACHE_KEYS.ckPrefix+ckId);if(cached?.data){const d=cached.data;DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],allPos:d.allPos||d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,costs:d.costs||{},trendData:d.trendData||{},weeklyData:d.weeklyData||null,cbmMap:d.cbmMap||{},landedCosts:d.landedCosts||{}};document.getElementById('headerTitle').innerHTML=`<img src="/logos/${d.ck.logo}" style="height:32px;filter:brightness(0) invert(1)"> ${d.ck.name}`;document.getElementById('headerSub').textContent=`${Object.keys(DATA.cin7).length} CIN7 SKUs · ${Object.keys(DATA.velocity).length} with velocity · ${uniquePoCount(DATA.pos)} open POs`;document.getElementById('headerMeta').textContent=`Using cached data from ${fmtCacheTime(cached.ts)} because live data is unavailable`;document.getElementById('loadingScreen').style.display='none';document.getElementById('dashboard').classList.add('active');document.querySelector('.tab.active')?.classList.remove('active');document.querySelector('[data-view="dashboard"]').classList.add('active');try{renderDashboard()}catch(err){console.error('Dashboard error:',err);document.getElementById('summary-cards').innerHTML='<div class="card red"><div class="label">Dashboard Error</div><div class="value">'+err.message+'</div></div>'}return}document.getElementById('loadingScreen').innerHTML=`<div style="color:var(--alert)">Error: ${e.message}</div>`}}
+  try{renderDashboard()}catch(e){console.error('Dashboard error:',e);document.getElementById('summary-cards').innerHTML='<div class="card red"><div class="label">Dashboard Error</div><div class="value">'+e.message+'</div></div>'};if(DATA.bomData){try{renderBOM()}catch(e){console.error('BOM error:',e);document.getElementById('summary-cards').innerHTML='<div class="card red"><div class="label">BOM Error</div><div class="value">'+e.message+'</div></div>'}}}catch(e){document.getElementById('loadingScreen').innerHTML=`<div style="color:var(--alert)">Error: ${e.message}</div>`}}
 
 function renderBOM() {
   if (!DATA.bomData || !DATA.bomData._components) return;
@@ -474,11 +469,7 @@ async function loadAllPOs() {
   try {
     const r = await fetch('/api/all-pos', { headers: H() });
     if (r.status === 401) return window.location.href = '/login';
-    let d = await r.json();
-    const cached = cacheGet(CACHE_KEYS.allPos);
-    const liveEmpty = !(d.pos||[]).length;
-    const usingCached = liveEmpty && cached?.data;
-    if (usingCached) d = cached.data; else if (!liveEmpty) cachePut(CACHE_KEYS.allPos,d);
+    const d = await r.json();
     _allPOsCache = d.pos || [];
     if (d.fx?.USDAUD) _poFxRate = d.fx.USDAUD;
     // Populate destination dropdown
@@ -486,9 +477,8 @@ async function loadAllPOs() {
     const dd = document.getElementById('poDestFilter');
     const prev = dd.value;
     dd.innerHTML = '<option value="all">All Destinations</option>' + dests.map(d => `<option value="${d}"${d===prev?' selected':''}>${d}</option>`).join('');
-    if (usingCached) container.innerHTML = `<p style="color:var(--yellow);text-align:center;padding:12px">Using cached PO data from ${fmtCacheTime(cached.ts)} because Cin7 is rate limited</p>`;
     renderPurchaseOrders(_allPOsCache);
-  } catch(e) { const cached=cacheGet(CACHE_KEYS.allPos); if(cached?.data){const d=cached.data;_allPOsCache=d.pos||[];if(d.fx?.USDAUD)_poFxRate=d.fx.USDAUD;const dests=[...new Set(_allPOsCache.map(p=>p.deliveryCountry||'').filter(Boolean))].sort();const dd=document.getElementById('poDestFilter');const prev=dd.value;dd.innerHTML='<option value="all">All Destinations</option>'+dests.map(x=>`<option value="${x}"${x===prev?' selected':''}>${x}</option>`).join('');container.innerHTML=`<p style="color:var(--yellow);text-align:center;padding:12px">Using cached PO data from ${fmtCacheTime(cached.ts)} because live PO data is unavailable</p>`;renderPurchaseOrders(_allPOsCache);return}console.error('PO load error:', e); container.innerHTML = '<p style="color:var(--alert);text-align:center;padding:40px">Failed to load POs — try refreshing</p>'; }
+  } catch(e) { console.error('PO load error:', e); container.innerHTML = '<p style="color:var(--alert);text-align:center;padding:40px">Failed to load POs — try refreshing</p>'; }
 }
 
 function cleanPoRef(ref){return(ref||'').replace(/-cover$/i,'')}
