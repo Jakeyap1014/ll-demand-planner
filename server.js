@@ -1032,9 +1032,13 @@ function buildCKData(ckId) {
   if (ckId === 'llau-cb') cin7Normalized = normalizeSwatchPack(cin7Normalized);
   
   const cin7 = {};
+  const cin7Available = {};
   let cbmMap = {};
   for (const [sku, data] of Object.entries(cin7Normalized)) {
     cin7[sku] = typeof data === 'object' ? data.soh : data;
+      if (typeof data === 'object') {
+        cin7Available[sku] = Number(data.available || 0);
+      }
       if (typeof data === 'object' && data.costAUD) {
         if (!costs) costs = {};
         costs[sku] = data.costAUD;
@@ -1053,6 +1057,17 @@ function buildCKData(ckId) {
       
       
       shopify[sku] = qty;
+    }
+  }
+
+  // LL NZ uses branch-filtered Cin7 available as the source of truth for oversold / net stock.
+  // We convert Cin7 available into the same negative-commitment shape the frontend already expects:
+  // commitments = available - SOH, capped at 0 when there is no allocation pressure.
+  if (ckId === 'llnz') {
+    for (const sku of Object.keys(cin7)) {
+      const soh = Number(cin7[sku] || 0);
+      const available = Number(cin7Available[sku] || 0);
+      shopify[sku] = Math.min(available - soh, 0);
     }
   }
   
