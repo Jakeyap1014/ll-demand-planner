@@ -1064,7 +1064,7 @@ function buildCKData(ckId) {
   // LL NZ uses branch-filtered Cin7 available as the source of truth for oversold / net stock.
   // We convert Cin7 available into the same negative-commitment shape the frontend already expects:
   // commitments = available - SOH, capped at 0 when there is no allocation pressure.
-  if (ckId === 'llnz' || ckId === 'llna') {
+  if (ckId === 'llnz' || ckId === 'llca') {
     for (const sku of Object.keys(cin7)) {
       const soh = Number(cin7[sku] || 0);
       const available = Number(cin7Available[sku] || 0);
