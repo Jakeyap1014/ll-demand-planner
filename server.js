@@ -1116,21 +1116,10 @@ function buildCKData(ckId) {
     }
   }
 
-  // LL NZ uses branch-filtered Cin7 available as the source of truth for oversold / net stock.
-  // We convert Cin7 available into the same negative-commitment shape the frontend already expects:
-  // commitments = available - SOH, capped at 0 when there is no allocation pressure.
-  if (ckId === 'llnz') {
-    for (const sku of Object.keys(cin7)) {
-      const soh = Number(cin7[sku] || 0);
-      const available = Number(cin7Available[sku] || 0);
-      shopify[sku] = Math.min(available - soh, 0);
-    }
-  }
-
-  // LL US / CA use Shopify open demand split by shipping country as the preorder source of truth.
-  // This avoids mixing LLNA demand between countries and avoids relying on Cin7 available for preorder commitments.
-  if (ckId === 'llna' || ckId === 'llca') {
-    const demandCountry = ckId === 'llca' ? 'CA' : 'US';
+  // LL NZ / US / CA use Shopify open demand split by shipping country as the preorder source of truth.
+  // This avoids mixing regional demand and avoids relying on Cin7 available for preorder commitments.
+  if (ckId === 'llnz' || ckId === 'llna' || ckId === 'llca') {
+    const demandCountry = ckId === 'llca' ? 'CA' : (ckId === 'llnz' ? 'NZ' : 'US');
     const openDemand = dataCache.shopifyOpenDemand?.[storeKey]?.[demandCountry] || {};
     for (const sku of Object.keys(cin7)) {
       shopify[sku] = -Number(openDemand[sku] || 0);
