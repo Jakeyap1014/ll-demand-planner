@@ -122,6 +122,7 @@ let dataCache = {
   cin7POs: [],        // [{reference, status, stage, arrival, items: {sku: qty}}]
   shopifyVelocity: {}, // store -> {sku -> weekly_velocity}
   shopifyInventory: {}, // store -> {sku -> inventory_level}
+  shopifyOpenDemand: {}, // store -> { country -> { sku -> open qty } }
   error: null
 };
 const CACHE_SNAPSHOT_PATH = path.join(__dirname, 'data', 'cache-snapshot.json');
@@ -342,6 +343,7 @@ function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
       cin7POs: dataCache.cin7POs,
       shopifyVelocity: dataCache.shopifyVelocity,
       shopifyInventory: dataCache.shopifyInventory,
+      shopifyOpenDemand: dataCache.shopifyOpenDemand,
       error: dataCache.error,
       fxRate
     };
@@ -718,6 +720,50 @@ async function fetchShopifyVelocity(storeKey) {
   return velocity;
 }
 
+async function fetchShopifyOpenDemand(storeKey) {
+  const store = SHOPIFY_STORES[storeKey];
+  if (!store || !store.token) return {};
+
+  const openDemand = {};
+  let url = `/admin/api/2026-01/orders.json?status=open&limit=250&fields=id,financial_status,shipping_address,line_items`;
+
+  for (let page = 1; page <= 40; page++) {
+    try {
+      const { body, headers } = await apiRequest({
+        hostname: store.domain,
+        path: url,
+        headers: { 'X-Shopify-Access-Token': store.token }
+      });
+      const orders = body.orders || [];
+      if (orders.length === 0) break;
+
+      for (const o of orders) {
+        if (o.financial_status === 'refunded' || o.financial_status === 'voided') continue;
+        const rawCountry = (o.shipping_address?.country_code || o.shipping_address?.country || '').toString().trim();
+        if (!rawCountry) continue;
+        const country = rawCountry.length === 2 ? rawCountry.toUpperCase() : rawCountry;
+        if (!openDemand[country]) openDemand[country] = {};
+        for (const li of (o.line_items || [])) {
+          if (!li.sku) continue;
+          const qty = Number(li.fulfillable_quantity ?? li.current_quantity ?? li.quantity ?? 0);
+          if (qty <= 0) continue;
+          openDemand[country][li.sku] = (openDemand[country][li.sku] || 0) + qty;
+        }
+      }
+
+      const link = headers.link || '';
+      const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
+      if (!nextMatch) break;
+      url = new URL(nextMatch[1]).pathname + new URL(nextMatch[1]).search;
+    } catch (e) {
+      console.error(`Shopify open demand ${storeKey} error:`, e.message);
+      break;
+    }
+  }
+
+  return openDemand;
+}
+
 // ===== SHOPIFY: FETCH INVENTORY LEVELS =====
 async function fetchShopifyInventory(storeKey) {
   const store = SHOPIFY_STORES[storeKey];
@@ -772,11 +818,13 @@ async function refreshAllData(forceCin7 = false) {
     const start = Date.now();
     
     try {
-      const [lifelyVel, cushieVel, lifelyInv, cushieInv] = await Promise.all([
+      const [lifelyVel, cushieVel, lifelyInv, cushieInv, lifelyOpenDemand, cushieOpenDemand] = await Promise.all([
         fetchShopifyVelocity('lifely'),
         fetchShopifyVelocity('cushie'),
         fetchShopifyInventory('lifely'),
-        fetchShopifyInventory('cushie')
+        fetchShopifyInventory('cushie'),
+        fetchShopifyOpenDemand('lifely'),
+        fetchShopifyOpenDemand('cushie')
       ]);
 
       let cin7Products = {};
@@ -834,6 +882,13 @@ async function refreshAllData(forceCin7 = false) {
         updated = true;
       } else if (Object.keys(dataCache.shopifyInventory).length > 0) {
         console.warn('Shopify inventory returned empty — preserving existing cache');
+      }
+
+      if (Object.keys(lifelyOpenDemand).length > 0 || Object.keys(cushieOpenDemand).length > 0) {
+        dataCache.shopifyOpenDemand = { lifely: lifelyOpenDemand, cushie: cushieOpenDemand };
+        updated = true;
+      } else if (Object.keys(dataCache.shopifyOpenDemand || {}).length > 0) {
+        console.warn('Shopify open demand returned empty — preserving existing cache');
       }
 
       if (updated) {
@@ -1064,11 +1119,21 @@ function buildCKData(ckId) {
   // LL NZ uses branch-filtered Cin7 available as the source of truth for oversold / net stock.
   // We convert Cin7 available into the same negative-commitment shape the frontend already expects:
   // commitments = available - SOH, capped at 0 when there is no allocation pressure.
-  if (ckId === 'llnz' || ckId === 'llca') {
+  if (ckId === 'llnz') {
     for (const sku of Object.keys(cin7)) {
       const soh = Number(cin7[sku] || 0);
       const available = Number(cin7Available[sku] || 0);
       shopify[sku] = Math.min(available - soh, 0);
+    }
+  }
+
+  // LL US / CA use Shopify open demand split by shipping country as the preorder source of truth.
+  // This avoids mixing LLNA demand between countries and avoids relying on Cin7 available for preorder commitments.
+  if (ckId === 'llna' || ckId === 'llca') {
+    const demandCountry = ckId === 'llca' ? 'CA' : 'US';
+    const openDemand = dataCache.shopifyOpenDemand?.[storeKey]?.[demandCountry] || {};
+    for (const sku of Object.keys(cin7)) {
+      shopify[sku] = -Number(openDemand[sku] || 0);
     }
   }
   
