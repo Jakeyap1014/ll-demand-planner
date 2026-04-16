@@ -19,7 +19,7 @@ const CIN7_KEY = process.env.CIN7_KEY || '';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const AIS_API_KEY = process.env.AIS_API_KEY || '';
 const CIN7_REQUEST_SPACING_MS = 1500;
-const CIN7_MIN_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const CIN7_MIN_REFRESH_INTERVAL_MS = 8 * 60 * 60 * 1000;
 const CIN7_RATE_LIMIT_BACKOFF_MS = 15 * 60 * 1000;
 const LL_AU_BRANCH_IDS = [3, 60976];
 const LL_NZ_BRANCH_IDS = [48391];
@@ -2019,7 +2019,7 @@ app.use(requireAuth, express.static(path.join(__dirname, 'public')));
 app.listen(PORT, () => {
   console.log(`Demand Planner running on port ${PORT}`);
   refreshAllData(); // Initial fetch
-  setInterval(refreshAllData, 24 * 60 * 60 * 1000); // Refresh every 24 hours
+  setInterval(refreshAllData, 8 * 60 * 60 * 1000); // Refresh every 8 hours
   
   // Keep-alive: ping self every 10 min to prevent Render free tier spin-down
   setInterval(() => {
