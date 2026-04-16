@@ -42,20 +42,20 @@ const SHOPIFY_STORES = {
 
 // ===== CK DEFINITIONS =====
 const CK_DEFS = {
-  'llau-cb':   { name: 'Little Lifely AU',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'Australia', stockBranches: LL_AU_BRANCH_IDS, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
-  'llnz':      { name: 'Little Lifely NZ',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'New Zealand', stockBranches: LL_NZ_BRANCH_IDS, strictStockBranches: true, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
-  'llau-cbcf': { name: 'LL AU Combos',            prefix: 'LLAU-CBCF-', logo: 'little-lifely.png', store: 'lifely', excludeCV: true, stockBranches: LL_AU_BRANCH_IDS, sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
-  'llna':     { name: 'Little Lifely NA',       prefix: 'LLNA',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'United States', stockBranches: [60701], sizes: {'-TW-':'Twin','-F-':'Full'} },
-  'llca':     { name: 'Little Lifely CA',       prefix: 'LLNA',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'Canada', stockBranches: [61831], sizes: {'-TW-':'Twin','-F-':'Full'} },
-  'lluk':     { name: 'Little Lifely UK',       prefix: 'LLUK',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, stockBranches: [62444], sizes: {'-S-':'Single','-SD-':'Small Double','-D-':'Double'} },
-  'llsg':     { name: 'Little Lifely SG',       prefix: 'LLSG',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, stockBranches: [57843], strictStockBranches: true, sizes: {'-SS-':'Super Single','-S-':'Single','-Q-':'Queen'} },
+  'llau-cb':   { name: 'Little Lifely AU',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'Australia', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
+  'llnz':      { name: 'Little Lifely NZ',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'New Zealand', salesCountry: 'NZ', stockBranches: LL_NZ_BRANCH_IDS, strictStockBranches: true, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
+  'llau-cbcf': { name: 'LL AU Combos',            prefix: 'LLAU-CBCF-', logo: 'little-lifely.png', store: 'lifely', excludeCV: true, salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
+  'llna':     { name: 'Little Lifely NA',       prefix: 'LLNA',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'United States', salesCountry: 'US', stockBranches: [60701], sizes: {'-TW-':'Twin','-F-':'Full'} },
+  'llca':     { name: 'Little Lifely CA',       prefix: 'LLNA',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'Canada', salesCountry: 'CA', stockBranches: [61831], sizes: {'-TW-':'Twin','-F-':'Full'} },
+  'lluk':     { name: 'Little Lifely UK',       prefix: 'LLUK',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, salesCountry: 'GB', stockBranches: [62444], sizes: {'-S-':'Single','-SD-':'Small Double','-D-':'Double'} },
+  'llsg':     { name: 'Little Lifely SG',       prefix: 'LLSG',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, salesCountry: 'SG', stockBranches: [57843], strictStockBranches: true, sizes: {'-SS-':'Super Single','-S-':'Single','-Q-':'Queen'} },
   'dd':       { name: 'Deep Dream',             prefix: 'DD',     logo: 'deep-dream.png',    store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'915':'Single','107':'King Single','137':'Double','153':'Queen','183':'King'} },
   'cocoon':   { name: 'Cocoon Bed',             prefix: 'COCOON', logo: 'cocoon-bed.png',    store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-DOUBLE-':'Double','-QUEEN-':'Queen','-KING-':'King'} },
   'rdnt':     { name: 'Radiant',                prefix: 'RDNT',   logo: 'radiant.png',       store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-D-':'Double','-Q-':'Queen','-K-':'King'} },
   'wfhcr':    { name: 'WFH Chair',              prefix: 'WFHCR',  logo: 'wfh-chair.png',     store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {} },
-  'cusb-au':  { name: 'Cushie AU',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && !sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
-  'cusb-us':  { name: 'Cushie US',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', stockBranches: [60701], filter: sku => sku.startsWith('V2-') || sku.startsWith('V3-'), excludeCV: true, sizes: {'-TB-':'Twin','-DB-':'Full','-QB-':'Queen','-KB-':'King','-CH-':'Chaise','-OS-':'Ottoman','-OB-':'Ottoman Bed','-RMST-':'Armrest','-ARM-':'Armrest'} },
-  'cusb-uk':  { name: 'Cushie UK',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', stockBranches: [62444], filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
+  'cusb-au':  { name: 'Cushie AU',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && !sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
+  'cusb-us':  { name: 'Cushie US',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'US', stockBranches: [60701], filter: sku => sku.startsWith('V2-') || sku.startsWith('V3-'), excludeCV: true, sizes: {'-TB-':'Twin','-DB-':'Full','-QB-':'Queen','-KB-':'King','-CH-':'Chaise','-OS-':'Ottoman','-OB-':'Ottoman Bed','-RMST-':'Armrest','-ARM-':'Armrest'} },
+  'cusb-uk':  { name: 'Cushie UK',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'GB', stockBranches: [62444], filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
   
   'cmss':     { name: 'Modular Sleeper',        prefix: 'CMSS',   logo: 'lifely-sofa.png',   store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King'} },
   'lifely-sofa': { name: 'Modular Sofa',        prefix: 'LIFELY', logo: 'lifely-sofa.png',   store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {} }
@@ -123,6 +123,7 @@ let dataCache = {
   shopifyVelocity: {}, // store -> {sku -> weekly_velocity}
   shopifyInventory: {}, // store -> {sku -> inventory_level}
   shopifyOpenDemand: {}, // store -> { country -> { sku -> open qty } }
+  shopifyVelocityByCountry: {}, // store -> { country -> { velocity/trend maps } }
   error: null
 };
 const CACHE_SNAPSHOT_PATH = path.join(__dirname, 'data', 'cache-snapshot.json');
@@ -647,13 +648,21 @@ async function fetchShopifyVelocity(storeKey) {
   const sku7d = {};
   const sku30d = {};
   const skuFirstSeen = {};
+  const byCountry = {};
   const now7d = new Date(Date.now() - 7 * 86400000);
   const now30d = new Date(Date.now() - 30 * 86400000);
   const days = 30;
   const historyDays = 90; // longer window for weekly breakdown + last in-stock velocity
   const since = new Date(Date.now() - historyDays * 86400000).toISOString();
-  let url = `/admin/api/2026-01/orders.json?status=any&limit=250&created_at_min=${since}&fields=id,created_at,line_items,financial_status`;
+  let url = `/admin/api/2026-01/orders.json?status=any&limit=250&created_at_min=${since}&fields=id,created_at,line_items,financial_status,shipping_address`;
   
+  const ensureCountry = (country) => {
+    if (!byCountry[country]) {
+      byCountry[country] = { skuUnits: {}, skuWeekly: {}, sku7d: {}, sku30d: {}, skuFirstSeen: {} };
+    }
+    return byCountry[country];
+  };
+
   for (let page = 1; page <= 30; page++) {
     try {
       const { body, headers } = await apiRequest({
@@ -666,29 +675,37 @@ async function fetchShopifyVelocity(storeKey) {
       
       for (const o of orders) {
         if (o.financial_status === 'refunded' || o.financial_status === 'voided') continue;
-        // ISO week calculation
         const dt = new Date(o.created_at);
         const jan4 = new Date(dt.getFullYear(), 0, 4);
         const dayOfYear = Math.floor((dt - new Date(dt.getFullYear(), 0, 1)) / 86400000);
         const weekNum = Math.ceil((dayOfYear + jan4.getDay() + 1) / 7);
         const weekKey = dt.getFullYear() + '-W' + String(weekNum).padStart(2, '0');
+        const rawCountry = (o.shipping_address?.country_code || o.shipping_address?.country || '').toString().trim();
+        const country = rawCountry ? (rawCountry.length === 2 ? rawCountry.toUpperCase() : rawCountry) : null;
+        const countryBucket = country ? ensureCountry(country) : null;
         
         for (const li of (o.line_items || [])) {
           if (li.sku) {
-            skuUnits[li.sku] = (skuUnits[li.sku] || 0) + (li.quantity || 0);
-            // 7-day and 30-day velocity tracking
-            if (dt >= now7d) sku7d[li.sku] = (sku7d[li.sku] || 0) + (li.quantity || 0);
-            if (dt >= now30d) sku30d[li.sku] = (sku30d[li.sku] || 0) + (li.quantity || 0);
-            // First seen date
+            const qty = li.quantity || 0;
+            skuUnits[li.sku] = (skuUnits[li.sku] || 0) + qty;
+            if (dt >= now7d) sku7d[li.sku] = (sku7d[li.sku] || 0) + qty;
+            if (dt >= now30d) sku30d[li.sku] = (sku30d[li.sku] || 0) + qty;
             if (!skuFirstSeen[li.sku] || dt < skuFirstSeen[li.sku]) skuFirstSeen[li.sku] = dt;
-            // Weekly breakdown
             if (!skuWeekly[li.sku]) skuWeekly[li.sku] = {};
-            skuWeekly[li.sku][weekKey] = (skuWeekly[li.sku][weekKey] || 0) + (li.quantity || 0);
+            skuWeekly[li.sku][weekKey] = (skuWeekly[li.sku][weekKey] || 0) + qty;
+
+            if (countryBucket) {
+              countryBucket.skuUnits[li.sku] = (countryBucket.skuUnits[li.sku] || 0) + qty;
+              if (dt >= now7d) countryBucket.sku7d[li.sku] = (countryBucket.sku7d[li.sku] || 0) + qty;
+              if (dt >= now30d) countryBucket.sku30d[li.sku] = (countryBucket.sku30d[li.sku] || 0) + qty;
+              if (!countryBucket.skuFirstSeen[li.sku] || dt < countryBucket.skuFirstSeen[li.sku]) countryBucket.skuFirstSeen[li.sku] = dt;
+              if (!countryBucket.skuWeekly[li.sku]) countryBucket.skuWeekly[li.sku] = {};
+              countryBucket.skuWeekly[li.sku][weekKey] = (countryBucket.skuWeekly[li.sku][weekKey] || 0) + qty;
+            }
           }
         }
       }
       
-      // Get next page URL from Link header
       const link = headers.link || '';
       const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
       if (!nextMatch) break;
@@ -696,25 +713,38 @@ async function fetchShopifyVelocity(storeKey) {
     } catch (e) { console.error(`Shopify ${storeKey} page ${page} error:`, e.message); break; }
   }
   
-  // Convert to weekly velocity (30-day window)
   const weeks = days / 7;
   const velocity = {};
-  // Use sku30d (30-day counts) for velocity, not skuUnits (which covers 90 days)
   for (const [sku, units] of Object.entries(sku30d)) {
     velocity[sku] = Math.round((units / weeks) * 10) / 10;
   }
-  // Also include SKUs that had sales in 90d but not 30d (so they appear with 0 vel)
   for (const sku of Object.keys(skuUnits)) {
     if (!(sku in velocity)) velocity[sku] = 0;
   }
-  
-  // Also store weekly breakdown for WMAPE calculation
   velocity._weeklyBreakdown = skuWeekly || {};
   velocity._7d = sku7d;
   velocity._30d = sku30d;
   velocity._firstSeen = {};
   for (const [sku, dt] of Object.entries(skuFirstSeen)) {
     velocity._firstSeen[sku] = dt.toISOString();
+  }
+  velocity._byCountry = {};
+  for (const [country, bucket] of Object.entries(byCountry)) {
+    const countryVel = {};
+    for (const [sku, units] of Object.entries(bucket.sku30d)) {
+      countryVel[sku] = Math.round((units / weeks) * 10) / 10;
+    }
+    for (const sku of Object.keys(bucket.skuUnits)) {
+      if (!(sku in countryVel)) countryVel[sku] = 0;
+    }
+    countryVel._weeklyBreakdown = bucket.skuWeekly || {};
+    countryVel._7d = bucket.sku7d;
+    countryVel._30d = bucket.sku30d;
+    countryVel._firstSeen = {};
+    for (const [sku, dt] of Object.entries(bucket.skuFirstSeen)) {
+      countryVel._firstSeen[sku] = dt.toISOString();
+    }
+    velocity._byCountry[country] = countryVel;
   }
   
   return velocity;
@@ -872,6 +902,10 @@ async function refreshAllData(forceCin7 = false) {
 
       if (Object.keys(lifelyVel).length > 0 || Object.keys(cushieVel).length > 0) {
         dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
+        dataCache.shopifyVelocityByCountry = {
+          lifely: lifelyVel._byCountry || {},
+          cushie: cushieVel._byCountry || {}
+        };
         updated = true;
       } else if (Object.keys(dataCache.shopifyVelocity).length > 0) {
         console.warn('Shopify velocity returned empty — preserving existing cache');
@@ -1051,6 +1085,7 @@ function buildCKData(ckId) {
   const filter = def.filter || (() => true);
   const excludeCV = def.excludeCV || false;
   const poDestination = def.poDestination || null;
+  const salesCountry = def.salesCountry || null;
   const stockBranches = def.stockBranches || null;
   const strictStockBranches = def.strictStockBranches || false;
   
@@ -1132,14 +1167,21 @@ function buildCKData(ckId) {
   
   // Velocity
   const velocity = {};
-  const storeVel = dataCache.shopifyVelocity[storeKey] || {};
-  for (const [sku, vel] of Object.entries(storeVel)) {
-    if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
-      if (excludeCV && sku.includes('-CV')) continue;
-      
-      
-      velocity[sku] = vel;
+  const mergeVelocitySource = (source) => {
+    for (const [sku, vel] of Object.entries(source || {})) {
+      if (sku.startsWith('_')) continue;
+      if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
+        if (excludeCV && sku.includes('-CV')) continue;
+        velocity[sku] = (velocity[sku] || 0) + vel;
+      }
     }
+  };
+
+  if (salesCountry) {
+    mergeVelocitySource(dataCache.shopifyVelocityByCountry?.lifely?.[salesCountry] || {});
+    mergeVelocitySource(dataCache.shopifyVelocityByCountry?.cushie?.[salesCountry] || {});
+  } else {
+    mergeVelocitySource(dataCache.shopifyVelocity?.[storeKey] || {});
   }
   
   // Swatch pack: propagate PACK velocity to individual swatches
