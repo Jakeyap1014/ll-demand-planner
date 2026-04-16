@@ -1116,11 +1116,15 @@ function buildCKData(ckId) {
     }
   }
 
-  // LL NZ / US / CA use Shopify open demand split by shipping country as the preorder source of truth.
-  // This avoids mixing regional demand and avoids relying on Cin7 available for preorder commitments.
-  if (ckId === 'llnz' || ckId === 'llna' || ckId === 'llca') {
-    const demandCountry = ckId === 'llca' ? 'CA' : (ckId === 'llnz' ? 'NZ' : 'US');
-    const openDemand = dataCache.shopifyOpenDemand?.[storeKey]?.[demandCountry] || {};
+  // LL NZ / US / CA / UK use Shopify open demand split by shipping country as the preorder source of truth.
+  // This avoids mixing regional demand and avoids relying on legacy negative Shopify inventory for preorder commitments.
+  if (ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk') {
+    const demandCountry = ckId === 'llca'
+      ? 'CA'
+      : (ckId === 'llnz'
+        ? 'NZ'
+        : (ckId === 'lluk' ? 'GB' : 'US'));
+    const openDemand = dataCache.shopifyOpenDemand?.[storeKey]?.[demandCountry] || dataCache.shopifyOpenDemand?.[storeKey]?.['United Kingdom'] || {};
     for (const sku of Object.keys(cin7)) {
       shopify[sku] = -Number(openDemand[sku] || 0);
     }
