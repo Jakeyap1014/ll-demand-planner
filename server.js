@@ -876,16 +876,19 @@ async function refreshAllData(forceCin7 = false) {
       }
 
       let updated = false;
+      const cin7RefreshStamp = (fetchedCin7Count > 0 || fetchedPoCount > 0) ? new Date().toISOString() : null;
 
       if (fetchedCin7Count > 0) {
         dataCache.cin7Products = cin7Products;
         dataCache.cin7StockByBranch = cin7StockByBranch;
-        dataCache.lastCin7Refresh = new Date().toISOString();
+        dataCache.lastCin7Refresh = cin7RefreshStamp;
+        dataCache.lastRefresh = cin7RefreshStamp;
         cin7BackoffUntil = 0;
         if (cin7RecoveryTimer) {
           clearTimeout(cin7RecoveryTimer);
           cin7RecoveryTimer = null;
         }
+        saveCacheSnapshot(true, 'daily-cin7-refresh');
         updated = true;
       } else if (Object.keys(dataCache.cin7Products).length > 0) {
         console.warn(`CIN7 products returned empty — preserving existing cache (${Object.keys(dataCache.cin7Products).length} SKUs)`);
@@ -893,7 +896,8 @@ async function refreshAllData(forceCin7 = false) {
 
       if (fetchedPoCount > 0) {
         dataCache.cin7POs = mergeCin7POsByReference(cin7POs);
-        dataCache.lastCin7Refresh = new Date().toISOString();
+        dataCache.lastCin7Refresh = cin7RefreshStamp;
+        dataCache.lastRefresh = cin7RefreshStamp;
         savePoSnapshot(true, 'daily-cin7-refresh');
         updated = true;
       } else if (dataCache.cin7POs.length > 0) {
@@ -926,11 +930,9 @@ async function refreshAllData(forceCin7 = false) {
       }
 
       if (updated) {
-        dataCache.lastRefresh = new Date().toISOString();
+        if (!cin7RefreshStamp) dataCache.lastRefresh = new Date().toISOString();
         const liveCin7Count = Object.keys(dataCache.cin7Products).length;
         dataCache.error = liveCin7Count > 0 ? null : 'CIN7 data unavailable (likely rate limited)';
-        if (liveCin7Count > 0) saveCacheSnapshot(true, 'daily-cin7-refresh');
-        if (dataCache.cin7POs.length > 0) savePoSnapshot(true, 'daily-cin7-refresh');
         refreshAIS(); // Update vessel tracking after data refresh
       }
 
