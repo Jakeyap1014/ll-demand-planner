@@ -1153,15 +1153,28 @@ function buildCKData(ckId) {
     }
   }
 
-  // LL NZ / US / CA / UK use Shopify open demand split by shipping country as the preorder source of truth.
+  // LL regional panels use Shopify open demand split by shipping country as the preorder source of truth.
   // This avoids mixing regional demand and avoids relying on legacy negative Shopify inventory for preorder commitments.
-  if (ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk') {
-    const demandCountry = ckId === 'llca'
-      ? 'CA'
-      : (ckId === 'llnz'
-        ? 'NZ'
-        : (ckId === 'lluk' ? 'GB' : 'US'));
-    const openDemand = dataCache.shopifyOpenDemand?.[storeKey]?.[demandCountry] || dataCache.shopifyOpenDemand?.[storeKey]?.['United Kingdom'] || {};
+  if (ckId === 'llau-cb' || ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk' || ckId === 'llsg') {
+    const demandCountry = ckId === 'llau-cb'
+      ? 'AU'
+      : ckId === 'llca'
+        ? 'CA'
+        : ckId === 'llnz'
+          ? 'NZ'
+          : ckId === 'lluk'
+            ? 'GB'
+            : ckId === 'llsg'
+              ? 'SG'
+              : 'US';
+    const openDemand = dataCache.shopifyOpenDemand?.[storeKey]?.[demandCountry]
+      || dataCache.shopifyOpenDemand?.[storeKey]?.['Australia']
+      || dataCache.shopifyOpenDemand?.[storeKey]?.['New Zealand']
+      || dataCache.shopifyOpenDemand?.[storeKey]?.['United States']
+      || dataCache.shopifyOpenDemand?.[storeKey]?.['Canada']
+      || dataCache.shopifyOpenDemand?.[storeKey]?.['United Kingdom']
+      || dataCache.shopifyOpenDemand?.[storeKey]?.['Singapore']
+      || {};
     for (const sku of Object.keys(cin7)) {
       shopify[sku] = -Number(openDemand[sku] || 0);
     }
