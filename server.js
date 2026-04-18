@@ -1153,10 +1153,10 @@ function buildCKData(ckId) {
     }
   }
 
-  // LL regional panels use Shopify open demand split by shipping country as the preorder source of truth.
-  // This avoids mixing regional demand and avoids relying on legacy negative Shopify inventory for preorder commitments.
-  if (ckId === 'llau-cb' || ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk' || ckId === 'llsg') {
-    const demandCountry = ckId === 'llau-cb'
+  // All Little Lifely panels use Shopify open demand split by shipping destination as the preorder source of truth.
+  // CIN7 SOH stays branch-filtered from /Stock above; oversold always comes from Shopify destination-country demand.
+  if (ckId === 'llau-cb' || ckId === 'llau-cbcf' || ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk' || ckId === 'llsg') {
+    const demandCountry = ckId === 'llau-cb' || ckId === 'llau-cbcf'
       ? 'AU'
       : ckId === 'llca'
         ? 'CA'
@@ -1167,14 +1167,7 @@ function buildCKData(ckId) {
             : ckId === 'llsg'
               ? 'SG'
               : 'US';
-    const openDemand = dataCache.shopifyOpenDemand?.[storeKey]?.[demandCountry]
-      || dataCache.shopifyOpenDemand?.[storeKey]?.['Australia']
-      || dataCache.shopifyOpenDemand?.[storeKey]?.['New Zealand']
-      || dataCache.shopifyOpenDemand?.[storeKey]?.['United States']
-      || dataCache.shopifyOpenDemand?.[storeKey]?.['Canada']
-      || dataCache.shopifyOpenDemand?.[storeKey]?.['United Kingdom']
-      || dataCache.shopifyOpenDemand?.[storeKey]?.['Singapore']
-      || {};
+    const openDemand = dataCache.shopifyOpenDemand?.[storeKey]?.[demandCountry] || {};
     for (const sku of Object.keys(cin7)) {
       shopify[sku] = -Number(openDemand[sku] || 0);
     }
