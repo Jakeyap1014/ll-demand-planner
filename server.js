@@ -42,7 +42,7 @@ const SHOPIFY_STORES = {
 
 // ===== CK DEFINITIONS =====
 const CK_DEFS = {
-  'llau-cb':   { name: 'Little Lifely AU',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'Australia', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
+  'llau':      { name: 'Little Lifely AU',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'Australia', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
   'llnz':      { name: 'Little Lifely NZ',              prefix: 'LLAU-CB-', logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'New Zealand', salesCountry: 'NZ', stockBranches: LL_NZ_BRANCH_IDS, strictStockBranches: true, filter: sku => !sku.includes('CBCF'), sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
   'llau-cbcf': { name: 'LL AU Combos',            prefix: 'LLAU-CBCF-', logo: 'little-lifely.png', store: 'lifely', excludeCV: true, salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-S-':'Single','-KS-':'King Single','-D-':'Double'} },
   'llna':     { name: 'Little Lifely NA',       prefix: 'LLNA',   logo: 'little-lifely.png', store: 'lifely', excludeCV: false, poDestination: 'United States', salesCountry: 'US', stockBranches: [60701], sizes: {'-TW-':'Twin','-F-':'Full'} },
@@ -1122,7 +1122,7 @@ function buildCKData(ckId) {
   // Special handling per CK
   if (ckId.startsWith('rdnt')) cin7Normalized = normalizeRadiant(cin7Normalized, Object.keys(dataCache.shopifyInventory[storeKey] || {}));
   if (ckId.startsWith('cusb')) cin7Normalized = normalizeCushie(cin7Normalized);
-  if (ckId === 'llau-cb') cin7Normalized = normalizeSwatchPack(cin7Normalized);
+  if (ckId === 'llau') cin7Normalized = normalizeSwatchPack(cin7Normalized);
   
   const cin7 = {};
   const cin7Available = {};
@@ -1155,8 +1155,8 @@ function buildCKData(ckId) {
 
   // All Little Lifely panels use Shopify open demand split by shipping destination as the preorder source of truth.
   // CIN7 SOH stays branch-filtered from /Stock above; oversold always comes from Shopify destination-country demand.
-  if (ckId === 'llau-cb' || ckId === 'llau-cbcf' || ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk' || ckId === 'llsg') {
-    const demandCountry = ckId === 'llau-cb' || ckId === 'llau-cbcf'
+  if (ckId === 'llau' || ckId === 'llau-cbcf' || ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk' || ckId === 'llsg') {
+    const demandCountry = ckId === 'llau' || ckId === 'llau-cbcf'
       ? 'AU'
       : ckId === 'llca'
         ? 'CA'
@@ -1193,7 +1193,7 @@ function buildCKData(ckId) {
   }
   
   // Swatch pack: propagate PACK velocity to individual swatches
-  if (ckId === 'llau-cb' && velocity['LLAU-CB-CS-PACK']) {
+  if (ckId === 'llau' && velocity['LLAU-CB-CS-PACK']) {
     const packVel = velocity['LLAU-CB-CS-PACK'];
     for (const colour of SWATCH_COLOURS) {
       const swatchKey = 'LLAU-CB-CS-' + colour;
