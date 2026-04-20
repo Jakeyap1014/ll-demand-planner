@@ -1358,7 +1358,7 @@ function buildCKData(ckId) {
           comboDemand: 0,
           totalDemand: 0,
           incoming: componentIncoming[bom.mattress] || 0,
-          shopifyInv: lifelyShopify[bom.mattress] || 0,
+          shopifyInv: aggregatedShopifyInventory[bom.mattress] || 0,
           standaloneOversold: 0,
           comboOversold: 0,
           combos: [],
