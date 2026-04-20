@@ -1223,10 +1223,8 @@ function buildCKData(ckId) {
   const mergeVelocitySource = (source) => {
     for (const [sku, vel] of Object.entries(source || {})) {
       if (sku.startsWith('_')) continue;
-      if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
-        if (excludeCV && sku.includes('-CV')) continue;
-        velocity[sku] = (velocity[sku] || 0) + vel;
-      }
+      if (!skuMatchesDef(sku, def)) continue;
+      velocity[sku] = (velocity[sku] || 0) + vel;
     }
   };
 
