@@ -1307,9 +1307,9 @@ function buildCKData(ckId) {
     }
     if (Object.keys(relevantItems).length > 0) {
       const normalizedPoItems = ckId.startsWith('cusb') ? normalizeCushiePoItems(relevantItems) : relevantItems;
-      allPos.push({ ...po, items: normalizedPoItems });
+      allPos.push({ ...po, items: relevantItems, analyticsItems: normalizedPoItems });
       if (po.stage !== 'Received') {
-        pos.push({ ...po, items: normalizedPoItems });
+        pos.push({ ...po, items: relevantItems, analyticsItems: normalizedPoItems });
       }
     }
   }
