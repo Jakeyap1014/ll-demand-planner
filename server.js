@@ -316,12 +316,25 @@ function savePoSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
 
 function loadCacheSnapshot(silent = false) {
   let loaded = false;
+  const prevOpenDemand = dataCache.shopifyOpenDemand || {};
+  const prevVelocityByCountry = dataCache.shopifyVelocityByCountry || {};
   for (const snapPath of [CACHE_SNAPSHOT_PATH, CACHE_SNAPSHOT_BACKUP_PATH]) {
     try {
       const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
       if (snapshotHasCin7Data(snap)) {
         dataCache = { ...dataCache, ...snap, error: null };
         dataCache.cin7POs = mergeCin7POsByReference(dataCache.cin7POs || []);
+        if (!dataCache.shopifyVelocityByCountry || Object.keys(dataCache.shopifyVelocityByCountry).length === 0) {
+          dataCache.shopifyVelocityByCountry = Object.fromEntries(
+            Object.entries(dataCache.shopifyVelocity || {}).map(([store, velocity]) => [store, velocity?._byCountry || {}])
+          );
+        }
+        if ((!dataCache.shopifyOpenDemand || Object.keys(dataCache.shopifyOpenDemand).length === 0) && Object.keys(prevOpenDemand).length > 0) {
+          dataCache.shopifyOpenDemand = prevOpenDemand;
+        }
+        if ((!dataCache.shopifyVelocityByCountry || Object.keys(dataCache.shopifyVelocityByCountry).length === 0) && Object.keys(prevVelocityByCountry).length > 0) {
+          dataCache.shopifyVelocityByCountry = prevVelocityByCountry;
+        }
         if (!silent) console.log(`Loaded cache snapshot from ${path.basename(snapPath)}: ${Object.keys(dataCache.cin7Products).length} CIN7 SKUs, ${dataCache.cin7POs.length} POs`);
         loaded = true;
         break;
@@ -359,6 +372,7 @@ function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
       cin7StockByBranch: dataCache.cin7StockByBranch,
       cin7POs: dataCache.cin7POs,
       shopifyVelocity: dataCache.shopifyVelocity,
+      shopifyVelocityByCountry: dataCache.shopifyVelocityByCountry,
       shopifyInventory: dataCache.shopifyInventory,
       shopifyOpenDemand: dataCache.shopifyOpenDemand,
       error: dataCache.error,
