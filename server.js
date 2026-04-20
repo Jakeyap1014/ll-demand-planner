@@ -314,23 +314,39 @@ function savePoSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
   }
 }
 
-function loadCacheSnapshot() {
+function loadCacheSnapshot(silent = false) {
+  let loaded = false;
   for (const snapPath of [CACHE_SNAPSHOT_PATH, CACHE_SNAPSHOT_BACKUP_PATH]) {
     try {
       const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
       if (snapshotHasCin7Data(snap)) {
         dataCache = { ...dataCache, ...snap, error: null };
         dataCache.cin7POs = mergeCin7POsByReference(dataCache.cin7POs || []);
-        console.log(`Loaded cache snapshot from ${path.basename(snapPath)}: ${Object.keys(dataCache.cin7Products).length} CIN7 SKUs, ${dataCache.cin7POs.length} POs`);
+        if (!silent) console.log(`Loaded cache snapshot from ${path.basename(snapPath)}: ${Object.keys(dataCache.cin7Products).length} CIN7 SKUs, ${dataCache.cin7POs.length} POs`);
+        loaded = true;
         break;
       }
-      console.log(`Cache snapshot empty at ${path.basename(snapPath)} — ignoring`);
+      if (!silent) console.log(`Cache snapshot empty at ${path.basename(snapPath)} — ignoring`);
     } catch (e) {
       // try next path
     }
   }
   loadPoSnapshot();
-  if (!snapshotHasCin7Data(dataCache)) console.log('No usable cache snapshot found — starting cold');
+  if (!silent && !snapshotHasCin7Data(dataCache)) console.log('No usable cache snapshot found — starting cold');
+  return loaded;
+}
+
+function reloadSnapshotIfNewer() {
+  try {
+    const snapStat = fs.existsSync(CACHE_SNAPSHOT_PATH) ? fs.statSync(CACHE_SNAPSHOT_PATH) : null;
+    const memTs = Date.parse(dataCache.snapshotCreatedAt || dataCache.lastRefresh || 0) || 0;
+    const diskTs = snapStat ? snapStat.mtimeMs : 0;
+    if (!snapshotHasCin7Data(dataCache) || (diskTs && diskTs > memTs)) {
+      loadCacheSnapshot(true);
+    }
+  } catch (_) {
+    // ignore disk refresh check failures
+  }
 }
 
 function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
@@ -1510,6 +1526,7 @@ app.use('/login', express.static(path.join(__dirname, 'public')));
 
 // CK list
 app.get('/api/ck-list', requireAuth, (req, res) => {
+  reloadSnapshotIfNewer();
   const list = Object.entries(CK_DEFS).map(([id, def]) => {
     const data = buildCKData(id);
     const skuCount = data ? Object.keys(data.cin7).length + Object.keys(data.velocity).length : 0;
@@ -1629,6 +1646,7 @@ function scorePO(po) {
 }
 
 app.get('/api/all-pos', requireAuth, (req, res) => {
+  reloadSnapshotIfNewer();
   const pos = dataCache.cin7POs.map(po => {
     const destination = inferDestination(po);
     const landed = estimateLandedCost(po, destination);
@@ -1666,6 +1684,7 @@ app.get('/api/all-pos', requireAuth, (req, res) => {
 });
 
 app.get('/api/ck/:id', requireAuth, (req, res) => {
+  reloadSnapshotIfNewer();
   const data = buildCKData(req.params.id);
   if (!data) return res.status(404).json({ error: 'Unknown CK' });
   res.json(data);
@@ -1687,6 +1706,7 @@ app.post('/api/refresh', requireAuth, async (req, res) => {
 
 // Chat endpoint
 app.post('/api/chat', requireAuth, async (req, res) => {
+  reloadSnapshotIfNewer();
   if (!GEMINI_API_KEY) return res.json({ reply: 'Chat is not configured (no Gemini API key).' });
   
   const { message, history, ckId } = req.body;
@@ -2048,6 +2068,7 @@ function buildShipmentData() {
 }
 
 app.get('/api/shipments', requireAuth, (req, res) => {
+  reloadSnapshotIfNewer();
   res.json({ shipments: buildShipmentData(), lastRefresh: dataCache.lastRefresh });
 });
 
@@ -2056,6 +2077,7 @@ app.get('/tracker', (req, res) => res.sendFile(path.join(__dirname, 'public', 't
 
 // Health check endpoint (no auth needed — used by keep-alive and monitoring)
 app.get('/api/health', (req, res) => {
+  reloadSnapshotIfNewer();
   const cin7Count = Object.keys(dataCache.cin7Products).length;
   const poCount = dataCache.cin7POs.length;
   res.json({ ok: cin7Count > 0, cin7: cin7Count, pos: poCount, lastRefresh: dataCache.lastRefresh, error: dataCache.error || null, uptime: Math.round(process.uptime()) });
