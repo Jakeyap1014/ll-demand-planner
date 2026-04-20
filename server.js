@@ -1662,6 +1662,105 @@ function buildCKData(ckId) {
     };
   }
 
+  let reorderBomData = null;
+  if (ckId === 'cusb-au-snuggle') {
+    const microStats = {};
+    const microCin7 = {};
+    const microShopify = {};
+    const microVelocity = {};
+    const microIncoming = {};
+    const sizeLabels = { '-TW-': 'Twin', '-D-': 'Double', '-Q-': 'Queen', '-K-': 'King' };
+    const boxBases = new Set();
+
+    for (const sku of Object.keys(cin7Raw || {})) {
+      const m = sku.match(/^(CUSB-(TW|D|Q|K)-(LTGN|DNM|TBRN|TWHT))-(1|2)$/);
+      if (m) boxBases.add(m[1]);
+    }
+
+    const shouldSkipMicroSku = (sku) => {
+      if (!sku || !sku.startsWith('CUSB')) return true;
+      if (sku.includes('-UK') || sku.includes('SGE')) return true;
+      if (sku.endsWith('-SET')) return true;
+      if (boxBases.has(sku)) return true;
+      return false;
+    };
+
+    const ensureMicro = (sku) => {
+      if (!microStats[sku]) {
+        const data = cin7Raw?.[sku] || {};
+        const soh = typeof data === 'object' ? Number(data.soh || 0) : Number(data || 0);
+        microStats[sku] = { soh, incoming: 0, standaloneDemand: 0, standaloneOversold: 0, totalDemand: 0 };
+        microCin7[sku] = soh;
+        microShopify[sku] = 0;
+        microVelocity[sku] = 0;
+      }
+      return microStats[sku];
+    };
+
+    const explodeSnuggleSetSku = (sku) => {
+      const m = sku.match(/^(CUSB-(TW|D|Q|K)-(LTGN|DNM|TBRN|TWHT))-SET$/);
+      if (!m) return null;
+      const base = m[1];
+      const components = [];
+      if (cin7Raw?.[base + '-1'] !== undefined) components.push(base + '-1');
+      if (cin7Raw?.[base + '-2'] !== undefined) components.push(base + '-2');
+      if (!components.length) components.push(base);
+      if (cin7Raw?.[base + '-CV'] !== undefined) components.push(base + '-CV');
+      return components;
+    };
+
+    for (const sku of Object.keys(cin7Raw || {})) {
+      if (shouldSkipMicroSku(sku)) continue;
+      ensureMicro(sku);
+    }
+
+    for (const [sku, vel] of Object.entries(velocity || {})) {
+      if (sku.startsWith('_')) continue;
+      const oversold = Math.min(shopify?.[sku] || 0, 0);
+      const exploded = explodeSnuggleSetSku(sku);
+      if (exploded) {
+        for (const componentSku of exploded) {
+          const c = ensureMicro(componentSku);
+          c.standaloneDemand += vel;
+          c.standaloneOversold += oversold;
+        }
+        continue;
+      }
+      if (sku.startsWith('CUSB') && !sku.includes('-UK') && !sku.includes('SGE')) {
+        const c = ensureMicro(sku);
+        c.standaloneDemand += vel;
+        c.standaloneOversold += oversold;
+      }
+    }
+
+    for (const po of dataCache.cin7POs || []) {
+      if (poDestination && resolvePoDestination(po) !== poDestination) continue;
+      if (po.stage === 'Received') continue;
+      for (const [sku, qty] of Object.entries(po.items || {})) {
+        if (shouldSkipMicroSku(sku)) continue;
+        const c = ensureMicro(sku);
+        c.incoming += qty;
+        microIncoming[sku] = (microIncoming[sku] || 0) + qty;
+      }
+    }
+
+    for (const sku of Object.keys(microStats)) {
+      const c = microStats[sku];
+      c.totalDemand = c.standaloneDemand;
+      microVelocity[sku] = c.totalDemand;
+      microShopify[sku] = c.standaloneOversold;
+    }
+
+    reorderBomData = {
+      mode: 'micro-bom',
+      cin7: microCin7,
+      shopify: microShopify,
+      velocity: microVelocity,
+      incoming: microIncoming,
+      sizes: sizeLabels
+    };
+  }
+
   // Remove inactive Shopify SKUs (draft/archived)
   const inactiveSet = new Set(relatedStores.flatMap(sourceStore => dataCache.shopifyInventory?.[sourceStore]?.['__inactive__'] || []));
   for (const sku of Object.keys(cin7)) {
@@ -1783,6 +1882,7 @@ function buildCKData(ckId) {
       return result;
     })(),
     bomData,
+    reorderBomData,
     weeklyData: (() => {
       const weekly = dataCache.shopifyVelocity?.[storeKey]?._weeklyBreakdown || {};
       const result = {};

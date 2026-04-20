@@ -260,7 +260,7 @@ async function selectCK(ckId){
   const activeItem=document.querySelector(`.sidebar-item[data-ck="${ckId}"]`);const groupEl=activeItem?.closest('.sidebar-brand-group');if(groupEl){groupEl.classList.remove('collapsed');brandOpenState[groupEl.dataset.brandGroup]=true;const caret=groupEl.querySelector('.sidebar-brand-caret');if(caret)caret.textContent='▾';}
   document.getElementById('loadingScreen').style.display='block';document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   try{const r=await fetch(`/api/ck/${ckId}`,{headers:H()});if(r.status===401)return window.location.href='/login';const d=await r.json();
-  DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],allPos:d.allPos||d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,costs:d.costs||{},trendData:d.trendData||{},weeklyData:d.weeklyData||null,cbmMap:d.cbmMap||{},suppliers:d.suppliers||{},landedCosts:d.landedCosts||{}};
+  DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],allPos:d.allPos||d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,reorderBomData:d.reorderBomData||null,costs:d.costs||{},trendData:d.trendData||{},weeklyData:d.weeklyData||null,cbmMap:d.cbmMap||{},suppliers:d.suppliers||{},landedCosts:d.landedCosts||{}};
   document.getElementById('headerTitle').innerHTML=`<img src="/logos/${d.ck.logo}" style="height:32px;filter:brightness(0) invert(1)"> ${d.ck.name}`;
   document.getElementById('headerSub').textContent=`${Object.keys(DATA.cin7).length} CIN7 SKUs · ${Object.keys(DATA.velocity).length} with velocity · ${uniquePoCount(DATA.pos)} open POs`;
   document.getElementById('headerMeta').textContent=d.lastRefresh?'Last refresh: '+new Date(d.lastRefresh).toLocaleString():'';
@@ -419,9 +419,15 @@ function renderHeatmap(){
   h+='</tbody></table>';document.getElementById('heatmapContainer').innerHTML=h}
 
 function renderReorder(){
-  const skus=getSkus(),weeks=getWeeks(),sw=4,lw=8;
+  const reorderSource=DATA.reorderBomData;
+  const reorderSkus=reorderSource?Object.keys(reorderSource.cin7||{}):getSkus();
+  const getBomSize=sku=>{if(!reorderSource?.sizes)return getSize(sku);for(const[k,label] of Object.entries(reorderSource.sizes)){if(sku.includes(k))return label}return getSize(sku)};
+  const getBomNet=sku=>reorderSource?((reorderSource.cin7?.[sku]||0)+Math.min(reorderSource.shopify?.[sku]||0,0)):getNet(sku);
+  const getBomVel=sku=>reorderSource?(reorderSource.velocity?.[sku]||0):getVel(sku);
+  const getBomIncoming=sku=>reorderSource?(reorderSource.incoming?.[sku]||0):getIncoming(sku);
+  const skus=reorderSkus,weeks=getWeeks(),sw=4,lw=8;
   let incToggle=window._incPO||false;
-  let rows=skus.map(sku=>{let net=getNet(sku),vel=getVel(sku),inc=getIncoming(sku);
+  let rows=skus.map(sku=>{let net=getBomNet(sku),vel=getBomVel(sku),inc=getBomIncoming(sku);
   // Trend data
   let t=DATA.trendData?.[sku]||{};
   let v7=t.v7||0,v30=t.v30||0;
@@ -431,8 +437,8 @@ function renderReorder(){
   let trendVel=isAccel?v7:vel;
   let trendWl=trendVel>0?Math.max(0,Math.round(net/trendVel)):99;
   let trendSd=trendWl>=99?'Beyond forecast':new Date(TODAY.getTime()+trendWl*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
-  const pNoInc=project(sku,weeks,false),idxNoInc=pNoInc.findIndex(x=>x.close<=0),wlNoInc=idxNoInc>=0?idxNoInc:99;
-  const pInc=project(sku,weeks,true),idxInc=pInc.findIndex(x=>x.close<=0),wlInc=idxInc>=0?idxInc:99;
+  const pNoInc=reorderSource?[]:project(sku,weeks,false),idxNoInc=reorderSource?-1:pNoInc.findIndex(x=>x.close<=0),wlNoInc=reorderSource?(vel>0?Math.max(0,Math.round(net/vel)):99):(idxNoInc>=0?idxNoInc:99);
+  const pInc=reorderSource?[]:project(sku,weeks,true),idxInc=reorderSource?-1:pInc.findIndex(x=>x.close<=0),wlInc=reorderSource?(vel>0?Math.max(0,Math.round((net+inc)/vel)):99):(idxInc>=0?idxInc:99);
   const rescueWl=vel>0?Math.max(0,Math.round((net+inc)/vel)):99;
   let displayWl=incToggle?(wlInc===0&&inc>0?rescueWl:wlInc):wlNoInc;
   if(displayWl<0)displayWl=0;if(displayWl>99)displayWl=99;
@@ -440,7 +446,7 @@ function renderReorder(){
   let sd=displayWl>=99?'Beyond forecast':new Date(TODAY.getTime()+displayWl*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
   let su=Math.round(vel*sw),rop=Math.round(vel*lw+su),rq=Math.max(0,Math.round(vel*12+su-net-inc));
   let obw=Math.max(0,displayWl-lw-sw),obDate=new Date(TODAY.getTime()+obw*7*86400000),ob=displayWl>=99?'Not urgent':(obw<=0?'ASAP':obDate.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}));
-  return{sku,net:displayNet,rawNet:getNet(sku),vel,inc,wl:displayWl,sd,su,rop,rq,ob,size:getSize(sku),trendSd,trendWl,isAccel,isDecel,trendPct}}).sort((a,b)=>a.sku.localeCompare(b.sku));
+  return{sku,net:displayNet,rawNet:getBomNet(sku),vel,inc,wl:displayWl,sd,su,rop,rq,ob,size:getBomSize(sku),trendSd,trendWl,isAccel,isDecel,trendPct}}).sort((a,b)=>a.sku.localeCompare(b.sku));
   document.querySelector('#reorderTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th data-tip>Net SOH<span class="tip">Effective stock after pre-order commitments. CIN7 SOH + min(Shopify, 0)</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over last 30 days</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders</span></th><th data-tip>Wks Left<span class="tip">Weeks until stockout. Simulated week-by-week with PO arrivals factored in</span></th><th data-tip>Stockout<span class="tip">Projected date when this SKU runs out of stock</span></th><th data-tip>Safety<span class="tip">Safety stock buffer in units. Velocity × 4 weeks. Minimum stock to keep as buffer against demand spikes or supply delays</span></th><th data-tip>Reorder Pt<span class="tip">Reorder Point — place an order when stock drops to this level. (Velocity × 8wk lead time) + Safety units. Covers demand during lead time + safety buffer</span></th><th data-tip>Order Qty<span class="tip">Recommended order quantity. (Velocity × 12 weeks) + Safety − Net SOH − Incoming. Covers 12 weeks of demand plus safety, minus what you have and what\'s coming</span></th><th data-tip>Order By<span class="tip">Latest date to place order to avoid stockout. Today + max(0, Wks Left − 8wk lead − 4wk safety) × 7 days</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th><th data-tip>STR%<span class="tip">Sell-Through Rate (30-day). Units sold in 30d ÷ (Units sold + SOH). Green >70% | Yellow 41-69% | Red <40%</span></th></tr>';
   document.querySelector('#reorderTable tbody').innerHTML=rows.map(r=>
     `<tr><td style="font-family:monospace;font-size:10px">${r.sku}${skuLabel(r.sku)}</td><td>${r.size}</td><td>${fmt(r.net)}</td><td>${r.vel.toFixed(1)}${isEstVel(r.sku)?' <span style="color:var(--yellow);font-size:9px" title="Estimated: using last in-stock velocity">(est)</span>':''}${trendIndicator(r.sku)}</td><td>${window._incPO?'<span style="color:var(--green);font-size:10px">Added to Net ✓</span>':r.inc}</td><td>${r.wl>=99?'99+':r.wl}</td><td>${r.sd}</td><td>${r.su}</td><td>${r.rop}</td><td>${r.rq>0?`<b>${r.rq}</b>`:'—'}</td><td>${r.ob}</td><td>${statusBadge(r.wl,r.sku)}</td><td style="background:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'rgba(91,171,49,0.1)':s>=41?'rgba(212,147,13,0.1)':'rgba(195,50,82,0.1)'})()};color:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'var(--green)':s>=41?'var(--yellow)':'var(--alert)'})()};font-weight:700;text-align:center">${r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0}%${r.vel===0&&!isEstVel(r.sku)&&r.net>0?' 💀':''}</td></tr>`).join('')}
