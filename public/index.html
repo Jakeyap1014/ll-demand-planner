@@ -402,7 +402,8 @@ function renderReorder(){
   let trendSd=trendWl>=99?'Beyond forecast':new Date(TODAY.getTime()+trendWl*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
   const pNoInc=project(sku,weeks,false),idxNoInc=pNoInc.findIndex(x=>x.close<=0),wlNoInc=idxNoInc>=0?idxNoInc:99;
   const pInc=project(sku,weeks,true),idxInc=pInc.findIndex(x=>x.close<=0),wlInc=idxInc>=0?idxInc:99;
-  let displayWl=incToggle?wlInc:wlNoInc;
+  const rescueWl=vel>0?Math.max(0,Math.round((net+inc)/vel)):99;
+  let displayWl=incToggle?(wlInc===0&&inc>0?rescueWl:wlInc):wlNoInc;
   if(displayWl<0)displayWl=0;if(displayWl>99)displayWl=99;
   let displayNet=incToggle?net+inc:net;
   let sd=displayWl>=99?'Beyond forecast':new Date(TODAY.getTime()+displayWl*7*86400000).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
