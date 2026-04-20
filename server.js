@@ -53,7 +53,7 @@ const CK_DEFS = {
   'cocoon':   { name: 'Cocoon Bed',             prefix: 'COCOON', logo: 'cocoon-bed.png',    store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-DOUBLE-':'Double','-QUEEN-':'Queen','-KING-':'King'} },
   'rdnt':     { name: 'Radiant',                prefix: 'RDNT',   logo: 'radiant.png',       store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-D-':'Double','-Q-':'Queen','-K-':'King'} },
   'wfhcr':    { name: 'WFH Chair',              prefix: 'WFHCR',  logo: 'wfh-chair.png',     store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {} },
-  'cusb-au':  { name: 'Cushie AU',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && !sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
+  'cusb-au':  { name: 'Cushie AU',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', poDestination: 'Australia', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && !sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
   'cusb-us':  { name: 'Cushie US',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'US', stockBranches: [60701], filter: sku => sku.startsWith('V2-') || sku.startsWith('V3-'), excludeCV: true, sizes: {'-TB-':'Twin','-DB-':'Full','-QB-':'Queen','-KB-':'King','-CH-':'Chaise','-OS-':'Ottoman','-OB-':'Ottoman Bed','-RMST-':'Armrest','-ARM-':'Armrest'} },
   'cusb-uk':  { name: 'Cushie UK',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'GB', stockBranches: [62444], filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
 
@@ -1142,14 +1142,26 @@ function normalizeRadiant(cin7, shopifySkus) {
 function normalizeCushie(cin7Normalized) {
   const result = {};
   for (const [sku, data] of Object.entries(cin7Normalized)) {
-    // Map CUSB-Q-LTGN -> CUSB-Q-LTGN-SET for Shopify matching
+    // Website sells the set SKU, so standardize dashboard display to -SET.
     if (sku.match(/^CUSB-(TW|D|Q|K)-(LTGN|DNM|TBRN|TWHT)$/) && !sku.includes('-SET')) {
-      // Carry cost from base to SET
-      const setData = typeof data === 'object' ? {...data} : {soh: data, available: data};
+      const setData = typeof data === 'object' ? { ...data } : { soh: data, available: data };
       if (!setData.costAUD && typeof data === 'object') setData.costAUD = data.costAUD || 0;
       result[sku + '-SET'] = setData;
+      continue;
     }
     result[sku] = data;
+  }
+  return result;
+}
+
+function normalizeCushiePoItems(items) {
+  const result = {};
+  for (const [sku, qty] of Object.entries(items || {})) {
+    if (sku.match(/^CUSB-(TW|D|Q|K)-(LTGN|DNM|TBRN|TWHT)$/) && !sku.includes('-SET')) {
+      result[sku + '-SET'] = (result[sku + '-SET'] || 0) + qty;
+      continue;
+    }
+    result[sku] = (result[sku] || 0) + qty;
   }
   return result;
 }
@@ -1228,10 +1240,10 @@ function buildCKData(ckId) {
     }
   }
 
-  // All Little Lifely panels use Shopify open demand split by shipping destination as the preorder source of truth.
-  // CIN7 SOH stays branch-filtered from /Stock above; oversold always comes from Shopify destination-country demand.
-  if (ckId === 'llau' || ckId === 'llau-cbcf' || ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk' || ckId === 'llsg') {
-    const demandCountry = ckId === 'llau' || ckId === 'llau-cbcf'
+  // Country panels should use Shopify open demand split by shipping destination as the preorder source of truth.
+  // CIN7 SOH stays branch-filtered from /Stock above, oversold comes from Shopify destination-country demand.
+  if (ckId === 'llau' || ckId === 'llau-cbcf' || ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk' || ckId === 'llsg' || ckId === 'cusb-au') {
+    const demandCountry = ckId === 'llau' || ckId === 'llau-cbcf' || ckId === 'cusb-au'
       ? 'AU'
       : ckId === 'llca'
         ? 'CA'
@@ -1293,9 +1305,10 @@ function buildCKData(ckId) {
       }
     }
     if (Object.keys(relevantItems).length > 0) {
-      allPos.push({ ...po, items: relevantItems });
+      const normalizedPoItems = ckId.startsWith('cusb') ? normalizeCushiePoItems(relevantItems) : relevantItems;
+      allPos.push({ ...po, items: normalizedPoItems });
       if (po.stage !== 'Received') {
-        pos.push({ ...po, items: relevantItems });
+        pos.push({ ...po, items: normalizedPoItems });
       }
     }
   }
