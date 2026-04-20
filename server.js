@@ -1804,12 +1804,20 @@ app.use('/logos', express.static(path.join(__dirname, 'public', 'logos')));
 app.use('/login', express.static(path.join(__dirname, 'public')));
 
 // CK list
+function getBrandGroup(id, def) {
+  if (id.startsWith('cusb') || id === 'cmss') return { id: 'cushie', name: 'Cushie', logo: 'cushie.png' };
+  if (id.startsWith('ll')) return { id: 'little-lifely', name: 'Little Lifely', logo: 'little-lifely.png' };
+  if (id === 'lifely-sofa' || id === 'dd' || id === 'cocoon' || id === 'rdnt' || id === 'wfhcr') return { id: 'lifely-home', name: 'Lifely', logo: def.logo };
+  return { id: 'other', name: 'Other', logo: def.logo };
+}
+
 app.get('/api/ck-list', requireAuth, (req, res) => {
   reloadSnapshotIfNewer();
   const list = Object.entries(CK_DEFS).map(([id, def]) => {
     const data = buildCKData(id);
     const skuCount = data ? Object.keys(data.cin7).length + Object.keys(data.velocity).length : 0;
-    return { id, name: def.name, logo: def.logo, skuCount };
+    const brand = getBrandGroup(id, def);
+    return { id, name: def.name, logo: def.logo, skuCount, brand };
   });
   res.json({ list, lastRefresh: dataCache.lastRefresh });
 });

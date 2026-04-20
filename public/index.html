@@ -12,7 +12,14 @@
 .sidebar{width:var(--sidebar-w);position:fixed;top:0;left:0;bottom:0;background:var(--bg-secondary);color:#F6F8F4;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
 .sidebar-brand{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,0.1)}.sidebar-brand h2{font-size:14px;font-weight:700}.sidebar-brand small{display:block;font-size:11px;color:#A8C5C8;margin-top:2px}
 .sidebar-label{padding:16px 16px 6px;font-size:10px;font-weight:600;color:#A8C5C8;text-transform:uppercase;letter-spacing:0.5px}
-.sidebar-item{display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;column-gap:8px;padding:8px 12px;margin:1px 8px;border-radius:8px;cursor:pointer;font-size:13px;color:#A8C5C8;transition:all 0.15s}
+.sidebar-brand-group{margin:4px 8px 8px}
+.sidebar-brand-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#F6F8F4;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);transition:all 0.15s}
+.sidebar-brand-toggle:hover{background:rgba(255,255,255,0.12)}
+.sidebar-brand-toggle-left{display:flex;align-items:center;gap:8px;min-width:0}.sidebar-brand-toggle-left img{width:60px;height:12px;object-fit:contain;object-position:left center;filter:brightness(0) invert(1);opacity:0.95}
+.sidebar-brand-caret{font-size:12px;color:#A8C5C8}
+.sidebar-brand-children{margin-top:6px;display:flex;flex-direction:column;gap:2px}
+.sidebar-brand-group.collapsed .sidebar-brand-children{display:none}
+.sidebar-item{display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;column-gap:8px;padding:8px 12px;margin:1px 0;border-radius:8px;cursor:pointer;font-size:13px;color:#A8C5C8;transition:all 0.15s}
 .sidebar-item:hover{background:rgba(255,255,255,0.08);color:#fff}.sidebar-item.active{background:rgba(255,255,255,0.15);color:#fff;font-weight:600}
 .sidebar-item img{width:70px;height:14px;object-fit:contain;object-position:left center;filter:brightness(0) invert(1);opacity:0.7}.sidebar-item.active img{opacity:1}.sidebar-item[data-ck="wfhcr"] img{width:60px;height:12px}.sidebar-item span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sidebar-mark{width:70px;display:flex;align-items:center;justify-content:flex-start;font-size:16px;line-height:1;opacity:0.85}.sidebar-item.tool-box{margin:0 8px 8px;padding:10px 12px;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:8px;grid-template-columns:none}
 .sidebar-footer{margin-top:auto;padding:12px 16px;font-size:10px;color:#A8C5C8;border-top:1px solid rgba(255,255,255,0.1)}
@@ -193,6 +200,7 @@ else{sessionStorage.setItem('session',SESSION);if(window.location.search)history
   const il=document.getElementById('incomingLink');if(il)il.href='/incoming-pos?session='+encodeURIComponent(SESSION);}
 const H=()=>({'Content-Type':'application/json','X-Session':SESSION});
 let DATA={cin7:{},shopify:{},velocity:{},pos:[],allPos:[],names:{},sizes:{},cbmMap:{},landedCosts:{}},currentCK=null,charts={},dashFilter={size:'All'},heatmapSortMode='sku';
+let brandOpenState={};
 const TODAY=new Date();
 function getSkus(){return[...new Set([...Object.keys(DATA.cin7),...Object.keys(DATA.velocity)])].filter(s=>!(s.includes('-CS-')&&!s.includes('PACK')))}
 function getNet(s){return(DATA.cin7[s]||0)+Math.min(DATA.shopify[s]||0,0)}
@@ -217,17 +225,39 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   if(t.dataset.view==='reorder')renderReorder();if(t.dataset.view==='forecast')renderForecast();
 }));
 
+function toggleBrandGroup(brandId){
+  brandOpenState[brandId]=!(brandOpenState[brandId]!==false);
+  const el=document.querySelector(`[data-brand-group="${brandId}"]`);
+  if(el){
+    el.classList.toggle('collapsed', brandOpenState[brandId]===false);
+    const caret=el.querySelector('.sidebar-brand-caret');
+    if(caret) caret.textContent=brandOpenState[brandId]===false?'▸':'▾';
+  }
+}
+
 async function loadSidebar(){
   try{const r=await fetch('/api/ck-list',{headers:H()});if(r.status===401)return window.location.href='/login';
-  const d=await r.json();document.getElementById('sidebarNav').innerHTML=d.list.map(ck=>
-    `<div class="sidebar-item" data-ck="${ck.id}" onclick="selectCK('${ck.id}')"><img src="/logos/${ck.logo}" alt=""><span>${ck.name}</span></div>`
-  ).join('');document.getElementById('sidebarFooter').textContent=d.lastRefresh?'Updated: '+new Date(d.lastRefresh).toLocaleTimeString():'Loading...';
-  if(d.list.length>0)selectCK(d.list[0].id)}catch(e){document.getElementById('sidebarNav').innerHTML='<div style="padding:12px;color:#C33252">Failed to load</div>'}}
+  const d=await r.json();
+  const groups=[];const byBrand={};
+  d.list.forEach(ck=>{const b=ck.brand||{id:'other',name:'Other',logo:ck.logo};if(!byBrand[b.id]){byBrand[b.id]={brand:b,items:[]};groups.push(byBrand[b.id]);if(!(b.id in brandOpenState)) brandOpenState[b.id]=true;}byBrand[b.id].items.push(ck)});
+  document.getElementById('sidebarNav').innerHTML=groups.map(group=>`
+    <div class="sidebar-brand-group ${brandOpenState[group.brand.id]===false?'collapsed':''}" data-brand-group="${group.brand.id}">
+      <div class="sidebar-brand-toggle" onclick="toggleBrandGroup('${group.brand.id}')">
+        <div class="sidebar-brand-toggle-left"><img src="/logos/${group.brand.logo}" alt=""><span>${group.brand.name}</span></div>
+        <span class="sidebar-brand-caret">${brandOpenState[group.brand.id]===false?'▸':'▾'}</span>
+      </div>
+      <div class="sidebar-brand-children">
+        ${group.items.map(ck=>`<div class="sidebar-item" data-ck="${ck.id}" onclick="selectCK('${ck.id}')"><img src="/logos/${ck.logo}" alt=""><span>${ck.name}</span></div>`).join('')}
+      </div>
+    </div>`).join('');
+  document.getElementById('sidebarFooter').textContent=d.lastRefresh?'Updated: '+new Date(d.lastRefresh).toLocaleTimeString():'Loading...';
+  if(!currentCK&&d.list.length>0)selectCK(d.list[0].id);else if(currentCK)document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.ck===currentCK));}catch(e){document.getElementById('sidebarNav').innerHTML='<div style="padding:12px;color:#C33252">Failed to load</div>'}}
 
 async function selectCK(ckId){
   document.getElementById('allPOsView').style.display='none';document.querySelector('.main').style.display='block';
   document.getElementById('poNavItem').classList.remove('active');
   currentCK=ckId;document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.ck===ckId));
+  const activeItem=document.querySelector(`.sidebar-item[data-ck="${ckId}"]`);const groupEl=activeItem?.closest('.sidebar-brand-group');if(groupEl){groupEl.classList.remove('collapsed');brandOpenState[groupEl.dataset.brandGroup]=true;const caret=groupEl.querySelector('.sidebar-brand-caret');if(caret)caret.textContent='▾';}
   document.getElementById('loadingScreen').style.display='block';document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   try{const r=await fetch(`/api/ck/${ckId}`,{headers:H()});if(r.status===401)return window.location.href='/login';const d=await r.json();
   DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],allPos:d.allPos||d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,costs:d.costs||{},trendData:d.trendData||{},weeklyData:d.weeklyData||null,cbmMap:d.cbmMap||{},landedCosts:d.landedCosts||{}};
