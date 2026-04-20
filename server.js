@@ -56,7 +56,7 @@ const CK_DEFS = {
   'cusb-au':  { name: 'Cushie AU',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && !sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
   'cusb-us':  { name: 'Cushie US',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'US', stockBranches: [60701], filter: sku => sku.startsWith('V2-') || sku.startsWith('V3-'), excludeCV: true, sizes: {'-TB-':'Twin','-DB-':'Full','-QB-':'Queen','-KB-':'King','-CH-':'Chaise','-OS-':'Ottoman','-OB-':'Ottoman Bed','-RMST-':'Armrest','-ARM-':'Armrest'} },
   'cusb-uk':  { name: 'Cushie UK',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'GB', stockBranches: [62444], filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
-  
+
   'cmss':     { name: 'Modular Sleeper',        prefix: 'CMSS',   logo: 'lifely-sofa.png',   store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King'} },
   'lifely-sofa': { name: 'Modular Sofa',        prefix: 'LIFELY', logo: 'lifely-sofa.png',   store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {} }
 };
@@ -117,6 +117,8 @@ function requireAuth(req, res, next) {
 let dataCache = {
   lastRefresh: null,
   lastCin7Refresh: null,
+  lastShopifyRefresh: null,
+  lastSnapshotWrite: null,
   cin7Products: {},   // sku -> {soh, available, costAUD, cbm}
   cin7StockByBranch: {}, // sku -> { branchId -> { soh, available, branchName } }
   cin7POs: [],        // [{reference, status, stage, arrival, items: {sku: qty}}]
@@ -133,6 +135,25 @@ const PO_SNAPSHOT_BACKUP_PATH = path.join(__dirname, 'data', 'po-snapshot.last-g
 const SNAPSHOT_PUSH_STATE_PATH = path.join(__dirname, 'data', 'snapshot-push-state.json');
 let snapshotPushInFlight = false;
 let cacheSnapshotPushInFlight = false;
+
+function getStoreKeysForCk(ckId, primaryStore) {
+  const keys = new Set([primaryStore]);
+  if (ckId.startsWith('ll')) keys.add('littlelifely');
+  if (primaryStore === 'lifely') keys.add('cushie');
+  return [...keys];
+}
+
+function skuMatchesDef(sku, def) {
+  const filter = def.filter || (() => true);
+  const prefix = def.prefix;
+  if (prefix === 'MULTI') {
+    if (!filter(sku)) return false;
+  } else if (!(sku.startsWith(prefix) && filter(sku))) {
+    return false;
+  }
+  if (def.excludeCV && sku.includes('-CV')) return false;
+  return true;
+}
 
 function snapshotHasCin7Data(snap) {
   return !!(snap && (
@@ -296,7 +317,7 @@ function maybePushCacheSnapshotToGit(reason = 'cin7-refresh') {
 function savePoSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
   try {
     if (!Array.isArray(dataCache.cin7POs) || dataCache.cin7POs.length === 0) {
-      console.warn('Refusing to save empty PO snapshot — keeping last good PO cache on disk');
+      console.warn('Refusing to save empty PO snapshot - keeping last good PO cache on disk');
       return;
     }
     fs.mkdirSync(path.dirname(PO_SNAPSHOT_PATH), { recursive: true });
@@ -316,58 +337,48 @@ function savePoSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
 
 function loadCacheSnapshot(silent = false) {
   let loaded = false;
-  const prevOpenDemand = dataCache.shopifyOpenDemand || {};
-  const prevVelocityByCountry = dataCache.shopifyVelocityByCountry || {};
   for (const snapPath of [CACHE_SNAPSHOT_PATH, CACHE_SNAPSHOT_BACKUP_PATH]) {
     try {
       const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
       if (snapshotHasCin7Data(snap)) {
-        dataCache = { ...dataCache, ...snap, error: null };
+        dataCache = {
+          ...dataCache,
+          ...snap,
+          shopifyVelocityByCountry: snap.shopifyVelocityByCountry || Object.fromEntries(
+            Object.entries(snap.shopifyVelocity || {}).map(([store, velocity]) => [store, velocity?._byCountry || {}])
+          ),
+          error: null
+        };
         dataCache.cin7POs = mergeCin7POsByReference(dataCache.cin7POs || []);
-        if (!dataCache.shopifyVelocityByCountry || Object.keys(dataCache.shopifyVelocityByCountry).length === 0) {
-          dataCache.shopifyVelocityByCountry = Object.fromEntries(
-            Object.entries(dataCache.shopifyVelocity || {}).map(([store, velocity]) => [store, velocity?._byCountry || {}])
-          );
-        }
-        if ((!dataCache.shopifyOpenDemand || Object.keys(dataCache.shopifyOpenDemand).length === 0) && Object.keys(prevOpenDemand).length > 0) {
-          dataCache.shopifyOpenDemand = prevOpenDemand;
-        }
-        if ((!dataCache.shopifyVelocityByCountry || Object.keys(dataCache.shopifyVelocityByCountry).length === 0) && Object.keys(prevVelocityByCountry).length > 0) {
-          dataCache.shopifyVelocityByCountry = prevVelocityByCountry;
-        }
         if (!silent) console.log(`Loaded cache snapshot from ${path.basename(snapPath)}: ${Object.keys(dataCache.cin7Products).length} CIN7 SKUs, ${dataCache.cin7POs.length} POs`);
         loaded = true;
         break;
       }
-      if (!silent) console.log(`Cache snapshot empty at ${path.basename(snapPath)} — ignoring`);
+      if (!silent) console.log(`Cache snapshot empty at ${path.basename(snapPath)} - ignoring`);
     } catch (e) {
       // try next path
     }
   }
   loadPoSnapshot();
-  if (!silent && !snapshotHasCin7Data(dataCache)) console.log('No usable cache snapshot found — starting cold');
+  if (!silent && !snapshotHasCin7Data(dataCache)) console.log('No usable cache snapshot found - starting cold');
   return loaded;
 }
 
 function reloadSnapshotIfNewer() {
-  try {
-    const snapStat = fs.existsSync(CACHE_SNAPSHOT_PATH) ? fs.statSync(CACHE_SNAPSHOT_PATH) : null;
-    const memTs = Date.parse(dataCache.snapshotCreatedAt || dataCache.lastRefresh || 0) || 0;
-    const diskTs = snapStat ? snapStat.mtimeMs : 0;
-    if (!snapshotHasCin7Data(dataCache) || (diskTs && diskTs > memTs)) {
-      loadCacheSnapshot(true);
-    }
-  } catch (_) {
-    // ignore disk refresh check failures
-  }
+  loadCacheSnapshot(true);
 }
 
 function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
   try {
+    const snapshotTs = new Date().toISOString();
+    dataCache.lastSnapshotWrite = snapshotTs;
+    dataCache.lastRefresh = snapshotTs;
     const snapshot = {
-      snapshotCreatedAt: new Date().toISOString(),
+      snapshotCreatedAt: snapshotTs,
+      lastSnapshotWrite: dataCache.lastSnapshotWrite,
       lastRefresh: dataCache.lastRefresh,
       lastCin7Refresh: dataCache.lastCin7Refresh,
+      lastShopifyRefresh: dataCache.lastShopifyRefresh,
       cin7Products: dataCache.cin7Products,
       cin7StockByBranch: dataCache.cin7StockByBranch,
       cin7POs: dataCache.cin7POs,
@@ -380,7 +391,7 @@ function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
     };
 
     if (!snapshotHasCin7Data(snapshot)) {
-      console.warn('Refusing to save empty Cin7 snapshot — keeping last good cache on disk');
+      console.warn('Refusing to save empty Cin7 snapshot - keeping last good cache on disk');
       return;
     }
 
@@ -402,7 +413,7 @@ let excelLandedCosts = {};
 try {
   excelLandedCosts = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'landed-costs.json'), 'utf8'));
   console.log(`Loaded ${Object.keys(excelLandedCosts).length} Excel landed costs`);
-} catch (e) { console.log('No Excel landed costs file found — will use estimated only'); }
+} catch (e) { console.log('No Excel landed costs file found - will use estimated only'); }
 
 // ===== LIVE FX RATE =====
 let fxRate = { USDAUD: 1.45, lastFetch: null }; // fallback
@@ -492,7 +503,7 @@ function apiRequest(options, postData, attempt = 0) {
         if (options.hostname === 'api.cin7.com' && status === 429 && attempt < 2) {
           const retryAfterHeader = parseInt(res.headers['retry-after'] || '2', 10);
           const retryAfter = Math.min(15, Math.max(2, Number.isFinite(retryAfterHeader) ? retryAfterHeader : 2));
-          console.warn(`Cin7 429 for ${options.path} — retrying in ${retryAfter}s (attempt ${attempt + 1}/2)`);
+          console.warn(`Cin7 429 for ${options.path} - retrying in ${retryAfter}s (attempt ${attempt + 1}/2)`);
           await sleep(retryAfter * 1000);
           try {
             const retried = await apiRequest(options, postData, attempt + 1);
@@ -617,7 +628,7 @@ async function fetchCin7POs() {
   if (!CIN7_USER || !CIN7_KEY) return [];
   const auth = Buffer.from(`${CIN7_USER}:${CIN7_KEY}`).toString('base64');
   const results = [];
-  for (let page = 1; page <= 5; page++) {
+  for (let page = 1; ; page++) {
     try {
       await throttleCin7Request();
       const { body, status, headers } = await apiRequest({
@@ -631,7 +642,7 @@ async function fetchCin7POs() {
       }
       if (!Array.isArray(body) || body.length === 0) break;
       for (const po of body) {
-        if (po.isVoid) continue; // Skip void POs only — keep Received for shipment tracker
+        if (po.isVoid) continue; // Skip void POs only - keep Received for shipment tracker
         const items = {};
         for (const li of (po.lineItems || [])) {
           if (li.code && li.qty > 0) items[li.code] = (items[li.code] || 0) + li.qty;
@@ -641,7 +652,7 @@ async function fetchCin7POs() {
             reference: cleanPoReference(po.reference),
             status: po.status,
             stage: po.stage || '',
-            arrival: po.estimatedArrivalDate || null, // ETA only — never fall back to ETD
+            arrival: po.estimatedArrivalDate || null, // ETA only - never fall back to ETD
             etd: po.estimatedDeliveryDate || null,
             estimatedArrivalDate: po.estimatedArrivalDate || null,
             fullyReceivedDate: po.fullyReceivedDate || null,
@@ -671,8 +682,8 @@ async function fetchCin7POs() {
 // ===== SHOPIFY: FETCH ORDERS & CALCULATE VELOCITY =====
 async function fetchShopifyVelocity(storeKey) {
   const store = SHOPIFY_STORES[storeKey];
-  if (!store || !store.token) return {};
-  
+  if (!store || !store.token) return { ok: false, data: {} };
+
   const skuUnits = {};
   const skuWeekly = {};
   const sku7d = {};
@@ -685,7 +696,7 @@ async function fetchShopifyVelocity(storeKey) {
   const historyDays = 90; // longer window for weekly breakdown + last in-stock velocity
   const since = new Date(Date.now() - historyDays * 86400000).toISOString();
   let url = `/admin/api/2026-01/orders.json?status=any&limit=250&created_at_min=${since}&fields=id,created_at,line_items,financial_status,shipping_address`;
-  
+
   const ensureCountry = (country) => {
     if (!byCountry[country]) {
       byCountry[country] = { skuUnits: {}, skuWeekly: {}, sku7d: {}, sku30d: {}, skuFirstSeen: {} };
@@ -702,7 +713,7 @@ async function fetchShopifyVelocity(storeKey) {
       });
       const orders = body.orders || [];
       if (orders.length === 0) break;
-      
+
       for (const o of orders) {
         if (o.financial_status === 'refunded' || o.financial_status === 'voided') continue;
         const dt = new Date(o.created_at);
@@ -713,7 +724,7 @@ async function fetchShopifyVelocity(storeKey) {
         const rawCountry = (o.shipping_address?.country_code || o.shipping_address?.country || '').toString().trim();
         const country = rawCountry ? (rawCountry.length === 2 ? rawCountry.toUpperCase() : rawCountry) : null;
         const countryBucket = country ? ensureCountry(country) : null;
-        
+
         for (const li of (o.line_items || [])) {
           if (li.sku) {
             const qty = li.quantity || 0;
@@ -735,14 +746,14 @@ async function fetchShopifyVelocity(storeKey) {
           }
         }
       }
-      
+
       const link = headers.link || '';
       const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
       if (!nextMatch) break;
       url = new URL(nextMatch[1]).pathname + new URL(nextMatch[1]).search;
-    } catch (e) { console.error(`Shopify ${storeKey} page ${page} error:`, e.message); break; }
+    } catch (e) { console.error(`Shopify ${storeKey} page ${page} error:`, e.message); return { ok: false, data: {} }; }
   }
-  
+
   const weeks = days / 7;
   const velocity = {};
   for (const [sku, units] of Object.entries(sku30d)) {
@@ -776,13 +787,13 @@ async function fetchShopifyVelocity(storeKey) {
     }
     velocity._byCountry[country] = countryVel;
   }
-  
-  return velocity;
+
+  return { ok: true, data: velocity };
 }
 
 async function fetchShopifyOpenDemand(storeKey) {
   const store = SHOPIFY_STORES[storeKey];
-  if (!store || !store.token) return {};
+  if (!store || !store.token) return { ok: false, data: {} };
 
   const openDemand = {};
   let url = `/admin/api/2026-01/orders.json?status=open&limit=250&fields=id,financial_status,shipping_address,line_items`;
@@ -817,22 +828,23 @@ async function fetchShopifyOpenDemand(storeKey) {
       url = new URL(nextMatch[1]).pathname + new URL(nextMatch[1]).search;
     } catch (e) {
       console.error(`Shopify open demand ${storeKey} error:`, e.message);
-      break;
+      return { ok: false, data: {} };
     }
   }
 
-  return openDemand;
+  return { ok: true, data: openDemand };
 }
 
 // ===== SHOPIFY: FETCH INVENTORY LEVELS =====
 async function fetchShopifyInventory(storeKey) {
   const store = SHOPIFY_STORES[storeKey];
-  if (!store || !store.token) { console.log('ShopifyInv: no store/token for ' + storeKey); return {}; }
-  
+  if (!store || !store.token) { console.log('ShopifyInv: no store/token for ' + storeKey); return { ok: false, data: {} }; }
+
   console.log('ShopifyInv: fetching from ' + store.domain);
   const inventory = {};
+  const inactive = new Set();
   let url = `/admin/api/2026-01/products.json?limit=250&fields=id,status,variants`;
-  
+
   for (let page = 1; page <= 20; page++) {
     try {
       const { body, headers } = await apiRequest({
@@ -842,49 +854,51 @@ async function fetchShopifyInventory(storeKey) {
       });
       const products = body.products || [];
       if (products.length === 0) break;
-      
+
       for (const p of products) {
         const pStatus = p.status || 'active';
         for (const v of (p.variants || [])) {
           if (v.sku) {
-            // Sum inventory when same SKU appears on multiple products (e.g. combo pre-orders)
             inventory[v.sku] = (inventory[v.sku] || 0) + (v.inventory_quantity || 0);
-            // Track inactive SKUs
-
+            if (pStatus !== 'active') inactive.add(v.sku);
           }
         }
       }
-      
+
       const link = headers.link || '';
       const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
       if (!nextMatch) break;
       url = new URL(nextMatch[1]).pathname + new URL(nextMatch[1]).search;
-    } catch (e) { console.error(`Shopify inventory ${storeKey} error:`, e.message); break; }
+    } catch (e) { console.error(`Shopify inventory ${storeKey} error:`, e.message); return { ok: false, data: {} }; }
   }
+  inventory.__inactive__ = [...inactive];
   const realSkus = Object.keys(inventory).filter(k => !k.startsWith('__'));
   console.log('ShopifyInv ' + storeKey + ': ' + realSkus.length + ' SKUs fetched');
-  return inventory;
+  return { ok: true, data: inventory };
 }
 
 // ===== FULL DATA REFRESH =====
 async function refreshAllData(forceCin7 = false) {
   if (refreshPromise) {
-    console.log('Refresh already in progress — reusing existing run');
+    console.log('Refresh already in progress - reusing existing run');
     return refreshPromise;
   }
 
   refreshPromise = (async () => {
     console.log('Starting full data refresh...');
     const start = Date.now();
-    
     try {
-      const [lifelyVel, cushieVel, lifelyInv, cushieInv, lifelyOpenDemand, cushieOpenDemand] = await Promise.all([
+      const nowIso = new Date().toISOString();
+      const [lifelyVelRes, cushieVelRes, littleLifelyVelRes, lifelyInvRes, cushieInvRes, littleLifelyInvRes, lifelyOpenDemandRes, cushieOpenDemandRes, littleLifelyOpenDemandRes] = await Promise.all([
         fetchShopifyVelocity('lifely'),
         fetchShopifyVelocity('cushie'),
+        fetchShopifyVelocity('littlelifely'),
         fetchShopifyInventory('lifely'),
         fetchShopifyInventory('cushie'),
+        fetchShopifyInventory('littlelifely'),
         fetchShopifyOpenDemand('lifely'),
-        fetchShopifyOpenDemand('cushie')
+        fetchShopifyOpenDemand('cushie'),
+        fetchShopifyOpenDemand('littlelifely')
       ]);
 
       let cin7Products = {};
@@ -905,65 +919,68 @@ async function refreshAllData(forceCin7 = false) {
         fetchedPoCount = cin7POs.length;
       }
 
-      let updated = false;
-      const cin7RefreshStamp = (fetchedCin7Count > 0 || fetchedPoCount > 0) ? new Date().toISOString() : null;
+      const nextCache = {
+        ...dataCache,
+        shopifyVelocity: { ...(dataCache.shopifyVelocity || {}) },
+        shopifyVelocityByCountry: { ...(dataCache.shopifyVelocityByCountry || {}) },
+        shopifyInventory: { ...(dataCache.shopifyInventory || {}) },
+        shopifyOpenDemand: { ...(dataCache.shopifyOpenDemand || {}) }
+      };
+
+      let cin7Updated = false;
+      let shopifyUpdated = false;
 
       if (fetchedCin7Count > 0) {
-        dataCache.cin7Products = cin7Products;
-        dataCache.cin7StockByBranch = cin7StockByBranch;
-        dataCache.lastCin7Refresh = cin7RefreshStamp;
-        dataCache.lastRefresh = cin7RefreshStamp;
+        nextCache.cin7Products = cin7Products;
+        nextCache.cin7StockByBranch = cin7StockByBranch;
+        nextCache.lastCin7Refresh = nowIso;
         cin7BackoffUntil = 0;
         if (cin7RecoveryTimer) {
           clearTimeout(cin7RecoveryTimer);
           cin7RecoveryTimer = null;
         }
-        saveCacheSnapshot(true, 'daily-cin7-refresh');
-        updated = true;
+        cin7Updated = true;
       } else if (Object.keys(dataCache.cin7Products).length > 0) {
-        console.warn(`CIN7 products returned empty — preserving existing cache (${Object.keys(dataCache.cin7Products).length} SKUs)`);
+        console.warn(`CIN7 products returned empty - preserving existing cache (${Object.keys(dataCache.cin7Products).length} SKUs)`);
       }
 
       if (fetchedPoCount > 0) {
-        dataCache.cin7POs = mergeCin7POsByReference(cin7POs);
-        dataCache.lastCin7Refresh = cin7RefreshStamp;
-        dataCache.lastRefresh = cin7RefreshStamp;
-        savePoSnapshot(true, 'daily-cin7-refresh');
-        updated = true;
+        nextCache.cin7POs = mergeCin7POsByReference(cin7POs);
+        nextCache.lastCin7Refresh = nowIso;
+        cin7Updated = true;
       } else if (dataCache.cin7POs.length > 0) {
-        console.warn(`CIN7 POs returned empty — preserving existing cache (${dataCache.cin7POs.length} POs)`);
+        console.warn(`CIN7 POs returned empty - preserving existing cache (${dataCache.cin7POs.length} POs)`);
       }
 
-      if (Object.keys(lifelyVel).length > 0 || Object.keys(cushieVel).length > 0) {
-        dataCache.shopifyVelocity = { lifely: lifelyVel, cushie: cushieVel };
-        dataCache.shopifyVelocityByCountry = {
-          lifely: lifelyVel._byCountry || {},
-          cushie: cushieVel._byCountry || {}
-        };
-        updated = true;
-      } else if (Object.keys(dataCache.shopifyVelocity).length > 0) {
-        console.warn('Shopify velocity returned empty — preserving existing cache');
+      const shopifyResults = [
+        ['lifely', lifelyVelRes, lifelyInvRes, lifelyOpenDemandRes],
+        ['cushie', cushieVelRes, cushieInvRes, cushieOpenDemandRes],
+        ['littlelifely', littleLifelyVelRes, littleLifelyInvRes, littleLifelyOpenDemandRes]
+      ];
+      for (const [storeKey, velRes, invRes, demandRes] of shopifyResults) {
+        if (velRes.ok) {
+          nextCache.shopifyVelocity[storeKey] = velRes.data;
+          nextCache.shopifyVelocityByCountry[storeKey] = velRes.data._byCountry || {};
+          shopifyUpdated = true;
+        }
+        if (invRes.ok) {
+          nextCache.shopifyInventory[storeKey] = invRes.data;
+          shopifyUpdated = true;
+        }
+        if (demandRes.ok) {
+          nextCache.shopifyOpenDemand[storeKey] = demandRes.data;
+          shopifyUpdated = true;
+        }
       }
+      if (shopifyUpdated) nextCache.lastShopifyRefresh = nowIso;
 
-      if (Object.keys(lifelyInv).length > 0 || Object.keys(cushieInv).length > 0) {
-        dataCache.shopifyInventory = { lifely: lifelyInv, cushie: cushieInv };
-        updated = true;
-      } else if (Object.keys(dataCache.shopifyInventory).length > 0) {
-        console.warn('Shopify inventory returned empty — preserving existing cache');
-      }
-
-      if (Object.keys(lifelyOpenDemand).length > 0 || Object.keys(cushieOpenDemand).length > 0) {
-        dataCache.shopifyOpenDemand = { lifely: lifelyOpenDemand, cushie: cushieOpenDemand };
-        updated = true;
-      } else if (Object.keys(dataCache.shopifyOpenDemand || {}).length > 0) {
-        console.warn('Shopify open demand returned empty — preserving existing cache');
-      }
-
-      if (updated) {
-        if (!cin7RefreshStamp) dataCache.lastRefresh = new Date().toISOString();
-        const liveCin7Count = Object.keys(dataCache.cin7Products).length;
-        dataCache.error = liveCin7Count > 0 ? null : 'CIN7 data unavailable (likely rate limited)';
-        refreshAIS(); // Update vessel tracking after data refresh
+      if (cin7Updated || shopifyUpdated) {
+        nextCache.error = Object.keys(nextCache.cin7Products || {}).length > 0 ? null : 'CIN7 data unavailable (likely rate limited)';
+        dataCache = nextCache;
+        saveCacheSnapshot(true, cin7Updated ? 'daily-cin7-refresh' : 'shopify-refresh');
+        if (fetchedPoCount > 0) savePoSnapshot(true, 'daily-cin7-refresh');
+        loadCacheSnapshot(true);
+        if (cin7Updated) refreshAIS();
       }
 
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
@@ -988,7 +1005,7 @@ function normalizeCIN7(cin7Raw) {
   const result = {};
   const boxPattern = /^(.+)-(\d)$/;
   const boxGroups = {};
-  
+
   for (const [sku, data] of Object.entries(cin7Raw)) {
     const match = sku.match(boxPattern);
     if (match) {
@@ -996,11 +1013,11 @@ function normalizeCIN7(cin7Raw) {
       if (!boxGroups[base]) boxGroups[base] = [];
       boxGroups[base].push(data);
     } else {
-      // Non-box SKU — keep as-is
+      // Non-box SKU - keep as-is
       result[sku] = data;
     }
   }
-  
+
   // For box-split products, buildable = min across all boxes
   for (const [base, boxes] of Object.entries(boxGroups)) {
     const soh = Math.min(...boxes.map(b => typeof b === 'object' ? b.soh : b));
@@ -1010,7 +1027,7 @@ function normalizeCIN7(cin7Raw) {
     const cbm = boxes.reduce((sum, b) => sum + (typeof b === 'object' ? (b.cbm || 0) : 0), 0);
     result[base] = { soh, available, costAUD, cbm };
   }
-  
+
   return result;
 }
 
@@ -1049,23 +1066,23 @@ function normalizeRadiant(cin7, shopifySkus) {
   }
   const sizes = ['D', 'K', 'Q'];
   const types = ['S', 'MF', 'F'];
-  
+
   for (const size of sizes) {
     const baseKey = 'RDNT-' + size + '-BASE';
     const baseSoh = cin7[baseKey]?.soh || cin7[baseKey] || 0;
-    
+
     for (const type of types) {
       const compKey = 'RDNT-' + size + '-' + type;
       const setKey = compKey + '-SET';
       const compSoh = cin7[compKey]?.soh || cin7[compKey] || 0;
-      
+
       // Single topper set
       const baseCost = cin7[baseKey]?.costAUD || 0;
       const compCost = cin7[compKey]?.costAUD || 0;
       const baseCbm = cin7[baseKey]?.cbm || 0;
       const compCbm = cin7[compKey]?.cbm || 0;
       result[setKey] = { soh: Math.min(baseSoh, compSoh), available: Math.min(baseSoh, compSoh), costAUD: baseCost + compCost, cbm: baseCbm + compCbm };
-      
+
       // Multi-topper combos (e.g. RDNT-Q-S-MF-SET = BASE + S + MF)
       for (const type2 of types) {
         if (type2 <= type) continue; // avoid duplicates
@@ -1077,14 +1094,14 @@ function normalizeRadiant(cin7, shopifySkus) {
         result[comboSetKey] = { soh: Math.min(baseSoh, compSoh, comp2Soh), available: Math.min(baseSoh, compSoh, comp2Soh), costAUD: baseCost + compCost + comp2Cost, cbm: baseCbm + compCbm + comp2Cbm };
       }
     }
-    
+
     // Protector
     const protKey = 'RDNT-PROT-' + size;
     if (cin7[protKey]) {
       result[protKey] = cin7[protKey];
     }
   }
-  
+
   return result;
 }
 
@@ -1111,22 +1128,20 @@ function normalizeCushie(cin7Normalized) {
 function buildCKData(ckId) {
   const def = CK_DEFS[ckId];
   if (!def) return null;
-  
+
   const prefix = def.prefix;
   const storeKey = def.store;
-  const filter = def.filter || (() => true);
-  const excludeCV = def.excludeCV || false;
   const poDestination = def.poDestination || null;
   const salesCountry = def.salesCountry || null;
   const stockBranches = def.stockBranches || null;
   const strictStockBranches = def.strictStockBranches || false;
-  
+  const relatedStores = getStoreKeysForCk(ckId, storeKey);
+
   let costs = {};
-  // CIN7 stock — first collect raw, then normalize
+  // CIN7 stock - first collect raw, then normalize
   const cin7Raw = {};
   for (const [sku, data] of Object.entries(dataCache.cin7Products)) {
-    if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
-      if (excludeCV && sku.includes('-CV')) continue;
+    if (skuMatchesDef(sku, def)) {
       if (stockBranches && Array.isArray(stockBranches)) {
         const branchRows = dataCache.cin7StockByBranch?.[sku] || {};
         const branchData = stockBranches.reduce((acc, branchId) => {
@@ -1145,15 +1160,15 @@ function buildCKData(ckId) {
       }
     }
   }
-  
+
   // Normalize: merge box-splits, map components to sets
   let cin7Normalized = normalizeCIN7(cin7Raw);
-  
+
   // Special handling per CK
   if (ckId.startsWith('rdnt')) cin7Normalized = normalizeRadiant(cin7Normalized, Object.keys(dataCache.shopifyInventory[storeKey] || {}));
   if (ckId.startsWith('cusb')) cin7Normalized = normalizeCushie(cin7Normalized);
   if (ckId === 'llau') cin7Normalized = normalizeSwatchPack(cin7Normalized);
-  
+
   const cin7 = {};
   const cin7Available = {};
   let cbmMap = {};
@@ -1170,16 +1185,14 @@ function buildCKData(ckId) {
         cbmMap[sku] = data.cbm;
       }
   }
-  
+
   // Shopify inventory
   const shopify = {};
-  const storeInv = dataCache.shopifyInventory[storeKey] || {};
-  for (const [sku, qty] of Object.entries(storeInv)) {
-    if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
-      if (excludeCV && sku.includes('-CV')) continue;
-      
-      
-      shopify[sku] = qty;
+  for (const sourceStore of relatedStores) {
+    const storeInv = dataCache.shopifyInventory[sourceStore] || {};
+    for (const [sku, qty] of Object.entries(storeInv)) {
+      if (!skuMatchesDef(sku, def)) continue;
+      shopify[sku] = (shopify[sku] || 0) + qty;
     }
   }
 
@@ -1197,12 +1210,14 @@ function buildCKData(ckId) {
             : ckId === 'llsg'
               ? 'SG'
               : 'US';
-    const openDemand = dataCache.shopifyOpenDemand?.[storeKey]?.[demandCountry] || {};
     for (const sku of Object.keys(cin7)) {
-      shopify[sku] = -Number(openDemand[sku] || 0);
+      const totalOpenDemand = relatedStores.reduce((sum, sourceStore) => {
+        return sum + Number(dataCache.shopifyOpenDemand?.[sourceStore]?.[demandCountry]?.[sku] || 0);
+      }, 0);
+      shopify[sku] = -totalOpenDemand;
     }
   }
-  
+
   // Velocity
   const velocity = {};
   const mergeVelocitySource = (source) => {
@@ -1216,12 +1231,15 @@ function buildCKData(ckId) {
   };
 
   if (salesCountry) {
-    mergeVelocitySource(dataCache.shopifyVelocityByCountry?.lifely?.[salesCountry] || {});
-    mergeVelocitySource(dataCache.shopifyVelocityByCountry?.cushie?.[salesCountry] || {});
+    for (const sourceStore of relatedStores) {
+      mergeVelocitySource(dataCache.shopifyVelocityByCountry?.[sourceStore]?.[salesCountry] || {});
+    }
   } else {
-    mergeVelocitySource(dataCache.shopifyVelocity?.[storeKey] || {});
+    for (const sourceStore of relatedStores) {
+      mergeVelocitySource(dataCache.shopifyVelocity?.[sourceStore] || {});
+    }
   }
-  
+
   // Swatch pack: propagate PACK velocity to individual swatches
   if (ckId === 'llau' && velocity['LLAU-CB-CS-PACK']) {
     const packVel = velocity['LLAU-CB-CS-PACK'];
@@ -1240,8 +1258,7 @@ function buildCKData(ckId) {
     if (poDestination && resolvePoDestination(po) !== poDestination) continue;
     const relevantItems = {};
     for (const [sku, qty] of Object.entries(po.items)) {
-      if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
-        if (excludeCV && sku.includes('-CV')) continue;
+      if (skuMatchesDef(sku, def)) {
         relevantItems[sku] = qty;
       }
     }
@@ -1252,28 +1269,36 @@ function buildCKData(ckId) {
       }
     }
   }
-  
+
   // Build human-readable names from SKU
   const names = {};
   const allSkus = new Set([...Object.keys(cin7), ...Object.keys(velocity), ...Object.keys(shopify)]);
   for (const sku of allSkus) {
     names[sku] = sku; // Default to SKU code; frontend can prettify
   }
-  
-  // BOM explosion for combos — component-level planning
+
+  // BOM explosion for combos - component-level planning
   let bomData = null;
   if (ckId === 'llau-cbcf') {
     bomData = {};
     const allCin7 = dataCache.cin7Products;
-    const lifelyShopify = dataCache.shopifyInventory?.lifely || {};
-    const lifelyVelocity = dataCache.shopifyVelocity?.lifely || {};
-    
+    const aggregatedShopifyInventory = {};
+    const aggregatedShopifyVelocity = {};
+    for (const sourceStore of relatedStores) {
+      for (const [sku, qty] of Object.entries(dataCache.shopifyInventory?.[sourceStore] || {})) {
+        if (!sku.startsWith('__')) aggregatedShopifyInventory[sku] = (aggregatedShopifyInventory[sku] || 0) + qty;
+      }
+      for (const [sku, vel] of Object.entries(dataCache.shopifyVelocity?.[sourceStore] || {})) {
+        if (!sku.startsWith('_')) aggregatedShopifyVelocity[sku] = (aggregatedShopifyVelocity[sku] || 0) + vel;
+      }
+    }
+
     // Get all combo SKUs
     const comboSkus = [...new Set([...Object.keys(velocity), ...Object.keys(cin7)])];
-    
+
     // Component-level aggregation
     const components = {};
-    
+
     // Get incoming POs for components
     const componentIncoming = {};
     for (const po of dataCache.cin7POs) {
@@ -1287,19 +1312,19 @@ function buildCKData(ckId) {
         }
       }
     }
-    
+
     for (const comboSku of comboSkus) {
       const bom = explodeComboBOM(comboSku);
       if (!bom) continue;
-      
+
       const comboVel = velocity[comboSku] || 0;
-      
+
       // Bed component
       if (!components[bom.bed]) {
         const bedData = allCin7[bom.bed] || {};
         const bedSoh = typeof bedData === 'object' ? (bedData.soh || 0) : (bedData || 0);
-        const standaloneVel = lifelyVelocity[bom.bed] || 0;
-        const shopifyInv = lifelyShopify[bom.bed] || 0;
+        const standaloneVel = aggregatedShopifyVelocity[bom.bed] || 0;
+        const shopifyInv = aggregatedShopifyInventory[bom.bed] || 0;
         // Decompose oversold: standalone oversold from Shopify
         const standaloneOversold = Math.min(shopifyInv, 0);
         components[bom.bed] = {
@@ -1319,13 +1344,13 @@ function buildCKData(ckId) {
       components[bom.bed].comboDemand += comboVel * bom.bedQty;
       components[bom.bed].totalDemand = components[bom.bed].standaloneDemand + components[bom.bed].comboDemand;
       // Combo oversold: from combo Shopify inventory
-      const comboShopifyInv = lifelyShopify[comboSku] || 0;
+      const comboShopifyInv = aggregatedShopifyInventory[comboSku] || 0;
       if (comboShopifyInv < 0) {
         components[bom.bed].comboOversold += comboShopifyInv;
       }
       components[bom.bed].combos.push(comboSku);
-      
-      // Mattress component (dedicated to combos — 0 standalone demand)
+
+      // Mattress component (dedicated to combos - 0 standalone demand)
       if (!components[bom.mattress]) {
         const mattData = allCin7[bom.mattress] || {};
         const mattSoh = typeof mattData === 'object' ? (mattData.soh || 0) : (mattData || 0);
@@ -1347,29 +1372,29 @@ function buildCKData(ckId) {
       components[bom.mattress].totalDemand = components[bom.mattress].comboDemand; // 100% combo
       components[bom.mattress].combos.push(comboSku);
     }
-    
+
     // Calculate per-size bundle ATP and binding constraints
     const sizeData = {}; // S, KS, D
     for (const size of ['S', 'KS', 'D']) {
       const mattressSku = COMBO_BOM.mattress[size];
       const matt = components[mattressSku];
       const beds = Object.entries(components).filter(([k,v]) => v.type === 'bed' && v.size === size);
-      
+
       // Total bed available for this size = sum of all colour bed SOH
       const totalBedSOH = beds.reduce((t, [k,v]) => t + v.soh, 0);
       const totalBedIncoming = beds.reduce((t, [k,v]) => t + v.incoming, 0);
       const totalBedDemand = beds.reduce((t, [k,v]) => t + v.totalDemand, 0);
       const totalBedOversold = beds.reduce((t, [k,v]) => t + v.standaloneOversold + v.comboOversold, 0);
-      
+
       const mattSOH = matt ? matt.soh : 0;
       const mattIncoming = matt ? matt.incoming : 0;
       const mattDemand = matt ? matt.totalDemand : 0;
-      
+
       const bedWks = totalBedDemand > 0 ? totalBedSOH / totalBedDemand : 99;
       const mattWks = mattDemand > 0 ? mattSOH / mattDemand : 99;
       const comboATP = Math.min(totalBedSOH, mattSOH);
       const constraint = bedWks <= mattWks ? 'bed' : 'mattress';
-      
+
       sizeData[size] = {
         totalBedSOH, totalBedIncoming, totalBedDemand, totalBedOversold,
         mattSOH, mattIncoming, mattDemand, mattressSku,
@@ -1380,15 +1405,14 @@ function buildCKData(ckId) {
         beds: Object.fromEntries(beds)
       };
     }
-    
+
     bomData._components = components;
     bomData._sizeData = sizeData;
     bomData._componentIncoming = componentIncoming;
   }
 
   // Remove inactive Shopify SKUs (draft/archived)
-  const inactiveList = (dataCache.shopifyInventory?.[storeKey]?.['__inactive__']) || [];
-  const inactiveSet = new Set(inactiveList);
+  const inactiveSet = new Set(relatedStores.flatMap(sourceStore => dataCache.shopifyInventory?.[sourceStore]?.['__inactive__'] || []));
   for (const sku of Object.keys(cin7)) {
     if (inactiveSet.has(sku)) { delete cin7[sku]; delete velocity[sku]; delete shopify[sku]; }
   }
@@ -1399,10 +1423,10 @@ function buildCKData(ckId) {
   // === Per-SKU landed cost calculation ===
   // Source 1: Excel report (SOH Stock Value / SOH Stock Qty) = actual landed cost for existing stock
   // Source 2: CBM-based freight estimation for incoming POs
-  // Skip swatches, covers, protectors — only main CK products
+  // Skip swatches, covers, protectors - only main CK products
   const SKIP_LANDED = sku => /(-CV-|-CV$|-CS-|-CS$|-FS-|PROTECTOR|SWATCH|PACK$|SAMPLE)/i.test(sku);
   const landedCosts = {};
-  
+
   // Step 1: Load actual landed costs from Excel for all matching SKUs
   for (const sku of Object.keys(cin7)) {
     if (SKIP_LANDED(sku)) continue;
@@ -1422,7 +1446,7 @@ function buildCKData(ckId) {
       };
     }
   }
-  
+
   // Step 2: For SKUs NOT in Excel, use CBM-based estimation from open POs
   for (const po of allPos) {
     if (po.stage === 'Received') continue;
@@ -1430,7 +1454,7 @@ function buildCKData(ckId) {
     const landed = estimateLandedCost(po, destination);
     const containerFreight = landed.freight || 0;
     const tariffRate = landed.tariffRate || 0;
-    
+
     // Calculate total CBM for this PO
     let totalPoCbm = 0;
     const skuItems = Object.entries(po.items || {});
@@ -1439,21 +1463,21 @@ function buildCKData(ckId) {
         totalPoCbm += cbmMap[sku] * qty;
       }
     }
-    
+
     if (totalPoCbm <= 0 || containerFreight <= 0) continue;
-    
+
     // Allocate freight to each SKU by its CBM share (only for SKUs without Excel data)
     for (const [sku, qty] of skuItems) {
       if (SKIP_LANDED(sku) || !cbmMap[sku]) continue;
       if (landedCosts[sku]?.source === 'actual') continue; // Already have real data
-      
+
       const skuCbm = cbmMap[sku];
       const cbmShare = (skuCbm * qty) / totalPoCbm;
       const freightForSku = containerFreight * cbmShare / qty; // per unit
       const fob = (costs ? costs[sku] : 0) || 0;
       const tariffPerUnit = fob * tariffRate;
       const landedPerUnit = fob + freightForSku + tariffPerUnit;
-      
+
       if (!landedCosts[sku]) {
         landedCosts[sku] = { fob, freightPerUnit: freightForSku, tariffPerUnit, landedPerUnit, cbm: skuCbm, source: 'estimated', poCount: 1 };
       } else {
@@ -1465,7 +1489,7 @@ function buildCKData(ckId) {
       }
     }
   }
-  
+
   return {
     ck: def,
     cin7,
@@ -1626,35 +1650,35 @@ function estimateLandedCost(po, destination) {
 function scorePO(po) {
   const isInTransitOrReceived = po.stage === 'Received' || (po.etd && po.estimatedArrivalDate && new Date(po.etd) <= new Date() && (po.stage !== 'Draft' && po.stage !== 'Confirmed'));
   const isReceived = po.stage === 'Received';
-  
+
   let score = 0;
   let maxScore = 0;
   const checks = [];
-  
+
   // Always evaluated
   const addCheck = (name, points, filled) => { maxScore += points; if (filled) score += points; checks.push({ name, points, filled }); };
-  
+
   addCheck('Created By', 5, !!po.createdBy);
   addCheck('ETA', 20, !!(po.estimatedArrivalDate || po.arrival));
   addCheck('Original ETA', 15, !!(po.customFields?.orders_1000));
   addCheck('ETD', 15, !!po.etd);
   addCheck('Port', 10, !!po.port);
-  
+
   // Tracking code: only if in transit or received
   if (isInTransitOrReceived) {
     addCheck('Tracking Code', 15, !!po.trackingCode);
   }
-  
+
   // Landed costs: check if freightTotal > 0 (actual landed cost entered)
   addCheck('Landed Costs', 10, po.freightTotal > 0);
-  
+
   // Received-only checks
   if (isReceived) {
     addCheck('Fully Received Date', 5, !!po.fullyReceivedDate);
     addCheck('Invoice Date', 5, !!po.invoiceDate);
     addCheck('Supplier Inv No', 5, !!po.supplierInvoiceReference);
   }
-  
+
   const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
   return { score, maxScore, pct, checks };
 }
@@ -1722,17 +1746,17 @@ app.post('/api/refresh', requireAuth, async (req, res) => {
 app.post('/api/chat', requireAuth, async (req, res) => {
   reloadSnapshotIfNewer();
   if (!GEMINI_API_KEY) return res.json({ reply: 'Chat is not configured (no Gemini API key).' });
-  
+
   const { message, history, ckId } = req.body;
   const ckData = ckId ? buildCKData(ckId) : null;
-  
+
   let context = 'You are a demand planning assistant for Lifely. ';
   if (ckData) {
     context += `Currently viewing: ${ckData.ck.name}. `;
     context += `Stock data: ${JSON.stringify(ckData.cin7).substring(0, 2000)}. `;
     context += `Velocity: ${JSON.stringify(ckData.velocity).substring(0, 1000)}. `;
   }
-  
+
   const contents = [
     { role: 'user', parts: [{ text: context }] },
     ...(history || []).slice(-10).map(h => ({
@@ -1741,20 +1765,20 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     })),
     { role: 'user', parts: [{ text: message }] }
   ];
-  
+
   try {
     const postData = JSON.stringify({
       contents,
       generationConfig: { maxOutputTokens: 4096, temperature: 0.7 }
     });
-    
+
     const { body } = await apiRequest({
       hostname: 'generativelanguage.googleapis.com',
       path: `/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     }, postData);
-    
+
     const reply = body?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from AI.';
     res.json({ reply });
   } catch (e) {
@@ -1811,7 +1835,7 @@ function getDestination(po) {
   if (ref.startsWith('PO-SG'))  return DESTINATIONS['Singapore'];
   if (ref.startsWith('PO-AU'))  return DESTINATIONS['Australia'];
 
-  // 2. Check SKU prefixes — if majority are NA, route to US
+  // 2. Check SKU prefixes - if majority are NA, route to US
   const naCount = skus.filter(s => s.startsWith('LLNA')).length;
   const ukCount = skus.filter(s => s.includes('-UK')).length;
   const sgCount = skus.filter(s => s.startsWith('LLSG')).length;
@@ -1858,25 +1882,25 @@ function extractVesselNames() {
 
 function connectAIS() {
   if (!AIS_API_KEY) { console.log('[AIS] No API key, skipping'); return; }
-  
+
   const vessels = extractVesselNames();
   if (vessels.length === 0) { console.log('[AIS] No vessels to track'); return; }
-  
+
   // Don't reconnect if same vessels
-  if (aisWs && aisWs.readyState === WebSocket.OPEN && 
+  if (aisWs && aisWs.readyState === WebSocket.OPEN &&
       JSON.stringify(aisSubscribedVessels) === JSON.stringify(vessels)) return;
-  
+
   // Close existing
   if (aisWs) { try { aisWs.close(); } catch(e){} }
-  
+
   console.log(`[AIS] Connecting to track ${vessels.length} vessels: ${vessels.join(', ')}`);
   aisSubscribedVessels = vessels;
   // Clear stale positions from previous connection
   Object.keys(vesselPositions).forEach(k => delete vesselPositions[k]);
-  
+
   try {
     aisWs = new WebSocket('wss://stream.aisstream.io/v0/stream');
-    
+
     aisWs.on('open', () => {
       console.log('[AIS] Connected');
       // Subscribe by vessel name
@@ -1895,11 +1919,11 @@ function connectAIS() {
         FilterMessageTypes: ['PositionReport']
       }));
     });
-    
+
     // Build a Set of vessel names we're tracking for fast client-side filtering
     // (FilterShipNames API param doesn't actually filter on aisstream)
     const vesselSet = new Set(vessels);
-    
+
     aisWs.on('message', (data) => {
       try {
         const msg = JSON.parse(data);
@@ -1921,17 +1945,17 @@ function connectAIS() {
         }
       } catch(e) { /* ignore parse errors */ }
     });
-    
+
     aisWs.on('close', () => {
       console.log('[AIS] Disconnected, reconnecting in 30s');
       aisReconnectTimer = setTimeout(connectAIS, 30000);
     });
-    
+
     aisWs.on('error', (err) => {
       console.log('[AIS] Error:', err.message);
     });
-    
-    // AIS stream stays open — aisstream sends updates as vessels report
+
+    // AIS stream stays open - aisstream sends updates as vessels report
     // Close after 5 min to save resources, reopen on next data refresh
     setTimeout(() => {
       if (aisWs && aisWs.readyState === WebSocket.OPEN) {
@@ -1939,7 +1963,7 @@ function connectAIS() {
         aisWs.close();
       }
     }, 5 * 60 * 1000);
-    
+
   } catch(e) {
     console.log('[AIS] Connection failed:', e.message);
   }
@@ -1953,18 +1977,18 @@ function refreshAIS() {
 function buildShipmentData() {
   const shipments = [];
   const now = new Date();
-  
+
   for (const po of dataCache.cin7POs) {
     // Include active POs (we already filter out Received in fetchCin7POs)
     const origin = getSupplierOrigin(po.company || '');
     const dest = getDestination(po);
-    
+
     // ETD = estimatedDeliveryDate (departure from origin)
     let etd = null;
     if (po.etd) {
       etd = new Date(po.etd);
     }
-    
+
     // Original ETA = customFields.orders_1000 (set when PO created)
     let originalEta = null;
     if (po.customFields?.orders_1000) {
@@ -1988,27 +2012,27 @@ function buildShipmentData() {
 
     // ETA for display/calculations: use revised if available, else original
     let eta = revisedEta || originalEta;
-    
+
     // Actual received date
     let receivedDate = null;
     if (po.fullyReceivedDate) {
       receivedDate = new Date(po.fullyReceivedDate);
     }
-    
+
     // ETD already parsed above from estimatedDeliveryDate
-    
-    // Calculate progress (0-1) and status — unified with PO tab logic
+
+    // Calculate progress (0-1) and status - unified with PO tab logic
     let progress = 0;
     let status = 'production';
-    
+
     // If it has a received date OR stage is "Received", it's arrived
     if (receivedDate || po.stage === 'Received') {
       progress = 1;
       status = 'arrived';
     } else if (etd && etd <= now) {
-      // ETD has passed — shipped. Determine if still in transit or overdue.
+      // ETD has passed - shipped. Determine if still in transit or overdue.
       if (eta && eta <= now) {
-        // ETA passed but not received — overdue, still show as in_transit on tracker
+        // ETA passed but not received - overdue, still show as in_transit on tracker
         progress = 1;
         status = 'in_transit';
       } else if (etd && eta) {
@@ -2018,20 +2042,20 @@ function buildShipmentData() {
         progress = totalDays > 0 ? Math.min(1, elapsedDays / totalDays) : 0.5;
         status = 'in_transit';
       } else {
-        // ETD passed but no ETA — still in transit, unknown progress
+        // ETD passed but no ETA - still in transit, unknown progress
         progress = 0.5;
         status = 'in_transit';
       }
     }
-    // else: ETD not set or in future — still in production (default)
-    
+    // else: ETD not set or in future - still in production (default)
+
     // Count items
     const totalUnits = Object.values(po.items || {}).reduce((a, b) => a + b, 0);
     const skuCount = Object.keys(po.items || {}).length;
-    
+
     // Days until arrival
     const daysUntil = eta ? Math.ceil((eta - now) / (24 * 60 * 60 * 1000)) : null;
-    
+
     shipments.push({
       reference: po.reference,
       supplier: po.company || 'Unknown',
@@ -2060,7 +2084,7 @@ function buildShipmentData() {
       vesselName: null
     });
   }
-  
+
   // Attach AIS vessel positions
   for (const s of shipments) {
     if (!s.trackingCode) continue;
@@ -2073,7 +2097,7 @@ function buildShipmentData() {
       }
     }
   }
-  
+
   return shipments.sort((a, b) => {
     if (!a.eta) return 1;
     if (!b.eta) return -1;
@@ -2089,7 +2113,7 @@ app.get('/api/shipments', requireAuth, (req, res) => {
 // Serve shipment tracker page
 app.get('/tracker', (req, res) => res.sendFile(path.join(__dirname, 'public', 'tracker.html')));
 
-// Health check endpoint (no auth needed — used by keep-alive and monitoring)
+// Health check endpoint (no auth needed - used by keep-alive and monitoring)
 app.get('/api/health', (req, res) => {
   reloadSnapshotIfNewer();
   const cin7Count = Object.keys(dataCache.cin7Products).length;
@@ -2106,7 +2130,7 @@ app.listen(PORT, () => {
   console.log(`Demand Planner running on port ${PORT}`);
   refreshAllData(); // Initial fetch
   setInterval(refreshAllData, 8 * 60 * 60 * 1000); // Refresh every 8 hours
-  
+
   // Keep-alive: ping self every 10 min to prevent Render free tier spin-down
   setInterval(() => {
     const url = `http://localhost:${PORT}/api/health`;
@@ -2123,26 +2147,26 @@ const DD_21CM_SKUS = new Set(['DD-21107CF','DD-21137CF','DD-21153CF','DD-21183CF
 
 function classifySKU(code, destCountry) {
   const c = (code || '').toUpperCase();
-  // NZ uses LLAU- SKUs — check destination first
-  if (destCountry === 'NZ' && c.startsWith('LLAU-') && !c.includes('-CV')) return 'LL Beds — NZ';
-  if (destCountry === 'NZ' && c.startsWith('LLAU-') && c.includes('-CV')) return 'LL Covers — NZ';
-  
-  if (c.startsWith('LLAU-CB-') && !c.includes('-CV') && !c.includes('-CS-') && !c.includes('-FS-') && !c.includes('CBCF')) return 'LL Beds — AU';
-  if (c.startsWith('LLAU-CB-') && c.includes('-CV')) return 'LL Covers — AU';
+  // NZ uses LLAU- SKUs - check destination first
+  if (destCountry === 'NZ' && c.startsWith('LLAU-') && !c.includes('-CV')) return 'LL Beds - NZ';
+  if (destCountry === 'NZ' && c.startsWith('LLAU-') && c.includes('-CV')) return 'LL Covers - NZ';
+
+  if (c.startsWith('LLAU-CB-') && !c.includes('-CV') && !c.includes('-CS-') && !c.includes('-FS-') && !c.includes('CBCF')) return 'LL Beds - AU';
+  if (c.startsWith('LLAU-CB-') && c.includes('-CV')) return 'LL Covers - AU';
   if (c.startsWith('LLAU-CB-CS-') || c.startsWith('LLAU-CB-FS-')) return null; // swatches
-  if (c.startsWith('LLNA-CB-') && !c.includes('-CV') && !c.includes('CFDS') && !c.includes('CBCF')) return 'LL Beds — US/CA';
-  if (c.startsWith('LLNA-CB-') && c.includes('-CV')) return 'LL Covers — US/CA';
+  if (c.startsWith('LLNA-CB-') && !c.includes('-CV') && !c.includes('CFDS') && !c.includes('CBCF')) return 'LL Beds - US/CA';
+  if (c.startsWith('LLNA-CB-') && c.includes('-CV')) return 'LL Covers - US/CA';
   if (c.startsWith('LLNA-CFDS-') || c.startsWith('LLNA-CBCF-')) return null; // combo sku shouldn't be in POs
-  if (c.startsWith('LLUK-CB-') && !c.includes('-CV')) return 'LL Beds — UK';
-  if (c.startsWith('LLUK-CB-') && c.includes('-CV')) return 'LL Covers — UK';
-  if (c.startsWith('LLSG-') && !c.includes('-CV')) return 'LL Beds — SG';
-  if (c.startsWith('LLSG-') && c.includes('-CV')) return 'LL Covers — SG';
+  if (c.startsWith('LLUK-CB-') && !c.includes('-CV')) return 'LL Beds - UK';
+  if (c.startsWith('LLUK-CB-') && c.includes('-CV')) return 'LL Covers - UK';
+  if (c.startsWith('LLSG-') && !c.includes('-CV')) return 'LL Beds - SG';
+  if (c.startsWith('LLSG-') && c.includes('-CV')) return 'LL Covers - SG';
   if (DD_21CM_SKUS.has(code)) return 'Deep Dream 21CM';
   if (c.startsWith('DD-')) return 'Deep Dream Other';
-  if (c.startsWith('V2-')) return 'Cushie V2 — ' + (destCountry || 'US');
-  if (c.startsWith('V3-')) return 'Snuggle V3 — ' + (destCountry || 'AU');
-  if ((c.startsWith('CUSB-') || c.startsWith('LFSB-')) && c.includes('-UK')) return 'Cushie V2 — UK';
-  if (c.startsWith('CUSB-') || c.startsWith('LFSB-')) return 'Cushie V2 — ' + (destCountry || 'AU');
+  if (c.startsWith('V2-')) return 'Cushie V2 - ' + (destCountry || 'US');
+  if (c.startsWith('V3-')) return 'Snuggle V3 - ' + (destCountry || 'AU');
+  if ((c.startsWith('CUSB-') || c.startsWith('LFSB-')) && c.includes('-UK')) return 'Cushie V2 - UK';
+  if (c.startsWith('CUSB-') || c.startsWith('LFSB-')) return 'Cushie V2 - ' + (destCountry || 'AU');
   if (c.startsWith('CMSS-')) return 'Modular Sleeper';
   if (c.startsWith('LIFELY-') || c.startsWith('LFSF-')) return 'Lifely Sofa';
   if (c.startsWith('RDNT-')) return 'Radiant';
@@ -2190,7 +2214,7 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
   const allMonths = new Set();
   const allCountries = new Set();
   const cleanPoReference = ref => (ref || '').replace(/-cover$/i, '');
-  
+
   // Build global landed cost lookup from ALL CK panels
   const globalLanded = {};
   for (const ckId of Object.keys(CK_DEFS)) {
@@ -2203,17 +2227,17 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
       }
     } catch(e) { /* skip if CK fails */ }
   }
-  
+
   const pos = [];
   for (const po of (dataCache.cin7POs || [])) {
     // Skip received
     if (po.fullyReceivedDate || po.stage === 'Received') continue;
-    
+
     // Determine destination
     let destination = resolvePoDestination(po);
     const countryCode = destToCountryCode(destination);
     allCountries.add(countryCode);
-    
+
     // ETA
     const etaRaw = po.estimatedArrivalDate || po.arrival || null;
     let eta = null, etaMonth = 'TBD';
@@ -2231,32 +2255,32 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
       }
     }
     allMonths.add(etaMonth);
-    
+
     // Line items with CK classification + landed costs from CK panels
     const lineItems = [];
     const poGroups = new Set();
     let totalUnits = 0;
     let totalFOB = 0, totalFreight = 0, totalTariff = 0;
-    
+
     for (const [sku, qty] of Object.entries(po.items || {})) {
       const ckGroup = classifySKU(sku, countryCode);
       if (!ckGroup) continue;
-      
+
       poGroups.add(ckGroup);
       allCKGroups.add(ckGroup);
       totalUnits += qty;
-      
+
       // Use landed costs from CK panels
       const lc = globalLanded[sku];
       const fobPerUnit = lc ? lc.fob : 0;
       const freightPerUnit = lc ? lc.freightPerUnit : 0;
       const tariffPerUnit = lc ? (lc.tariffPerUnit || 0) : 0;
       const landedPerUnit = lc ? lc.landedPerUnit : 0;
-      
+
       totalFOB += fobPerUnit * qty;
       totalFreight += freightPerUnit * qty;
       totalTariff += tariffPerUnit * qty;
-      
+
       lineItems.push({
         sku,
         name: sku,
@@ -2268,14 +2292,14 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
         source: lc ? lc.source : 'none'
       });
     }
-    
+
     if (lineItems.length === 0) continue;
-    
+
     const productTotal = Math.round(totalFOB);
     const freightEst = Math.round(totalFreight);
     const tariffEst = Math.round(totalTariff);
     const landedTotal = productTotal + freightEst + tariffEst;
-    
+
     pos.push({
       reference: cleanPoReference(po.reference),
       supplier: po.company || '',
@@ -2293,7 +2317,7 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
       lineItems
     });
   }
-  
+
   // Sort by ETA
   pos.sort((a, b) => {
     if (!a.eta && !b.eta) return 0;
@@ -2301,7 +2325,7 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
     if (!b.eta) return -1;
     return a.eta.localeCompare(b.eta);
   });
-  
+
   // Summary totals
   const summary = {
     totalProductAUD: pos.reduce((s, p) => s + p.productTotal, 0),
@@ -2311,7 +2335,7 @@ app.get('/api/incoming-pos', requireAuth, (req, res) => {
     totalUnits: pos.reduce((s, p) => s + p.totalUnits, 0),
     poCount: pos.length
   };
-  
+
   res.json({
     pos,
     summary,
