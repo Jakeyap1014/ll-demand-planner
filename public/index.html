@@ -243,57 +243,58 @@ function renderBOM() {
   if (!DATA.bomData || !DATA.bomData._components) return;
   const comps = DATA.bomData._components;
   const allEntries = Object.entries(comps);
-  const mattEntries = allEntries.filter(([k,v]) => v.type === 'mattress');
-  const bedEntries = allEntries.filter(([k,v]) => v.type === 'bed');
-  
-  // Summary cards — mattress data only (the bottleneck)
-  let mattSOH = 0, mattIncoming = 0, mattOversold = 0, mattVel = 0;
-  mattEntries.forEach(([sku, c]) => {
-    mattSOH += c.soh;
-    mattIncoming += c.incoming;
-    mattOversold += (c.standaloneOversold || 0) + (c.comboOversold || 0);
-    mattVel += c.totalDemand;
+  const sizeOrder = DATA.bomData._sizeOrder || ['S', 'KS', 'D'];
+  const sizeLabels = DATA.bomData._sizeLabels || { 'S': 'Single', 'KS': 'King Single', 'D': 'Double' };
+  const summary = DATA.bomData._summary || {
+    primaryType: 'mattress',
+    stockLabel: 'Component SOH',
+    stockSub: 'Primary components',
+    incomingSub: 'Open POs',
+    oversoldSub: 'Pre-order commitments',
+    weeksSub: 'At total component velocity'
+  };
+  const primaryEntries = summary.primaryType ? allEntries.filter(([k,v]) => v.type === summary.primaryType) : allEntries;
+
+  let primarySOH = 0, primaryIncoming = 0, primaryOversold = 0, primaryVel = 0;
+  primaryEntries.forEach(([sku, c]) => {
+    primarySOH += c.soh;
+    primaryIncoming += c.incoming;
+    primaryOversold += (c.standaloneOversold || 0) + (c.comboOversold || 0);
+    primaryVel += c.totalDemand;
   });
-  let mattWks = mattVel > 0 ? Math.max(0, Math.round(mattSOH / mattVel)) : 99;
-  
+  let primaryWks = primaryVel > 0 ? Math.max(0, Math.round(primarySOH / primaryVel)) : 99;
+
   document.getElementById('summary-cards').innerHTML = `
-    <div class="card green"><div class="label">Combo SOH</div><div class="value">${Math.round(mattSOH).toLocaleString()}</div><div class="sub">Mattress stock (binding constraint)</div></div>
-    <div class="card blue"><div class="label">Incoming</div><div class="value">${Math.round(mattIncoming).toLocaleString()}</div><div class="sub">Mattress POs</div></div>
-    <div class="card red"><div class="label">Oversold</div><div class="value">${Math.round(mattOversold).toLocaleString()}</div><div class="sub">Combo pre-orders</div></div>
-    <div class="card yellow"><div class="label">Avg Wks Stock</div><div class="value">${mattWks}</div><div class="sub">At combo velocity</div></div>`;
-  
-  // Filters
-  const sizeKeys = ['All', 'Single', 'King Single', 'Double'];
-  if (!window._bomFilter) window._bomFilter = 'All';
-  document.getElementById('dash-filters').innerHTML = sizeKeys.map(s =>
-    '<button class="filter-btn '+(window._bomFilter===s?'active':'')+'" onclick="window._bomFilter=\''+s+'\';renderBOM()">'+s+'</button>'
+    <div class="card green"><div class="label">${summary.stockLabel}</div><div class="value">${Math.round(primarySOH).toLocaleString()}</div><div class="sub">${summary.stockSub}</div></div>
+    <div class="card blue"><div class="label">Incoming</div><div class="value">${Math.round(primaryIncoming).toLocaleString()}</div><div class="sub">${summary.incomingSub}</div></div>
+    <div class="card red"><div class="label">Oversold</div><div class="value">${Math.round(primaryOversold).toLocaleString()}</div><div class="sub">${summary.oversoldSub}</div></div>
+    <div class="card yellow"><div class="label">Avg Wks Stock</div><div class="value">${primaryWks}</div><div class="sub">${summary.weeksSub}</div></div>`;
+
+  const filterCodes = ['All', ...sizeOrder.filter(code => allEntries.some(([k,v]) => v.size === code))];
+  if (!window._bomFilter || (window._bomFilter !== 'All' && !filterCodes.includes(window._bomFilter))) window._bomFilter = 'All';
+  document.getElementById('dash-filters').innerHTML = filterCodes.map(code =>
+    '<button class="filter-btn '+(window._bomFilter===code?'active':'')+'" onclick="window._bomFilter=\''+code+'\';renderBOM()">'+(code==='All'?'All':(sizeLabels[code]||code))+'</button>'
   ).join('');
-  
-  // Filter
-  const sizeMap = {'Single':'S','King Single':'KS','Double':'D'};
+
   let filteredAll = allEntries;
   if (window._bomFilter !== 'All') {
-    filteredAll = allEntries.filter(([k,v]) => v.size === sizeMap[window._bomFilter]);
+    filteredAll = allEntries.filter(([k,v]) => v.size === window._bomFilter);
   }
-  
-  // Chart — all components (beds + mattresses) for restocking visibility
+
   let chartComps = filteredAll.filter(([k,v]) => v.soh > 0 || v.incoming > 0 || ((v.standaloneOversold||0) + (v.comboOversold||0)) < 0);
-  // Sort: mattresses first (S→KS→D), then beds (S→KS→D) using SKU for reliable size detection
-  const skuSizeOrder = (sku) => {
-    if (sku.includes('915') || sku.includes('-S-')) return 0;
-    if (sku.includes('107') || sku.includes('-KS-')) return 1;
-    if (sku.includes('137') || sku.includes('-D-')) return 2;
-    return 9;
+  const sizeRank = code => {
+    const idx = sizeOrder.indexOf(code);
+    return idx >= 0 ? idx : 99;
   };
   chartComps.sort((a,b) => {
     if (a[1].type !== b[1].type) return a[1].type==='mattress'?-1:1;
-    return skuSizeOrder(a[0]) - skuSizeOrder(b[0]);
+    return sizeRank(a[1].size) - sizeRank(b[1].size) || a[0].localeCompare(b[0]);
   });
   if (charts.stock) charts.stock.destroy();
   charts.stock = new Chart(document.getElementById('stockChart'), {
     type: 'bar',
     data: {
-      labels: chartComps.map(([k,v]) => (v.type==='bed'?'🛏️ ':'🛌 ') + k.replace('LLAU-CB-','').replace('DD-','')),
+      labels: chartComps.map(([k,v]) => (v.type==='bed'?'🛏️ ':'🛌 ') + k.replace(/^(LLAU-CB-|DD-|COCOON-|RDNT-)/, '')),
       datasets: [
         { label: 'SOH', data: chartComps.map(([k,v]) => Math.round(v.soh)), backgroundColor: chartComps.map(([k,v]) => v.type==='bed'?'#5BAB31':'#4A9026') },
         { label: 'Incoming', data: chartComps.map(([k,v]) => v.incoming), backgroundColor: '#2C474B' },
@@ -310,17 +311,16 @@ function renderBOM() {
       }
     }
   });
-  
-  // Table — ALL components (beds + mattresses) for restocking
-  let sorted = filteredAll.sort((a,b) => a[0].localeCompare(b[0]));
-  
-  document.querySelector('#stockTable thead').innerHTML = '<tr><th>Component</th><th>Type</th><th>Size</th><th data-tip>CIN7 SOH<span class="tip">Physical stock in warehouse</span></th><th data-tip>Incoming<span class="tip">Units from open POs</span></th><th data-tip>Oversold<span class="tip">Pre-order commitments (standalone + combo)</span></th><th data-tip>Standalone/wk<span class="tip">Weekly velocity from bed-only sales (not combo)</span></th><th data-tip>Combo/wk<span class="tip">Weekly velocity consumed by combo sales</span></th><th data-tip>Total/wk<span class="tip">Combined demand: standalone + combo. Used for reorder calculations</span></th><th data-tip>Wks Left<span class="tip">SOH ÷ Total velocity</span></th><th>Status</th></tr>';
+
+  let sorted = filteredAll.sort((a,b) => sizeRank(a[1].size) - sizeRank(b[1].size) || a[0].localeCompare(b[0]));
+
+  document.querySelector('#stockTable thead').innerHTML = '<tr><th>Component</th><th>Type</th><th>Size</th><th data-tip>CIN7 SOH<span class="tip">Physical stock in warehouse</span></th><th data-tip>Incoming<span class="tip">Units from open POs</span></th><th data-tip>Oversold<span class="tip">Pre-order commitments (standalone + combo)</span></th><th data-tip>Standalone/wk<span class="tip">Weekly velocity from standalone sales</span></th><th data-tip>Combo/wk<span class="tip">Weekly velocity consumed by combo sales</span></th><th data-tip>Total/wk<span class="tip">Combined demand: standalone + combo. Used for reorder calculations</span></th><th data-tip>Wks Left<span class="tip">SOH ÷ Total velocity</span></th><th>Status</th></tr>';
   document.querySelector('#stockTable tbody').innerHTML = sorted.map(([sku, c]) => {
     let wks = c.totalDemand > 0 ? Math.max(0, Math.round(c.soh / c.totalDemand)) : 99;
     let oversold = Math.round((c.standaloneOversold||0) + (c.comboOversold||0));
     let badge = wks <= 0 ? '<span class="badge stockout">STOCKOUT</span>' : wks <= 2 ? '<span class="badge critical">CRITICAL</span>' : wks <= 4 ? '<span class="badge low">LOW</span>' : wks <= 8 ? '<span class="badge ok">OK</span>' : '<span class="badge healthy">HEALTHY</span>';
     let typeLabel = c.type === 'bed' ? '🛏️ Bed' : '🛌 Mattress';
-    let sizeLabel = {'S':'Single','KS':'King Single','D':'Double'}[c.size] || '';
+    let sizeLabel = sizeLabels[c.size] || c.size || '';
     return '<tr><td style="font-family:monospace;font-size:10px">'+sku+'</td><td>'+typeLabel+'</td><td>'+sizeLabel+'</td><td>'+Math.round(c.soh)+'</td><td>'+c.incoming+'</td><td>'+(oversold<0?'<span class="neg">'+oversold+'</span>':'0')+'</td><td>'+c.standaloneDemand.toFixed(1)+'</td><td>'+c.comboDemand.toFixed(1)+'</td><td><b>'+c.totalDemand.toFixed(1)+'</b></td><td>'+wks+'</td><td>'+badge+(wks>=25?' <span style="color:var(--yellow);font-size:10px" title="Over 25 weeks — push this SKU">⚠️ OVERSTOCK</span>':'')+'</td></tr>';
   }).join('');
 }

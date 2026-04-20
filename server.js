@@ -67,6 +67,8 @@ const COMBO_BOM = {
   mattress: { 'S': 'DD-21915CF', 'KS': 'DD-21107CF', 'D': 'DD-21137CF' }
 };
 
+const COCOON_SIZE_WORD = { 'D': 'DOUBLE', 'Q': 'QUEEN', 'K': 'KING' };
+
 function getComboSize(sku) {
   if (sku.includes('-S-')) return 'S';
   if (sku.includes('-KS-')) return 'KS';
@@ -88,6 +90,35 @@ function explodeComboBOM(comboSku) {
     mattress: COMBO_BOM.mattress[size],
     bedQty: 1,
     mattressQty: 1
+  };
+}
+
+function explodeRadiantSetSku(setSku) {
+  if (!setSku.startsWith('RDNT-') || !setSku.endsWith('-SET')) return null;
+  const parts = setSku.split('-');
+  const size = parts[1];
+  const types = parts.slice(2, -1);
+  if (!['D', 'Q', 'K'].includes(size) || types.length === 0) return null;
+  return {
+    size,
+    components: ['RDNT-' + size + '-BASE', ...types.map(type => 'RDNT-' + size + '-' + type)]
+  };
+}
+
+function explodeCocoonRadiantCombo(comboSku) {
+  if (!comboSku.startsWith('COCOON-RDNT-')) return null;
+  const parts = comboSku.split('-');
+  if (parts.length < 5) return null;
+  const colour = parts[2];
+  const size = parts[3];
+  const types = parts.slice(4);
+  if (!COCOON_SIZE_WORD[size] || types.length === 0) return null;
+  return {
+    size,
+    colour,
+    bed: 'COCOON-' + COCOON_SIZE_WORD[size] + '-' + colour,
+    bedQty: 1,
+    mattressComponents: ['RDNT-' + size + '-BASE', ...types.map(type => 'RDNT-' + size + '-' + type)]
   };
 }
 
@@ -1137,6 +1168,7 @@ function buildCKData(ckId) {
   const strictStockBranches = def.strictStockBranches || false;
   const relatedStores = getStoreKeysForCk(ckId, storeKey);
 
+  let sizes = def.sizes;
   let costs = {};
   // CIN7 stock - first collect raw, then normalize
   const cin7Raw = {};
@@ -1407,6 +1439,203 @@ function buildCKData(ckId) {
     bomData._components = components;
     bomData._sizeData = sizeData;
     bomData._componentIncoming = componentIncoming;
+    bomData._sizeOrder = ['S', 'KS', 'D'];
+    bomData._sizeLabels = { 'S': 'Single', 'KS': 'King Single', 'D': 'Double' };
+    bomData._summary = {
+      primaryType: 'mattress',
+      stockLabel: 'Combo SOH',
+      stockSub: 'Mattress stock (binding constraint)',
+      incomingSub: 'Mattress POs',
+      oversoldSub: 'Combo pre-orders',
+      weeksSub: 'At combo velocity'
+    };
+  }
+
+  if (ckId === 'cocoon') {
+    const allCin7 = dataCache.cin7Products || {};
+    const aggregatedShopifyInventory = {};
+    const aggregatedShopifyVelocity = {};
+    const componentStats = {};
+    const componentCin7 = {};
+    const componentShopify = {};
+    const componentVelocity = {};
+    const componentSkus = new Set();
+    const componentPos = [];
+    const componentAllPos = [];
+    const sizeLabels = { 'D': 'Double', 'Q': 'Queen', 'K': 'King' };
+
+    const readCin7Sku = (sku) => {
+      if (sku.startsWith('COCOON-') && cin7[sku] !== undefined) {
+        return { soh: cin7[sku], costAUD: costs[sku] || 0, cbm: cbmMap[sku] || 0 };
+      }
+      const data = allCin7[sku];
+      if (!data) return { soh: 0, costAUD: 0, cbm: 0 };
+      if (stockBranches && Array.isArray(stockBranches)) {
+        const branchRows = dataCache.cin7StockByBranch?.[sku] || {};
+        const branchData = stockBranches.reduce((acc, branchId) => {
+          const row = branchRows[branchId];
+          if (!row) return acc;
+          acc.soh += Number(row.soh || 0);
+          acc.available += Number(row.available || 0);
+          acc.matched += 1;
+          return acc;
+        }, { soh: 0, available: 0, matched: 0 });
+        if (branchData.matched > 0) return { ...data, soh: branchData.soh, available: branchData.available };
+        if (strictStockBranches) return { ...data, soh: 0, available: 0 };
+      }
+      return data;
+    };
+
+    const ensureComponent = (sku, meta = {}) => {
+      componentSkus.add(sku);
+      if (!componentStats[sku]) {
+        const data = readCin7Sku(sku) || {};
+        const soh = typeof data === 'object' ? Number(data.soh || 0) : Number(data || 0);
+        componentStats[sku] = {
+          soh,
+          standaloneDemand: 0,
+          comboDemand: 0,
+          totalDemand: 0,
+          incoming: 0,
+          standaloneOversold: 0,
+          comboOversold: 0,
+          combos: [],
+          type: meta.type || 'component',
+          size: meta.size || null
+        };
+        componentCin7[sku] = soh;
+        componentShopify[sku] = 0;
+        componentVelocity[sku] = 0;
+        names[sku] = sku;
+        if (typeof data === 'object' && data.costAUD) costs[sku] = data.costAUD;
+        if (typeof data === 'object' && data.cbm > 0) cbmMap[sku] = data.cbm;
+      }
+      if (meta.type) componentStats[sku].type = meta.type;
+      if (meta.size) componentStats[sku].size = meta.size;
+      return componentStats[sku];
+    };
+
+    const addStandalone = (sku, vel, oversold, meta = {}) => {
+      const c = ensureComponent(sku, meta);
+      c.standaloneDemand += vel;
+      c.standaloneOversold += oversold;
+    };
+
+    const addCombo = (sku, vel, oversold, comboSku, meta = {}) => {
+      const c = ensureComponent(sku, meta);
+      c.comboDemand += vel;
+      c.comboOversold += oversold;
+      if (comboSku && !c.combos.includes(comboSku)) c.combos.push(comboSku);
+    };
+
+    for (const sourceStore of relatedStores) {
+      for (const [sku, qty] of Object.entries(dataCache.shopifyInventory?.[sourceStore] || {})) {
+        if (!sku.startsWith('__')) aggregatedShopifyInventory[sku] = (aggregatedShopifyInventory[sku] || 0) + qty;
+      }
+      for (const [sku, vel] of Object.entries(dataCache.shopifyVelocity?.[sourceStore] || {})) {
+        if (!sku.startsWith('_')) aggregatedShopifyVelocity[sku] = (aggregatedShopifyVelocity[sku] || 0) + vel;
+      }
+    }
+
+    for (const [sku, vel] of Object.entries(aggregatedShopifyVelocity)) {
+      const oversold = Math.min(aggregatedShopifyInventory[sku] || 0, 0);
+
+      if (sku.match(/^COCOON-(DOUBLE|QUEEN|KING)-/) && !sku.includes('-CV') && !sku.startsWith('COCOON-RDNT-')) {
+        const size = sku.includes('-DOUBLE-') ? 'D' : sku.includes('-QUEEN-') ? 'Q' : sku.includes('-KING-') ? 'K' : null;
+        addStandalone(sku, vel, oversold, { type: 'bed', size });
+        continue;
+      }
+
+      const radiantSet = explodeRadiantSetSku(sku);
+      if (radiantSet) {
+        for (const componentSku of radiantSet.components) {
+          addStandalone(componentSku, vel, oversold, { type: 'mattress', size: radiantSet.size });
+        }
+        continue;
+      }
+
+      const cocoonCombo = explodeCocoonRadiantCombo(sku);
+      if (cocoonCombo) {
+        addCombo(cocoonCombo.bed, vel, oversold, sku, { type: 'bed', size: cocoonCombo.size });
+        for (const componentSku of cocoonCombo.mattressComponents) {
+          addCombo(componentSku, vel, oversold, sku, { type: 'mattress', size: cocoonCombo.size });
+        }
+      }
+    }
+
+    for (const sku of Object.keys(cin7)) {
+      if (sku.match(/^COCOON-(DOUBLE|QUEEN|KING)-/) && !sku.includes('-CV')) {
+        const size = sku.includes('-DOUBLE-') ? 'D' : sku.includes('-QUEEN-') ? 'Q' : sku.includes('-KING-') ? 'K' : null;
+        ensureComponent(sku, { type: 'bed', size });
+      }
+    }
+
+    for (const sku of Object.keys(allCin7)) {
+      if (sku.match(/^RDNT-(D|Q|K)-(BASE|S|MF|F)$/)) {
+        const size = sku.split('-')[1];
+        ensureComponent(sku, { type: 'mattress', size });
+      }
+    }
+
+    const normalizePoSku = (sku) => {
+      if (sku.match(/^COCOON-(DOUBLE|QUEEN|KING)-[A-Z]+-[12]$/)) return sku.replace(/-[12]$/, '');
+      return sku;
+    };
+
+    for (const po of dataCache.cin7POs || []) {
+      if (poDestination && resolvePoDestination(po) !== poDestination) continue;
+      const relevantItems = {};
+      for (const [rawSku, qty] of Object.entries(po.items || {})) {
+        const sku = normalizePoSku(rawSku);
+        if (!componentSkus.has(sku)) continue;
+        relevantItems[sku] = (relevantItems[sku] || 0) + qty;
+        ensureComponent(sku);
+        componentStats[sku].incoming += qty;
+      }
+      if (Object.keys(relevantItems).length > 0) {
+        componentAllPos.push({ ...po, items: relevantItems });
+        if (po.stage !== 'Received') componentPos.push({ ...po, items: relevantItems });
+      }
+    }
+
+    for (const sku of Object.keys(componentStats)) {
+      const c = componentStats[sku];
+      c.totalDemand = c.standaloneDemand + c.comboDemand;
+      componentVelocity[sku] = c.totalDemand;
+      componentShopify[sku] = c.standaloneOversold + c.comboOversold;
+    }
+
+    for (const key of Object.keys(cin7)) delete cin7[key];
+    for (const key of Object.keys(shopify)) delete shopify[key];
+    for (const key of Object.keys(velocity)) delete velocity[key];
+    Object.assign(cin7, componentCin7);
+    Object.assign(shopify, componentShopify);
+    Object.assign(velocity, componentVelocity);
+    pos.splice(0, pos.length, ...componentPos);
+    allPos.splice(0, allPos.length, ...componentAllPos);
+
+    sizes = {
+      '-DOUBLE-': 'Double',
+      '-QUEEN-': 'Queen',
+      '-KING-': 'King',
+      'RDNT-D-': 'Double',
+      'RDNT-Q-': 'Queen',
+      'RDNT-K-': 'King'
+    };
+
+    bomData = {
+      _components: componentStats,
+      _sizeOrder: ['D', 'Q', 'K'],
+      _sizeLabels: sizeLabels,
+      _summary: {
+        primaryType: 'mattress',
+        stockLabel: 'Mattress SOH',
+        stockSub: 'Radiant mattress components',
+        incomingSub: 'Radiant mattress POs',
+        oversoldSub: 'Radiant + combo commitments',
+        weeksSub: 'At total component velocity'
+      }
+    };
   }
 
   // Remove inactive Shopify SKUs (draft/archived)
@@ -1496,7 +1725,7 @@ function buildCKData(ckId) {
     pos,
     allPos,
     names,
-    sizes: def.sizes,
+    sizes,
     costs,
     cbmMap,
     landedCosts,
