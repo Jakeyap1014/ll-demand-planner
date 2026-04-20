@@ -1325,8 +1325,7 @@ function buildCKData(ckId) {
     const company = po.company || '';
     if (!company) continue;
     for (const sku of Object.keys(po.items || {})) {
-      if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
-        if (excludeCV && sku.includes('-CV')) continue;
+      if (skuMatchesDef(sku, def)) {
         if (!suppliers[sku]) suppliers[sku] = company;
       }
     }
