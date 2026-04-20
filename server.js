@@ -1314,11 +1314,22 @@ function buildCKData(ckId) {
     }
   }
 
-  // Build human-readable names from SKU
+  // Build human-readable names from SKU + best-known supplier by SKU from CIN7 POs
   const names = {};
+  const suppliers = {};
   const allSkus = new Set([...Object.keys(cin7), ...Object.keys(velocity), ...Object.keys(shopify)]);
   for (const sku of allSkus) {
     names[sku] = sku; // Default to SKU code; frontend can prettify
+  }
+  for (const po of dataCache.cin7POs || []) {
+    const company = po.company || '';
+    if (!company) continue;
+    for (const sku of Object.keys(po.items || {})) {
+      if ((prefix === 'MULTI' ? filter(sku) : sku.startsWith(prefix) && filter(sku))) {
+        if (excludeCV && sku.includes('-CV')) continue;
+        if (!suppliers[sku]) suppliers[sku] = company;
+      }
+    }
   }
 
   // BOM explosion for combos - component-level planning
@@ -1742,6 +1753,7 @@ function buildCKData(ckId) {
     sizes,
     costs,
     cbmMap,
+    suppliers,
     landedCosts,
     trendData: (() => {
       const vel = dataCache.shopifyVelocity?.[storeKey] || {};
