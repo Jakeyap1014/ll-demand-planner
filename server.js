@@ -53,7 +53,8 @@ const CK_DEFS = {
   'cocoon':   { name: 'Cocoon Bed',             prefix: 'COCOON', logo: 'cocoon-bed.png',    store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-DOUBLE-':'Double','-QUEEN-':'Queen','-KING-':'King'} },
   'rdnt':     { name: 'Radiant',                prefix: 'RDNT',   logo: 'radiant.png',       store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-D-':'Double','-Q-':'Queen','-K-':'King'} },
   'wfhcr':    { name: 'WFH Chair',              prefix: 'WFHCR',  logo: 'wfh-chair.png',     store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {} },
-  'cusb-au':  { name: 'Cushie AU',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', poDestination: 'Australia', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && !sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
+  'cusb-au-snuggle': { name: 'Cushie Snuggle Bed',    prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', poDestination: 'Australia', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => sku.startsWith('CUSB') && !sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-D-':'Double','-Q-':'Queen','-K-':'King'} },
+  'cusb-au-lifely':  { name: 'Lifely Sofabed',         prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', poDestination: 'Australia', salesCountry: 'AU', stockBranches: LL_AU_BRANCH_IDS, filter: sku => sku.startsWith('LFSB') && !sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
   'cusb-us':  { name: 'Cushie US',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'US', stockBranches: [60701], filter: sku => sku.startsWith('V2-') || sku.startsWith('V3-'), excludeCV: true, sizes: {'-TB-':'Twin','-DB-':'Full','-QB-':'Queen','-KB-':'King','-CH-':'Chaise','-OS-':'Ottoman','-OB-':'Ottoman Bed','-RMST-':'Armrest','-ARM-':'Armrest'} },
   'cusb-uk':  { name: 'Cushie UK',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'GB', stockBranches: [62444], filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
 
@@ -1242,8 +1243,8 @@ function buildCKData(ckId) {
 
   // Country panels should use Shopify open demand split by shipping destination as the preorder source of truth.
   // CIN7 SOH stays branch-filtered from /Stock above, oversold comes from Shopify destination-country demand.
-  if (ckId === 'llau' || ckId === 'llau-cbcf' || ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk' || ckId === 'llsg' || ckId === 'cusb-au') {
-    const demandCountry = ckId === 'llau' || ckId === 'llau-cbcf' || ckId === 'cusb-au'
+  if (ckId === 'llau' || ckId === 'llau-cbcf' || ckId === 'llnz' || ckId === 'llna' || ckId === 'llca' || ckId === 'lluk' || ckId === 'llsg' || ckId === 'cusb-au' || ckId.startsWith('cusb-au-')) {
+    const demandCountry = ckId === 'llau' || ckId === 'llau-cbcf' || ckId === 'cusb-au' || ckId.startsWith('cusb-au-')
       ? 'AU'
       : ckId === 'llca'
         ? 'CA'
