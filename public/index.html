@@ -7,10 +7,12 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
-:root{--bg-primary:#F6F8F4;--bg-secondary:#2C474B;--bg-accent:#3A5A5E;--bg-card:#FFFFFF;--alert:#C33252;--green:#5BAB31;--yellow:#D4930D;--blue:#2C474B;--text:#282828;--text-dim:#758068;--border:#DDE3D5;--sidebar-w:220px}
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-primary);color:var(--text);min-height:100vh;display:flex}
-.sidebar{width:var(--sidebar-w);position:fixed;top:0;left:0;bottom:0;background:var(--bg-secondary);color:#F6F8F4;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
-.sidebar-brand{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,0.1)}.sidebar-brand h2{font-size:14px;font-weight:700}.sidebar-brand small{display:block;font-size:11px;color:#A8C5C8;margin-top:2px}
+:root{--bg-primary:#F6F8F4;--bg-secondary:#2C474B;--bg-accent:#3A5A5E;--bg-card:#FFFFFF;--alert:#C33252;--green:#5BAB31;--yellow:#D4930D;--blue:#2C474B;--text:#282828;--text-dim:#758068;--border:#DDE3D5;--sidebar-w:220px;--content-pad:20px}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-primary);color:var(--text);min-height:100vh;display:flex;overflow-x:hidden}body.sidebar-collapsed{--sidebar-w:76px}
+.sidebar{width:var(--sidebar-w);position:fixed;top:0;left:0;bottom:0;background:var(--bg-secondary);color:#F6F8F4;display:flex;flex-direction:column;z-index:100;overflow-y:auto;transition:width .2s ease}
+.sidebar-brand{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.sidebar-brand h2{font-size:14px;font-weight:700}.sidebar-brand small{display:block;font-size:11px;color:#A8C5C8;margin-top:2px}
+.sidebar-collapse-btn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:none;border-radius:8px;background:rgba(255,255,255,0.12);color:#F6F8F4;cursor:pointer;font-size:14px;flex-shrink:0}
+.sidebar-collapse-btn:hover{background:rgba(255,255,255,0.18)}
 .sidebar-label{padding:16px 16px 6px;font-size:10px;font-weight:600;color:#A8C5C8;text-transform:uppercase;letter-spacing:0.5px}
 .sidebar-brand-group{margin:4px 8px 8px}
 .sidebar-brand-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#F6F8F4;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);transition:all 0.15s}
@@ -28,15 +30,15 @@
 .sidebar-item:hover{background:rgba(255,255,255,0.08);color:#fff}.sidebar-item.active{background:rgba(255,255,255,0.15);color:#fff;font-weight:600}
 .sidebar-item img{width:70px;height:14px;object-fit:contain;object-position:left center;filter:brightness(0) invert(1);opacity:0.7}.sidebar-item.active img{opacity:1}.sidebar-item[data-ck="wfhcr"] img{width:60px;height:12px}.sidebar-item span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sidebar-mark{width:70px;display:flex;align-items:center;justify-content:flex-start;font-size:16px;line-height:1;opacity:0.85}.sidebar-item.tool-box{margin:0 8px 8px;padding:10px 12px;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:8px;grid-template-columns:none}
 .sidebar-footer{margin-top:auto;padding:12px 16px;font-size:10px;color:#A8C5C8;border-top:1px solid rgba(255,255,255,0.1)}
-.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh}
-.mobile-menu{display:none;align-items:center;justify-content:center;width:40px;height:40px;border:none;background:rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;font-size:20px;color:#fff;margin-right:12px;flex-shrink:0}
-.header{background:var(--bg-secondary);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--bg-accent)}
+.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;min-width:0;transition:margin-left .2s ease}
+.mobile-menu,.desktop-sidebar-toggle{display:none;align-items:center;justify-content:center;width:40px;height:40px;border:none;background:rgba(255,255,255,0.15);border-radius:8px;cursor:pointer;font-size:20px;color:#fff;margin-right:12px;flex-shrink:0}
+.header{background:var(--bg-secondary);padding:16px var(--content-pad);display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--bg-accent);gap:12px}
 .header h1{font-size:20px;font-weight:700;color:#FFF;display:flex;align-items:center;gap:12px}.header h1 img{height:32px;filter:brightness(0) invert(1)}
 .header .subtitle{color:#A8C5C8;font-size:12px}
-.tabs{display:flex;gap:0;background:var(--bg-secondary);padding:0 32px;border-bottom:1px solid var(--border)}
+.tabs{display:flex;gap:0;background:var(--bg-secondary);padding:0 var(--content-pad);border-bottom:1px solid var(--border);overflow-x:auto}
 .tab{padding:10px 20px;cursor:pointer;font-size:13px;font-weight:500;color:#A8C5C8;border-bottom:3px solid transparent;transition:all 0.2s}
 .tab:hover{color:#FFF;background:rgba(255,255,255,0.1)}.tab.active{color:#FFF;border-bottom-color:#FFF}
-.container{max-width:1600px;margin:0 auto;padding:24px 32px}.view{display:none}.view.active{display:block}.po-items.open{max-height:2000px!important}
+.container{max-width:none;width:100%;margin:0 auto;padding:20px var(--content-pad);min-width:0}.view{display:none}.view.active{display:block}.po-items.open{max-height:2000px!important}
 .loading{text-align:center;padding:60px;color:var(--text-dim)}.loading .spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
@@ -78,11 +80,21 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
 .drilldown .close{background:none;border:none;font-size:16px;cursor:pointer;color:var(--text-dim)}
 .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center}.modal-overlay.open{display:flex}.modal{background:#fff;border-radius:16px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto;padding:32px;box-shadow:0 8px 40px rgba(0,0,0,0.2)}.modal h2{font-size:18px;margin-bottom:16px;color:var(--blue)}.modal h3{font-size:14px;margin:16px 0 8px;color:var(--blue)}.modal p{font-size:13px;line-height:1.7;color:var(--text);margin-bottom:12px}.modal .formula{background:#f6f8f4;border-left:3px solid var(--blue);padding:12px 16px;margin:12px 0;font-family:monospace;font-size:12px}.modal table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}.modal td,.modal th{padding:6px 10px;border:1px solid var(--border);text-align:left}.modal th{background:var(--bg-primary)}.modal .close-btn{float:right;background:none;border:none;font-size:20px;cursor:pointer}.pos{color:var(--green)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+body.sidebar-collapsed .sidebar-label,body.sidebar-collapsed .sidebar-brand small,body.sidebar-collapsed .sidebar-brand-toggle-left span,body.sidebar-collapsed .sidebar-brand-caret,body.sidebar-collapsed .sidebar-subgroup-toggle span,body.sidebar-collapsed .sidebar-subgroup-caret,body.sidebar-collapsed .sidebar-item span,body.sidebar-collapsed .sidebar-footer,body.sidebar-collapsed .sidebar-item.tool-box span:last-child{display:none}
+body.sidebar-collapsed .sidebar-brand{padding-left:10px;padding-right:10px}
+body.sidebar-collapsed .sidebar-brand-toggle,body.sidebar-collapsed .sidebar-subgroup-toggle,body.sidebar-collapsed .sidebar-item,body.sidebar-collapsed .sidebar-item.tool-box{padding-left:10px;padding-right:10px}
+body.sidebar-collapsed .sidebar-brand-toggle-left img,body.sidebar-collapsed .sidebar-item img{width:40px}
+body.sidebar-collapsed .sidebar-item{grid-template-columns:40px}
+body.sidebar-collapsed .sidebar-item.tool-box{justify-content:center}
+body.sidebar-collapsed #trackerLink,body.sidebar-collapsed #incomingLink,body.sidebar-collapsed .sidebar > div[style*='User Guide'],body.sidebar-collapsed .sidebar > div[style*='Data Sources']{font-size:0}
+@media(max-width:1200px){:root{--content-pad:14px}.header h1{font-size:18px}.tab{padding:10px 14px}.cards{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}}
+@media(min-width:901px){.desktop-sidebar-toggle{display:flex}}
 @media(max-width:900px){
   .sidebar{transform:translateX(-100%);transition:transform 0.3s;position:fixed;z-index:200;box-shadow:4px 0 20px rgba(0,0,0,0.3)}
   .sidebar.open{transform:translateX(0)}
   .main{margin-left:0}
   .mobile-menu{display:flex !important}
+  .desktop-sidebar-toggle{display:none !important}
   .mobile-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:199}
   .mobile-overlay.open{display:block}
 }
@@ -90,7 +102,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
 </head>
 <body>
 <nav class="sidebar" id="sidebar">
-  <div class="sidebar-brand"><h2>Lifely</h2><small>Demand Planner</small></div>
+  <div class="sidebar-brand"><div><h2>Lifely</h2><small>Demand Planner</small></div><button class="sidebar-collapse-btn" onclick="toggleDesktopSidebar()" title="Collapse sidebar">⇤</button></div>
   <div class="sidebar-label">Category Killers</div>
   <div id="sidebarNav"></div>
   <div class="sidebar-label">Tools</div>
@@ -105,6 +117,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
   <div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileMenu()"></div>
 <div class="header" id="mainHeader">
   <button class="mobile-menu" onclick="toggleMobileMenu()">☰</button>
+  <button class="desktop-sidebar-toggle" onclick="toggleDesktopSidebar()">☰</button>
     <div><h1 id="headerTitle"><span>Select a Category Killer</span></h1><div class="subtitle" id="headerSub">Loading data...</div></div>
     <div style="text-align:right"><div style="font-size:11px;color:#A8C5C8" id="headerMeta"></div>
     <button onclick="manualRefresh()" class="btn btn-ghost" style="padding:2px 10px;font-size:11px;margin-top:4px;color:#A8C5C8;border-color:#A8C5C8" id="refreshBtn">🔄 Refresh</button></div>
@@ -162,7 +175,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
     </div>
   </div>
 </div>
-<div id="allPOsView" style="display:none;margin-left:var(--sidebar-w);min-height:100vh;background:var(--bg-primary)">
+<div id="allPOsView" style="display:none;margin-left:var(--sidebar-w);min-height:100vh;background:var(--bg-primary);transition:margin-left .2s ease">
   <div style="padding:24px 32px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div>
@@ -988,10 +1001,20 @@ document.addEventListener('click', function(e) {
   sortTable(table.id, colIdx);
 });
 
+function applyDesktopSidebarState(){
+  const collapsed=localStorage.getItem('dpSidebarCollapsed')==='1';
+  document.body.classList.toggle('sidebar-collapsed', collapsed);
+}
+function toggleDesktopSidebar(){
+  const next=!(localStorage.getItem('dpSidebarCollapsed')==='1');
+  localStorage.setItem('dpSidebarCollapsed', next?'1':'0');
+  applyDesktopSidebarState();
+}
 function toggleMobileMenu(){
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('mobileOverlay').classList.toggle('open');
 }
+applyDesktopSidebarState();
 // Close mobile menu when CK is selected
 const origSelectCK = selectCK;
 selectCK = async function(ckId) {
