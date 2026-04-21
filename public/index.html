@@ -254,7 +254,7 @@ async function loadSidebar(){
   try{const r=await fetch('/api/ck-list',{headers:H()});if(r.status===401)return window.location.href='/login';
   const d=await r.json();
   const groups=[];const byBrand={};
-  d.list.forEach(ck=>{const b=ck.brand||{id:'other',name:'Other',logo:ck.logo};if(!byBrand[b.id]){byBrand[b.id]={brand:b,items:[],subgroups:{},subgroupOrder:[]};groups.push(byBrand[b.id]);if(!(b.id in brandOpenState)) brandOpenState[b.id]=true;}const group=byBrand[b.id];if(ck.subgroup){if(!group.subgroups[ck.subgroup.id]){group.subgroups[ck.subgroup.id]={meta:ck.subgroup,items:[]};group.subgroupOrder.push(ck.subgroup.id);if(!(ck.subgroup.id in subgroupOpenState)) subgroupOpenState[ck.subgroup.id]=true;}group.subgroups[ck.subgroup.id].items.push(ck);}else{group.items.push(ck);}});
+  d.list.forEach(ck=>{const b=ck.brand||{id:'other',name:'Other',logo:ck.logo};if(!byBrand[b.id]){byBrand[b.id]={brand:b,items:[],subgroups:{},subgroupOrder:[]};groups.push(byBrand[b.id]);if(!(b.id in brandOpenState)) brandOpenState[b.id]=false;}const group=byBrand[b.id];if(ck.subgroup){if(!group.subgroups[ck.subgroup.id]){group.subgroups[ck.subgroup.id]={meta:ck.subgroup,items:[]};group.subgroupOrder.push(ck.subgroup.id);if(!(ck.subgroup.id in subgroupOpenState)) subgroupOpenState[ck.subgroup.id]=false;}group.subgroups[ck.subgroup.id].items.push(ck);}else{group.items.push(ck);}});
   document.getElementById('sidebarNav').innerHTML=groups.map(group=>`
     <div class="sidebar-brand-group ${brandOpenState[group.brand.id]===false?'collapsed':''}" data-brand-group="${group.brand.id}">
       <div class="sidebar-brand-toggle" onclick="toggleBrandGroup('${group.brand.id}')">
