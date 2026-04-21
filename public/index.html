@@ -9,11 +9,14 @@
 <style>
 :root{--bg-primary:#F6F8F4;--bg-secondary:#2C474B;--bg-accent:#3A5A5E;--bg-card:#FFFFFF;--alert:#C33252;--green:#5BAB31;--yellow:#D4930D;--blue:#2C474B;--text:#282828;--text-dim:#758068;--border:#DDE3D5;--sidebar-w:220px;--content-pad:20px}
 *{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-primary);color:var(--text);min-height:100vh;display:flex;overflow-x:hidden}body.sidebar-collapsed{--sidebar-w:0px}
-.sidebar{width:var(--sidebar-w);position:fixed;top:0;left:0;bottom:0;background:var(--bg-secondary);color:#F6F8F4;display:flex;flex-direction:column;z-index:100;overflow-y:auto;transition:width .2s ease,opacity .2s ease;opacity:1}
+.sidebar{width:var(--sidebar-w);position:fixed;top:0;left:0;bottom:0;background:var(--bg-secondary);color:#F6F8F4;display:flex;flex-direction:column;z-index:100;overflow:hidden;transition:width .2s ease,opacity .2s ease;opacity:1}
 body.sidebar-collapsed .sidebar{overflow:hidden;opacity:0}
-.sidebar-brand{padding:16px 16px 15px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:flex-start;gap:8px;min-height:64px}.sidebar-brand h2{font-size:14px;font-weight:700}.sidebar-brand small{display:block;font-size:11px;color:#A8C5C8;margin-top:2px}
-.sidebar-label{padding:16px 16px 6px;font-size:10px;font-weight:600;color:#A8C5C8;text-transform:uppercase;letter-spacing:0.5px}
-.sidebar-brand-group{margin:4px 8px 8px}
+.sidebar-main{flex:1;min-height:0;overflow-y:auto}
+.sidebar-tools{flex-shrink:0;border-top:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.06);padding-bottom:8px}
+.sidebar-brand{padding:16px 16px 15px;border-bottom:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:flex-start;gap:8px;min-height:64px}.sidebar-brand h2{font-size:14px;font-weight:700}.sidebar-brand small{display:block;font-size:11px;color:#A8C5C8;margin-top:2px}
+.sidebar-label{padding:14px 16px 8px;font-size:10px;font-weight:600;color:#A8C5C8;text-transform:uppercase;letter-spacing:0.5px}
+.sidebar-brand-group{margin:0;padding:8px 8px 0;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-brand-group:first-child{border-top:none;padding-top:4px}
 .sidebar-brand-toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#F6F8F4;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);transition:all 0.15s}
 .sidebar-brand-toggle:hover{background:rgba(255,255,255,0.12)}
 .sidebar-brand-toggle-left{display:flex;align-items:center;gap:8px;min-width:0}.sidebar-brand-toggle-left img{width:60px;height:12px;object-fit:contain;object-position:left center;filter:brightness(0) invert(1);opacity:0.95}
@@ -28,7 +31,10 @@ body.sidebar-collapsed .sidebar{overflow:hidden;opacity:0}
 .sidebar-item{display:grid;grid-template-columns:70px minmax(0,1fr);align-items:center;column-gap:8px;padding:8px 12px;margin:1px 0;border-radius:8px;cursor:pointer;font-size:13px;color:#A8C5C8;transition:all 0.15s}
 .sidebar-item:hover{background:rgba(255,255,255,0.08);color:#fff}.sidebar-item.active{background:rgba(255,255,255,0.15);color:#fff;font-weight:600}
 .sidebar-item img{width:70px;height:14px;object-fit:contain;object-position:left center;filter:brightness(0) invert(1);opacity:0.7}.sidebar-item.active img{opacity:1}.sidebar-item[data-ck="wfhcr"] img{width:60px;height:12px}.sidebar-item span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sidebar-mark{width:70px;display:flex;align-items:center;justify-content:flex-start;font-size:16px;line-height:1;opacity:0.85}.sidebar-item.tool-box{margin:0 8px 8px;padding:10px 12px;border:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:8px;grid-template-columns:none}
-.sidebar-footer{margin-top:auto;padding:12px 16px;font-size:10px;color:#A8C5C8;border-top:1px solid rgba(255,255,255,0.1)}
+.sidebar-link-block{padding:0 8px 8px}
+.sidebar-link-block a{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;font-size:13px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.15);transition:all 0.15s}
+.sidebar-link-block a:hover{background:rgba(255,255,255,0.08)}
+.sidebar-footer{padding:12px 16px 8px;font-size:10px;color:#A8C5C8;border-top:1px solid rgba(255,255,255,0.1)}
 .main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;min-width:0;transition:margin-left .2s ease}
 .mobile-menu,.desktop-sidebar-toggle{display:none;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:rgba(255,255,255,0.12);border-radius:10px;cursor:pointer;font-size:16px;color:#fff;margin-right:12px;flex-shrink:0;transition:all .15s ease}
 .mobile-menu:hover,.desktop-sidebar-toggle:hover{background:rgba(255,255,255,0.18)}
@@ -95,16 +101,20 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
 </head>
 <body>
 <nav class="sidebar" id="sidebar">
-  <div class="sidebar-brand"><div><h2>Lifely</h2><small>Demand Planner</small></div></div>
-  <div class="sidebar-label">Category Killers</div>
-  <div id="sidebarNav"></div>
-  <div class="sidebar-label">Tools</div>
-  <div class="sidebar-item tool-box" onclick="showAllPOs()" id="poNavItem"><span style="font-size:16px;line-height:1">📋</span><span>Purchase Orders</span></div>
-  <div style="padding:8px"><a href="/tracker" id="trackerLink" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;font-size:13px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.15);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">🚢 Shipment Tracker</a></div>
-  <div style="padding:0 8px 8px"><a href="/incoming-pos" id="incomingLink" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;font-size:13px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.15);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">📦 Incoming POs</a></div>
-  <div class="sidebar-footer" id="sidebarFooter">Loading...</div>
-  <div style="padding:4px 8px 0"><a href="https://docs.google.com/document/d/1GTVkikz4bhFILlPM1ys2IlT0Xh-ZCBfwNIArEW8BBew/edit" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:12px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.1);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">📖 User Guide</a></div>
-  <div style="padding:4px 8px 12px"><a href="https://docs.google.com/spreadsheets/d/1X4aa4h_SQR0W1ffgFcJqvS92MCpM0ONLoxG-n6WjbSE" target="_blank" style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:12px;color:#A8C5C8;text-decoration:none;border:1px solid rgba(255,255,255,0.1);transition:all 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='transparent'">📊 Data Sources</a></div>
+  <div class="sidebar-main">
+    <div class="sidebar-brand"><div><h2>Lifely</h2><small>Demand Planner</small></div></div>
+    <div class="sidebar-label">Category Killers</div>
+    <div id="sidebarNav"></div>
+  </div>
+  <div class="sidebar-tools">
+    <div class="sidebar-label">Tools</div>
+    <div class="sidebar-item tool-box" onclick="showAllPOs()" id="poNavItem"><span style="font-size:16px;line-height:1">📋</span><span>Purchase Orders</span></div>
+    <div class="sidebar-link-block"><a href="/tracker" id="trackerLink">🚢 Shipment Tracker</a></div>
+    <div class="sidebar-link-block"><a href="/incoming-pos" id="incomingLink">📦 Incoming POs</a></div>
+    <div class="sidebar-footer" id="sidebarFooter">Loading...</div>
+    <div class="sidebar-link-block" style="padding-top:4px"><a href="https://docs.google.com/document/d/1GTVkikz4bhFILlPM1ys2IlT0Xh-ZCBfwNIArEW8BBew/edit" target="_blank" style="font-size:12px;border-color:rgba(255,255,255,0.1)">📖 User Guide</a></div>
+    <div class="sidebar-link-block"><a href="https://docs.google.com/spreadsheets/d/1X4aa4h_SQR0W1ffgFcJqvS92MCpM0ONLoxG-n6WjbSE" target="_blank" style="font-size:12px;border-color:rgba(255,255,255,0.1)">📊 Data Sources</a></div>
+  </div>
 </nav>
 <div class="main">
   <div class="mobile-overlay" id="mobileOverlay" onclick="toggleMobileMenu()"></div>
