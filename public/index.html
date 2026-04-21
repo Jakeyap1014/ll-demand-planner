@@ -459,7 +459,8 @@ function renderDashboard(){
   let filtered=skus.filter(s=>dashFilter.size==='All'||getSize(s)===dashFilter.size).sort((a,b)=>a.localeCompare(b));
   const coverageCkMeta={
     llsg:{label:'SG', place:'Singapore'},
-    llca:{label:'CA', place:'Canada'}
+    llca:{label:'CA', place:'Canada'},
+    llna:{label:'US', place:'United States'}
   };
   const coverageMeta=coverageCkMeta[currentCK]||null;
   const showCoverage=!!coverageMeta;
