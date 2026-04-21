@@ -229,6 +229,55 @@ const TODAY=new Date();
 function getSkus(){return[...new Set([...Object.keys(DATA.cin7),...Object.keys(DATA.velocity)])].filter(s=>!(s.includes('-CS-')&&!s.includes('PACK')))}
 function getNet(s){return(DATA.cin7[s]||0)+Math.min(DATA.shopify[s]||0,0)}
 function getIncoming(s){return(DATA.pos||[]).reduce((t,po)=>((po.analyticsItems||po.items)?.[s]||0)+t,0)}
+function getOpenSales(s){return Math.max(-Number(DATA.shopify[s]||0),0)}
+function fmtEtaShort(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?'—':d.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}
+function buildPreorderCoverage(s){
+  const soh=Number(DATA.cin7[s]||0);
+  const openSales=getOpenSales(s);
+  const preorderUnits=Math.max(openSales-soh,0);
+  const incomingRows=[];
+  let undatedIncoming=0;
+  for(const po of (DATA.pos||[])){
+    const qty=Number((po.analyticsItems||po.items)?.[s]||0);
+    if(qty<=0) continue;
+    const etaRaw=po.arrival||po.estimatedArrivalDate||po.eta||null;
+    const eta=etaRaw?new Date(etaRaw):null;
+    if(!eta||Number.isNaN(eta.getTime())){
+      undatedIncoming+=qty;
+      continue;
+    }
+    incomingRows.push({reference:po.reference||'—',qty,etaRaw,eta});
+  }
+  incomingRows.sort((a,b)=>a.eta-b.eta||a.reference.localeCompare(b.reference));
+  const next=incomingRows[0]||null;
+  if(preorderUnits<=0){
+    return {openSales,preorderUnits,nextPO:null,nextETA:null,nextQty:0,nextCovers:null,coveragePO:null,coverageETA:null,status:'In stock'};
+  }
+  if(!next){
+    return {openSales,preorderUnits,nextPO:null,nextETA:null,nextQty:0,nextCovers:false,coveragePO:null,coverageETA:null,status:undatedIncoming>0?'ETA missing':'No incoming PO'};
+  }
+  let running=0,coverage=null;
+  for(const row of incomingRows){
+    running+=row.qty;
+    if(running>=preorderUnits){coverage=row;break;}
+  }
+  const nextCovers=next.qty>=preorderUnits;
+  let status='Not covered';
+  if(nextCovers) status='Covered by next shipment';
+  else if(coverage) status='Covered by later shipment';
+  else if(undatedIncoming>0) status='ETA missing';
+  return {
+    openSales,
+    preorderUnits,
+    nextPO:next.reference,
+    nextETA:next.etaRaw,
+    nextQty:next.qty,
+    nextCovers,
+    coveragePO:coverage?.reference||null,
+    coverageETA:coverage?.etaRaw||null,
+    status
+  };
+}
 function getVel(s){let v=DATA.velocity[s]||0;if(v===0&&(DATA.trendData||{})[s]?.lastInStockVel){return DATA.trendData[s].lastInStockVel}return v}
 function isEstVel(s){return(DATA.velocity[s]||0)===0&&(DATA.trendData||{})[s]?.lastInStockVel>0}
 function getSize(s){for(const[k,l]of Object.entries(DATA.sizes||{})){if(s.includes(k))return l}return'Other'}
@@ -408,11 +457,19 @@ function renderDashboard(){
     <div class="card ${deadstockVal>0?'red':'green'}" title="Dollar value of SKUs with physical stock but absolutely zero sales in the last 30 days. This inventory is not turning at all."><div class="label">💀 Dead Stock Value</div><div class="value">$${deadstockVal>=1000000?(deadstockVal/1000000).toFixed(1)+'M':Math.round(deadstockVal).toLocaleString()}</div><div class="sub">Stock with zero sales — not moving</div></div>`;
   document.getElementById('dash-filters').innerHTML=getSizeKeys().map(s=>`<button class="filter-btn ${dashFilter.size===s?'active':''}" onclick="dashFilter.size='${s}';renderDashboard()">${s}</button>`).join('');
   let filtered=skus.filter(s=>dashFilter.size==='All'||getSize(s)===dashFilter.size).sort((a,b)=>a.localeCompare(b));
-  document.querySelector('#stockTable thead').innerHTML='<tr><th>SKU</th><th>Supplier</th><th>Size</th><th data-tip>CBM<span class="tip">Cubic meters per unit from CIN7 product volume</span></th><th data-tip>CIN7 SOH<span class="tip">Stock On Hand — physical units in the warehouse from CIN7</span></th><th data-tip>Shopify<span class="tip">Shopify inventory level. Negative = pre-orders/oversold units waiting to be fulfilled</span></th><th data-tip>Net<span class="tip">Effective available stock. CIN7 SOH + min(Shopify, 0). Accounts for pre-order commitments</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders not yet received</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over the last 30 days from Shopify orders</span></th><th data-tip>Wks Left<span class="tip">Weeks of stock remaining at current velocity. Net SOH ÷ Units/wk</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th><th data-tip>FOB<span class="tip">Factory cost per unit (AUD). From CIN7 costAUD or costUSD×FX</span></th><th data-tip>Freight/u<span class="tip">Estimated freight cost per unit based on CBM share of container. (SKU CBM ÷ PO total CBM) × container freight ÷ qty</span></th><th data-tip>Landed<span class="tip">Full landed cost per unit = FOB + Freight + Tariff. Based on CBM-weighted freight allocation from open POs</span></th></tr>';
+  const showSgCoverage=currentCK==='llsg';
+  const coverageHeader=showSgCoverage
+    ? '<th data-tip>Open Sales<span class="tip">Open SG demand for this SKU from Shopify orders waiting to be fulfilled</span></th><th data-tip>Preorders<span class="tip">Units still waiting after using current SG stock. max(Open Sales − CIN7 SOH, 0)</span></th><th data-tip>Next PO<span class="tip">First Singapore PO for this SKU by ETA, shown with incoming qty</span></th><th data-tip>Next ETA<span class="tip">ETA of the next Singapore PO for this SKU</span></th><th data-tip>Coverage PO<span class="tip">First PO that fully clears the preorder backlog cumulatively</span></th><th data-tip>Coverage ETA<span class="tip">ETA of the first PO that fully clears the preorder backlog</span></th><th data-tip>Coverage Status<span class="tip">In stock, Covered by next shipment, Covered by later shipment, No incoming PO, ETA missing, or Not covered</span></th>'
+    : '';
+  document.querySelector('#stockTable thead').innerHTML='<tr><th>SKU</th><th>Supplier</th><th>Size</th><th data-tip>CBM<span class="tip">Cubic meters per unit from CIN7 product volume</span></th><th data-tip>CIN7 SOH<span class="tip">Stock On Hand — physical units in the warehouse from CIN7</span></th><th data-tip>Shopify<span class="tip">Shopify inventory level. Negative = pre-orders/oversold units waiting to be fulfilled</span></th><th data-tip>Net<span class="tip">Effective available stock. CIN7 SOH + min(Shopify, 0). Accounts for pre-order commitments</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders not yet received</span></th>'+coverageHeader+'<th data-tip>Units/wk<span class="tip">Average weekly sales velocity over the last 30 days from Shopify orders</span></th><th data-tip>Wks Left<span class="tip">Weeks of stock remaining at current velocity. Net SOH ÷ Units/wk</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th><th data-tip>FOB<span class="tip">Factory cost per unit (AUD). From CIN7 costAUD or costUSD×FX</span></th><th data-tip>Freight/u<span class="tip">Estimated freight cost per unit based on CBM share of container. (SKU CBM ÷ PO total CBM) × container freight ÷ qty</span></th><th data-tip>Landed<span class="tip">Full landed cost per unit = FOB + Freight + Tariff. Based on CBM-weighted freight allocation from open POs</span></th></tr>';
   document.querySelector('#stockTable tbody').innerHTML=filtered.map(s=>{
     let soh=DATA.cin7[s]||0,sh=DATA.shopify[s]||0,net=getNet(s),inc=getIncoming(s),vel=getVel(s),wks=net<=0?0:(vel>0?Math.max(0,Math.round(net/vel)):99);
     const lc=DATA.landedCosts[s];const fob=(DATA.costs||{})[s]||0;const isEst=lc&&lc.source==='estimated'; const supplier=(DATA.suppliers||{})[s]||'—'; const cbm=(DATA.cbmMap||{})[s]||0;
-    return`<tr><td style="font-family:monospace;font-size:10px">${s}${skuLabel(s)}</td><td style="font-size:10px">${supplier}</td><td>${getSize(s)}</td><td style="text-align:right;font-size:10px">${cbm?cbm.toFixed(3):'—'}</td><td>${fmt(soh)}</td><td>${fmt(sh)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td><td>${vel.toFixed(1)}${isEstVel(s)?' <span style="color:var(--yellow);font-size:9px" title="Estimated: using last in-stock velocity (avg of last active weeks). Currently OOS — no recent sales.">(est)</span>':''}${trendIndicator(s)}</td><td>${wks>=25?'⚠️ '+wks:wks}</td><td>${statusBadge(wks,s)}${wks>=25&&vel>0?' <span style="color:var(--yellow);font-size:10px" title="'+Math.round(soh-(vel*25))+' extra units beyond 25 weeks of demand. Costing $'+((DATA.costs||{})[s]||0).toFixed(0)+' each (supplier price). Consider promoting or discounting.">⚠️ $'+Math.round(Math.max(0,soh-(vel*25))*((DATA.costs||{})[s]||0)).toLocaleString()+'</span>':''}</td><td style="text-align:right;font-size:10px">${fob>0?'$'+fob.toFixed(2):'<span style="color:var(--text-dim)">—</span>'}</td><td style="text-align:right;font-size:10px">${lc?'$'+lc.freightPerUnit.toFixed(2)+(isEst?' <span style="font-size:8px;padding:1px 3px;border-radius:3px;background:#FEF3C7;color:#92400E">est</span>':''):'<span style="color:var(--text-dim)">—</span>'}</td><td style="text-align:right;font-weight:600;font-size:10px">${lc?'$'+lc.landedPerUnit.toFixed(2)+(isEst?' <span style="font-size:8px;padding:1px 3px;border-radius:3px;background:#FEF3C7;color:#92400E">est</span>':''):(fob>0?'$'+fob.toFixed(2)+'<span style="color:var(--text-dim);font-weight:400;font-size:8px"> (FOB only)</span>':'<span style="color:var(--text-dim)">—</span>')}</td></tr>`}).join('');
+    const coverage=showSgCoverage?buildPreorderCoverage(s):null;
+    const coverageCells=showSgCoverage
+      ? `<td>${fmt(coverage.openSales)}</td><td>${fmt(coverage.preorderUnits)}</td><td style="font-size:10px">${coverage.nextPO?`${coverage.nextPO} <span style="color:var(--text-dim)">(${Math.round(coverage.nextQty)})</span>`:'—'}</td><td style="font-size:10px">${fmtEtaShort(coverage.nextETA)}</td><td style="font-size:10px">${coverage.coveragePO||'—'}</td><td style="font-size:10px">${fmtEtaShort(coverage.coverageETA)}</td><td><span class="badge ${coverage.status==='In stock'||coverage.status==='Covered by next shipment'||coverage.status==='Covered by later shipment'?'ok':coverage.status==='No incoming PO'||coverage.status==='Not covered'?'critical':'low'}">${coverage.status}</span></td>`
+      : '';
+    return`<tr><td style="font-family:monospace;font-size:10px">${s}${skuLabel(s)}</td><td style="font-size:10px">${supplier}</td><td>${getSize(s)}</td><td style="text-align:right;font-size:10px">${cbm?cbm.toFixed(3):'—'}</td><td>${fmt(soh)}</td><td>${fmt(sh)}</td><td>${fmt(net)}</td><td>${fmt(inc)}</td>${coverageCells}<td>${vel.toFixed(1)}${isEstVel(s)?' <span style="color:var(--yellow);font-size:9px" title="Estimated: using last in-stock velocity (avg of last active weeks). Currently OOS — no recent sales.">(est)</span>':''}${trendIndicator(s)}</td><td>${wks>=25?'⚠️ '+wks:wks}</td><td>${statusBadge(wks,s)}${wks>=25&&vel>0?' <span style="color:var(--yellow);font-size:10px" title="'+Math.round(soh-(vel*25))+' extra units beyond 25 weeks of demand. Costing $'+((DATA.costs||{})[s]||0).toFixed(0)+' each (supplier price). Consider promoting or discounting.">⚠️ $'+Math.round(Math.max(0,soh-(vel*25))*((DATA.costs||{})[s]||0)).toLocaleString()+'</span>':''}</td><td style="text-align:right;font-size:10px">${fob>0?'$'+fob.toFixed(2):'<span style="color:var(--text-dim)">—</span>'}</td><td style="text-align:right;font-size:10px">${lc?'$'+lc.freightPerUnit.toFixed(2)+(isEst?' <span style="font-size:8px;padding:1px 3px;border-radius:3px;background:#FEF3C7;color:#92400E">est</span>':''):'<span style="color:var(--text-dim)">—</span>'}</td><td style="text-align:right;font-weight:600;font-size:10px">${lc?'$'+lc.landedPerUnit.toFixed(2)+(isEst?' <span style="font-size:8px;padding:1px 3px;border-radius:3px;background:#FEF3C7;color:#92400E">est</span>':''):(fob>0?'$'+fob.toFixed(2)+'<span style="color:var(--text-dim);font-weight:400;font-size:8px"> (FOB only)</span>':'<span style="color:var(--text-dim)">—</span>')}</td></tr>`}).join('');
   let cs=filtered.filter(s=>(DATA.cin7[s]||0)>0||getIncoming(s)>0).slice(0,30);
   if(charts.stock)charts.stock.destroy();
   charts.stock=new Chart(document.getElementById('stockChart'),{type:'bar',data:{labels:cs.map(s=>s),datasets:[
