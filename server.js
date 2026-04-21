@@ -1922,13 +1922,21 @@ function getBrandGroup(id, def) {
   return { id: 'other', name: 'Other', logo: def.logo };
 }
 
+function getBrandSubgroup(id, def) {
+  if (id === 'cusb-au-snuggle' || id === 'cusb-au-lifely' || id === 'cmss') return { id: 'cushie-au', name: 'Cushie AU' };
+  if (id === 'cusb-us') return { id: 'cushie-us', name: 'Cushie US' };
+  if (id === 'cusb-uk') return { id: 'cushie-uk', name: 'Cushie UK' };
+  return null;
+}
+
 app.get('/api/ck-list', requireAuth, (req, res) => {
   reloadSnapshotIfNewer();
   const list = Object.entries(CK_DEFS).map(([id, def]) => {
     const data = buildCKData(id);
     const skuCount = data ? Object.keys(data.cin7).length + Object.keys(data.velocity).length : 0;
     const brand = getBrandGroup(id, def);
-    return { id, name: def.name, logo: def.logo, skuCount, brand };
+    const subgroup = getBrandSubgroup(id, def);
+    return { id, name: def.name, logo: def.logo, skuCount, brand, subgroup };
   });
   res.json({ list, lastRefresh: dataCache.lastRefresh });
 });
