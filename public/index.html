@@ -580,7 +580,7 @@ function renderDashboard(){
       let excess=Math.max(0, Math.round(soh-(vel*25)));
       if(excess>0) overstockVal+=excess*cost;
     }
-    else if(soh>0){
+    else if(soh>0 && vel===0){
       deadstockVal+=soh*cost;
     }
   });
