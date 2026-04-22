@@ -1233,6 +1233,24 @@ function buildCKData(ckId) {
     }
   }
 
+  // LLNA dashboard: absorb dropship combo demand into the matching stocked bed SKU.
+  // This affects the visible Shopify / Net / velocity metrics, not just coverage columns.
+  if (ckId === 'llna') {
+    for (const sku of Object.keys(cin7)) {
+      if (!sku.startsWith('LLNA-CB-')) continue;
+      const comboSku = sku.replace('LLNA-CB-', 'LLNA-CFDS-');
+      const comboDemand = Math.max(-(shopify[comboSku] || 0), 0);
+      if (comboDemand > 0) {
+        shopify[sku] = (shopify[sku] || 0) - comboDemand;
+        shopify[comboSku] = 0;
+      }
+      if (velocity[comboSku]) {
+        velocity[sku] = (velocity[sku] || 0) + velocity[comboSku];
+        velocity[comboSku] = 0;
+      }
+    }
+  }
+
   // Swatch pack: propagate PACK velocity to individual swatches
   if (ckId === 'llau' && velocity['LLAU-CB-CS-PACK']) {
     const packVel = velocity['LLAU-CB-CS-PACK'];
