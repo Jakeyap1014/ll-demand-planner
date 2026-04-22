@@ -576,15 +576,20 @@ function renderDashboard(){
   let wksT=tVel>0?Math.round((tSOH+Math.min(tOver,0))/tVel):99;
   let overstockVal=0,deadstockVal=0;
   skus.forEach(s=>{let vel=getVel(s),soh=DATA.cin7[s]||0,cost=(DATA.costs||{})[s]||0;
-    if(vel>0){let wks=soh/vel;if(wks>=25){let excess=Math.round(soh-(vel*25));overstockVal+=excess*cost;}}
-    else if(soh>0){deadstockVal+=soh*cost;overstockVal+=soh*cost;}
+    if(vel>0){
+      let excess=Math.max(0, Math.round(soh-(vel*25)));
+      if(excess>0) overstockVal+=excess*cost;
+    }
+    else if(soh>0){
+      deadstockVal+=soh*cost;
+    }
   });
   document.getElementById('summary-cards').innerHTML=`
     <div class="card green" title="Total physical units in warehouse from CIN7. This is what you can actually ship today."><div class="label">CIN7 SOH</div><div class="value">${tSOH.toLocaleString()}</div><div class="sub">Physical stock</div></div>
     <div class="card blue" style="cursor:pointer;border:2px solid var(--blue);transition:all 0.15s" title="Units on the way from open Purchase Orders. Click for PO-level breakdown." onclick="toggleInboundDrilldown()" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(44,71,75,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''"><div class="label" style="display:flex;align-items:center;gap:4px">Incoming <span style="font-size:9px;background:var(--blue);color:#fff;padding:1px 6px;border-radius:8px">▼ Details</span></div><div class="value">${tInc.toLocaleString()}</div><div class="sub">${uniquePoCount(DATA.pos)} open POs</div></div>
     <div class="card red" title="Units already sold on Shopify but not yet shipped. These eat into your physical stock — Net SOH accounts for them."><div class="label">Oversold</div><div class="value">${tOver.toLocaleString()}</div><div class="sub">Pre-order commitments</div></div>
-    <div class="card ${overstockVal>0?'yellow':'green'}" title="Dollar value of stock beyond 25 weeks of demand at current velocity. Supplier price (FOB) — actual landed cost is 2-3x higher."><div class="label">Overstock Value</div><div class="value">$${overstockVal>=1000000?(overstockVal/1000000).toFixed(1)+'M':Math.round(overstockVal).toLocaleString()}</div><div class="sub">Capital tied up in slow-moving stock</div></div>
-    <div class="card ${deadstockVal>0?'red':'green'}" title="Dollar value of SKUs with physical stock but absolutely zero sales in the last 30 days. This inventory is not turning at all."><div class="label">💀 Dead Stock Value</div><div class="value">$${deadstockVal>=1000000?(deadstockVal/1000000).toFixed(1)+'M':Math.round(deadstockVal).toLocaleString()}</div><div class="sub">Stock with zero sales — not moving</div></div>`;
+    <div class="card ${overstockVal>0?'yellow':'green'}" title="Dollar value of stock above 25 weeks of cover at current velocity, excluding dead stock. Supplier price (FOB) only, not landed cost."><div class="label">Overstock Value</div><div class="value">$${overstockVal>=1000000?(overstockVal/1000000).toFixed(1)+'M':Math.round(overstockVal).toLocaleString()}</div><div class="sub">Excess above 25 weeks, FOB only</div></div>
+    <div class="card ${deadstockVal>0?'red':'green'}" title="Dollar value of SKUs with physical stock but zero sales velocity. Supplier price (FOB) only, not landed cost."><div class="label">💀 Dead Stock Value</div><div class="value">$${deadstockVal>=1000000?(deadstockVal/1000000).toFixed(1)+'M':Math.round(deadstockVal).toLocaleString()}</div><div class="sub">Zero-velocity stock, FOB only</div></div>`;
   document.getElementById('dash-filters').innerHTML=getSizeKeys().map(s=>`<button class="filter-btn ${dashFilter.size===s?'active':''}" onclick="dashFilter.size='${s}';renderDashboard()">${s}</button>`).join('');
   let filtered=skus.filter(s=>dashFilter.size==='All'||getSize(s)===dashFilter.size).sort((a,b)=>a.localeCompare(b));
   if(['llau','llnz','lluk'].includes(currentCK)) filtered=filtered.filter(s=>!(DATA.coverageAux?.mattressSkus||[]).includes(s));
