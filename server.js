@@ -1282,6 +1282,40 @@ function buildCKData(ckId) {
   }
 
   // BOM explosion for combos - component-level planning
+  let coverageAux = null;
+  if (ckId === 'llau') {
+    const openDemandBySku = {};
+    for (const sourceStore of relatedStores) {
+      for (const [sku, qty] of Object.entries(dataCache.shopifyOpenDemand?.[sourceStore]?.['AU'] || {})) {
+        openDemandBySku[sku] = (openDemandBySku[sku] || 0) + Number(qty || 0);
+      }
+    }
+    const stockBySku = {};
+    for (const [sku, data] of Object.entries(dataCache.cin7Products || {})) {
+      if (!sku.startsWith('DD-21')) continue;
+      const branchRows = dataCache.cin7StockByBranch?.[sku] || {};
+      const branchData = LL_AU_BRANCH_IDS.reduce((acc, branchId) => {
+        const row = branchRows[branchId];
+        if (!row) return acc;
+        acc.soh += Number(row.soh || 0);
+        acc.available += Number(row.available || 0);
+        return acc;
+      }, { soh: 0, available: 0 });
+      stockBySku[sku] = { soh: branchData.soh, available: branchData.available };
+    }
+    const poRows = {};
+    for (const po of dataCache.cin7POs || []) {
+      if (po.stage === 'Received') continue;
+      if (poDestination && resolvePoDestination(po) !== poDestination) continue;
+      const etaRaw = po.arrival || po.estimatedArrivalDate || null;
+      for (const [sku, qty] of Object.entries(po.items || {})) {
+        if (!(sku.startsWith('LLAU-CB-') || sku.startsWith('LLAU-CBCF-') || sku.startsWith('DD-21'))) continue;
+        if (!poRows[sku]) poRows[sku] = [];
+        poRows[sku].push({ reference: po.reference, qty: Number(qty || 0), eta: etaRaw });
+      }
+    }
+    coverageAux = { openDemandBySku, stockBySku, poRows };
+  }
   let bomData = null;
   if (ckId === 'llau-cbcf') {
     bomData = {};
@@ -1828,6 +1862,7 @@ function buildCKData(ckId) {
     cbmMap,
     suppliers,
     landedCosts,
+    coverageAux,
     trendData: (() => {
       const vel = dataCache.shopifyVelocity?.[storeKey] || {};
       const d7 = vel._7d || {};
@@ -1906,7 +1941,7 @@ function getBrandSubgroup(id, def) {
 
 app.get('/api/ck-list', requireAuth, (req, res) => {
   reloadSnapshotIfNewer();
-  const list = Object.entries(CK_DEFS).map(([id, def]) => {
+  const list = Object.entries(CK_DEFS).filter(([id]) => id !== 'llau-cbcf').map(([id, def]) => {
     const data = buildCKData(id);
     const skuCount = data ? Object.keys(data.cin7).length + Object.keys(data.velocity).length : 0;
     const brand = getBrandGroup(id, def);
