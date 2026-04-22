@@ -1340,18 +1340,34 @@ function buildCKData(ckId) {
 
   // BOM explosion for combos - component-level planning
   let coverageAux = null;
-  if (ckId === 'llau') {
+  if (ckId === 'llau' || ckId === 'llnz' || ckId === 'lluk') {
+    const coverageConfig = ckId === 'lluk'
+      ? {
+          demandCountry: 'GB',
+          bedPrefix: 'LLUK-CB-',
+          comboPrefix: 'LLUK-CBDS-',
+          mattressMap: { S: 'DD-21107CF', SD: 'DD-21137CF', D: 'DD-21153CF' },
+          mattressSkus: ['DD-21107CF', 'DD-21137CF', 'DD-21153CF']
+        }
+      : {
+          demandCountry: ckId === 'llnz' ? 'NZ' : 'AU',
+          bedPrefix: 'LLAU-CB-',
+          comboPrefix: 'LLAU-CBCF-',
+          mattressMap: { S: 'DD-21915CF', KS: 'DD-21107CF', D: 'DD-21137CF' },
+          mattressSkus: ['DD-21915CF', 'DD-21107CF', 'DD-21137CF']
+        };
     const openDemandBySku = {};
     for (const sourceStore of relatedStores) {
-      for (const [sku, qty] of Object.entries(dataCache.shopifyOpenDemand?.[sourceStore]?.['AU'] || {})) {
+      for (const [sku, qty] of Object.entries(dataCache.shopifyOpenDemand?.[sourceStore]?.[coverageConfig.demandCountry] || {})) {
         openDemandBySku[sku] = (openDemandBySku[sku] || 0) + Number(qty || 0);
       }
     }
     const stockBySku = {};
-    for (const [sku, data] of Object.entries(dataCache.cin7Products || {})) {
-      if (!sku.startsWith('DD-21')) continue;
+    for (const sku of coverageConfig.mattressSkus) {
+      const data = dataCache.cin7Products?.[sku];
+      if (!data) continue;
       const branchRows = dataCache.cin7StockByBranch?.[sku] || {};
-      const branchData = LL_AU_BRANCH_IDS.reduce((acc, branchId) => {
+      const branchData = (stockBranches || []).reduce((acc, branchId) => {
         const row = branchRows[branchId];
         if (!row) return acc;
         acc.soh += Number(row.soh || 0);
@@ -1366,12 +1382,12 @@ function buildCKData(ckId) {
       if (poDestination && resolvePoDestination(po) !== poDestination) continue;
       const etaRaw = po.arrival || po.estimatedArrivalDate || null;
       for (const [sku, qty] of Object.entries(po.items || {})) {
-        if (!(sku.startsWith('LLAU-CB-') || sku.startsWith('LLAU-CBCF-') || sku.startsWith('DD-21'))) continue;
+        if (!(sku.startsWith(coverageConfig.bedPrefix) || sku.startsWith(coverageConfig.comboPrefix) || coverageConfig.mattressSkus.includes(sku))) continue;
         if (!poRows[sku]) poRows[sku] = [];
         poRows[sku].push({ reference: po.reference, qty: Number(qty || 0), eta: etaRaw });
       }
     }
-    coverageAux = { openDemandBySku, stockBySku, poRows };
+    coverageAux = { ...coverageConfig, openDemandBySku, stockBySku, poRows };
   }
   let bomData = null;
   if (ckId === 'llau-cbcf') {

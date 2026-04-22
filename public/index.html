@@ -252,31 +252,35 @@ function buildPreorderCoverage(s){
     return (rank[a?.status]||0) >= (rank[b?.status]||0) ? a : b;
   };
   const isLlnaFamily=currentCK==='llna'||currentCK==='llca';
-  const isLlau=currentCK==='llau';
+  const isOwnedMattressMarket=currentCK==='llau'||currentCK==='llnz'||currentCK==='lluk';
   const isLlnaBed=isLlnaFamily&&s.startsWith('LLNA-CB-');
   const isLlnaDropship=isLlnaFamily&&s.startsWith('LLNA-CFDS-');
   if(isLlnaDropship){
     return {openSales:0,preorderUnits:null,nextPO:null,nextETA:null,nextQty:0,nextCovers:null,coveragePO:null,coverageETA:null,status:'Dropship',mattressPO:null,mattressETA:null,mattressStatus:'Dropship'};
   }
-  if(isLlau && /^LLAU-CB-(S|KS|D)-/.test(s) && !s.includes('-CV') && !s.includes('-CS-')){
+  if(isOwnedMattressMarket){
     const aux=DATA.coverageAux||{};
     const openDemandBySku=aux.openDemandBySku||{};
     const poRows=aux.poRows||{};
     const stockBySku=aux.stockBySku||{};
-    const ownOpenSales=Number(openDemandBySku[s]||0);
-    const comboSku=s.replace('LLAU-CB-','LLAU-CBCF-');
-    const comboOpenSales=Number(openDemandBySku[comboSku]||0);
-    const openSales=ownOpenSales+comboOpenSales;
-    const soh=Number(DATA.cin7[s]||0);
-    const bedCoverage=computeFromRows(Math.max(openSales-soh,0), poRows[s]||[]);
-    const sizeMatch=s.match(/^LLAU-CB-(S|KS|D)-/);
-    const size=sizeMatch?sizeMatch[1]:null;
-    const mattressMap={S:'DD-21915CF',KS:'DD-21107CF',D:'DD-21137CF'};
-    const mattressSku=size?mattressMap[size]:null;
-    const mattressOwnOpen=Number(mattressSku ? (openDemandBySku[mattressSku]||0) : 0);
-    const mattressTotalOpen=mattressOwnOpen+comboOpenSales;
-    const mattressSoh=Number(mattressSku ? (stockBySku[mattressSku]?.soh||0) : 0);
-    const mattressCoverage=computeFromRows(Math.max(mattressTotalOpen-mattressSoh,0), mattressSku ? (poRows[mattressSku]||[]) : []);
+    const bedPrefix=aux.bedPrefix||'';
+    const comboPrefix=aux.comboPrefix||'';
+    const mattressMap=aux.mattressMap||{};
+    const bedPattern = currentCK==='lluk' ? /^LLUK-CB-(S|SD|D)-/ : /^LLAU-CB-(S|KS|D)-/;
+    if(bedPattern.test(s) && !s.includes('-CV') && !s.includes('-CS-') && bedPrefix && comboPrefix){
+      const ownOpenSales=Number(openDemandBySku[s]||0);
+      const comboSku=s.replace(bedPrefix, comboPrefix);
+      const comboOpenSales=Number(openDemandBySku[comboSku]||0);
+      const openSales=ownOpenSales+comboOpenSales;
+      const soh=Number(DATA.cin7[s]||0);
+      const bedCoverage=computeFromRows(Math.max(openSales-soh,0), poRows[s]||[]);
+      const sizeMatch=s.match(bedPattern);
+      const size=sizeMatch?sizeMatch[1]:null;
+      const mattressSku=size?mattressMap[size]:null;
+      const mattressOwnOpen=Number(mattressSku ? (openDemandBySku[mattressSku]||0) : 0);
+      const mattressTotalOpen=mattressOwnOpen+comboOpenSales;
+      const mattressSoh=Number(mattressSku ? (stockBySku[mattressSku]?.soh||0) : 0);
+      const mattressCoverage=computeFromRows(Math.max(mattressTotalOpen-mattressSoh,0), mattressSku ? (poRows[mattressSku]||[]) : []);
     const overall=pickOverall(bedCoverage,mattressCoverage);
     return {
       openSales,
@@ -302,8 +306,9 @@ function buildPreorderCoverage(s){
       mattressCoveragePO: mattressCoverage.coveragePO,
       mattressCoverageETA: mattressCoverage.coverageETA
     };
+    }
   }
-  if(isLlau && ['DD-21915CF','DD-21107CF','DD-21137CF'].includes(s)){
+  if(isOwnedMattressMarket && (DATA.coverageAux?.mattressSkus||[]).includes(s)){
     const base=computeFromRows(Math.max(getOpenSales(s)-Number(DATA.cin7[s]||0),0),(DATA.pos||[]).flatMap(po=>{
       const qty=Number((po.analyticsItems||po.items)?.[s]||0);
       return qty>0?[{reference:po.reference,qty,eta:po.arrival||po.estimatedArrivalDate||po.eta||null}]:[];
@@ -582,7 +587,7 @@ function renderDashboard(){
     <div class="card ${deadstockVal>0?'red':'green'}" title="Dollar value of SKUs with physical stock but absolutely zero sales in the last 30 days. This inventory is not turning at all."><div class="label">💀 Dead Stock Value</div><div class="value">$${deadstockVal>=1000000?(deadstockVal/1000000).toFixed(1)+'M':Math.round(deadstockVal).toLocaleString()}</div><div class="sub">Stock with zero sales — not moving</div></div>`;
   document.getElementById('dash-filters').innerHTML=getSizeKeys().map(s=>`<button class="filter-btn ${dashFilter.size===s?'active':''}" onclick="dashFilter.size='${s}';renderDashboard()">${s}</button>`).join('');
   let filtered=skus.filter(s=>dashFilter.size==='All'||getSize(s)===dashFilter.size).sort((a,b)=>a.localeCompare(b));
-  if(currentCK==='llau') filtered=filtered.filter(s=>!['DD-21915CF','DD-21107CF','DD-21137CF'].includes(s));
+  if(['llau','llnz','lluk'].includes(currentCK)) filtered=filtered.filter(s=>!(DATA.coverageAux?.mattressSkus||[]).includes(s));
   const coverageCkMeta={
     llsg:{label:'SG', place:'Singapore'},
     llca:{label:'CA', place:'Canada'},
@@ -594,13 +599,17 @@ function renderDashboard(){
   const coverageMeta=coverageCkMeta[currentCK]||null;
   const showCoverage=!!coverageMeta;
   const auMarketingPanel=document.getElementById('auMarketingPanel');
-  if(currentCK==='llau'){
-    const bedSkus=skus.filter(s=>/^LLAU-CB-(S|KS|D)-/.test(s) && !s.includes('-CV') && !s.includes('-CS-')).sort((a,b)=>a.localeCompare(b));
+  if(['llau','llnz','lluk'].includes(currentCK)){
+    const marketLabel=currentCK==='llau'?'AU':currentCK==='llnz'?'NZ':'UK';
+    const bedPattern=currentCK==='lluk'?/^LLUK-CB-(S|SD|D)-/:/^LLAU-CB-(S|KS|D)-/;
+    const bedPrefix=DATA.coverageAux?.bedPrefix || (currentCK==='lluk'?'LLUK-CB-':'LLAU-CB-');
+    const comboPrefix=DATA.coverageAux?.comboPrefix || (currentCK==='lluk'?'LLUK-CBDS-':'LLAU-CBCF-');
+    const bedSkus=skus.filter(s=>bedPattern.test(s) && !s.includes('-CV') && !s.includes('-CS-')).sort((a,b)=>a.localeCompare(b));
     const statusRank={ 'In stock':0, 'Covered by next shipment':1, 'Covered by later shipment':2, 'ETA missing':3, 'No incoming PO':4, 'Not covered':5 };
     const marketingBadgeClass=status=>status==='Covered by next shipment'?'cover-next':status==='Covered by later shipment'?'cover-later':status==='In stock'?'ok':status==='No incoming PO'||status==='Not covered'?'critical':'blue';
     const singlesRows=bedSkus.map(sku=>({ sku, c:buildPreorderCoverage(sku) }));
     const comboRows=singlesRows.map(({sku,c})=>({
-      comboSku:c.comboSku || sku.replace('LLAU-CB-','LLAU-CBCF-'),
+      comboSku:c.comboSku || sku.replace(bedPrefix,comboPrefix),
       openOrders:c.comboOpenSales||0,
       bedStatus:c.bedStatus||'In stock',
       mattressStatus:c.mattressStatus||'In stock',
@@ -611,13 +620,13 @@ function renderDashboard(){
     auMarketingPanel.style.display='block';
     auMarketingPanel.innerHTML=`
       <div class="chart-container" style="margin-bottom:16px">
-        <h3>📣 AU Marketing View — Singles</h3>
+        <h3>📣 ${marketLabel} Marketing View — Singles</h3>
         <div class="table-wrap" style="max-height:none"><table><thead><tr><th>SKU</th><th>Open Orders</th><th>Combo Demand</th><th>Shared Demand</th><th>Frame Status</th><th>Next PO</th><th>Next ETA</th><th>Coverage ETA</th><th>Status</th></tr></thead><tbody>
         ${singlesRows.map(({sku,c})=>`<tr><td style="font-family:monospace;font-size:10px">${sku}</td><td>${fmt(c.ownOpenSales||0)}</td><td>${fmt(c.comboOpenSales||0)}</td><td>${fmt((c.ownOpenSales||0)+(c.comboOpenSales||0))}</td><td><span class="badge ${marketingBadgeClass(c.bedStatus||'In stock')}">${c.bedStatus||'In stock'}</span></td><td style="font-size:10px">${c.nextPO?`${c.nextPO} <span style="color:var(--text-dim)">(${Math.round(c.nextQty||0)})</span>`:'—'}</td><td style="font-size:10px">${fmtEtaShort(c.nextETA)}</td><td style="font-size:10px">${fmtEtaShort(c.bedCoverageETA||c.coverageETA)}</td><td><span class="badge ${marketingBadgeClass(c.bedStatus||c.status)}">${c.bedStatus||c.status}</span></td></tr>`).join('')}
         </tbody></table></div>
       </div>
       <div class="chart-container" style="margin-bottom:0">
-        <h3>📦 AU Marketing View — Combos</h3>
+        <h3>📦 ${marketLabel} Marketing View — Combos</h3>
         <div class="table-wrap" style="max-height:none"><table><thead><tr><th>Combo SKU</th><th>Open Orders</th><th>Bed Frame Status</th><th>Mattress Status</th><th>Limiting Component</th><th>Coverage ETA</th><th>Status</th></tr></thead><tbody>
         ${comboRows.map(r=>`<tr><td style="font-family:monospace;font-size:10px">${r.comboSku}</td><td>${fmt(r.openOrders||0)}</td><td><span class="badge ${marketingBadgeClass(r.bedStatus)}">${r.bedStatus}</span></td><td><span class="badge ${marketingBadgeClass(r.mattressStatus)}">${r.mattressStatus}</span></td><td>${r.limiting}</td><td style="font-size:10px">${fmtEtaShort(r.coverageETA)}</td><td><span class="badge ${marketingBadgeClass(r.status)}">${r.status}</span></td></tr>`).join('')}
         </tbody></table></div>
