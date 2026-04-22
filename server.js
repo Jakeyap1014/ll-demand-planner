@@ -1288,12 +1288,16 @@ function buildCKData(ckId) {
     const allCin7 = dataCache.cin7Products;
     const aggregatedShopifyInventory = {};
     const aggregatedShopifyVelocity = {};
+    const aggregatedOpenDemand = {};
     for (const sourceStore of relatedStores) {
       for (const [sku, qty] of Object.entries(dataCache.shopifyInventory?.[sourceStore] || {})) {
         if (!sku.startsWith('__')) aggregatedShopifyInventory[sku] = (aggregatedShopifyInventory[sku] || 0) + qty;
       }
       for (const [sku, vel] of Object.entries(dataCache.shopifyVelocity?.[sourceStore] || {})) {
         if (!sku.startsWith('_')) aggregatedShopifyVelocity[sku] = (aggregatedShopifyVelocity[sku] || 0) + vel;
+      }
+      for (const [sku, qty] of Object.entries(dataCache.shopifyOpenDemand?.[sourceStore]?.['AU'] || {})) {
+        aggregatedOpenDemand[sku] = (aggregatedOpenDemand[sku] || 0) + Number(qty || 0);
       }
     }
 
@@ -1305,14 +1309,20 @@ function buildCKData(ckId) {
 
     // Get incoming POs for components
     const componentIncoming = {};
+    const componentPoRows = {};
     for (const po of dataCache.cin7POs) {
       if (po.stage === 'Received') continue;
+      const etaRaw = po.arrival || po.estimatedArrivalDate || null;
       for (const [sku, qty] of Object.entries(po.items || {})) {
         if (sku.startsWith('LLAU-CB-') && !sku.includes('CBCF')) {
           componentIncoming[sku] = (componentIncoming[sku] || 0) + qty;
+          if (!componentPoRows[sku]) componentPoRows[sku] = [];
+          componentPoRows[sku].push({ reference: po.reference, qty, eta: etaRaw });
         }
         if (sku.startsWith('DD-21')) {
           componentIncoming[sku] = (componentIncoming[sku] || 0) + qty;
+          if (!componentPoRows[sku]) componentPoRows[sku] = [];
+          componentPoRows[sku].push({ reference: po.reference, qty, eta: etaRaw });
         }
       }
     }
@@ -1329,8 +1339,7 @@ function buildCKData(ckId) {
         const bedSoh = typeof bedData === 'object' ? (bedData.soh || 0) : (bedData || 0);
         const standaloneVel = aggregatedShopifyVelocity[bom.bed] || 0;
         const shopifyInv = aggregatedShopifyInventory[bom.bed] || 0;
-        // Decompose oversold: standalone oversold from Shopify
-        const standaloneOversold = Math.min(shopifyInv, 0);
+        const standalonePreorders = aggregatedOpenDemand[bom.bed] || 0;
         components[bom.bed] = {
           soh: bedSoh,
           standaloneDemand: standaloneVel,
@@ -1338,7 +1347,10 @@ function buildCKData(ckId) {
           totalDemand: standaloneVel,
           incoming: componentIncoming[bom.bed] || 0,
           shopifyInv: shopifyInv,
-          standaloneOversold: standaloneOversold,
+          standalonePreorders,
+          comboPreorders: 0,
+          totalPreorders: standalonePreorders,
+          standaloneOversold: -standalonePreorders,
           comboOversold: 0,
           combos: [],
           type: 'bed',
@@ -1348,24 +1360,31 @@ function buildCKData(ckId) {
       components[bom.bed].comboDemand += comboVel * bom.bedQty;
       components[bom.bed].totalDemand = components[bom.bed].standaloneDemand + components[bom.bed].comboDemand;
       // Combo oversold: from combo Shopify inventory
-      const comboShopifyInv = aggregatedShopifyInventory[comboSku] || 0;
-      if (comboShopifyInv < 0) {
-        components[bom.bed].comboOversold += comboShopifyInv;
+      const comboOpenDemand = aggregatedOpenDemand[comboSku] || 0;
+      if (comboOpenDemand > 0) {
+        components[bom.bed].comboPreorders += comboOpenDemand;
+        components[bom.bed].comboOversold -= comboOpenDemand;
       }
+      components[bom.bed].totalPreorders = components[bom.bed].standalonePreorders + components[bom.bed].comboPreorders;
       components[bom.bed].combos.push(comboSku);
 
       // Mattress component (dedicated to combos - 0 standalone demand)
       if (!components[bom.mattress]) {
         const mattData = allCin7[bom.mattress] || {};
         const mattSoh = typeof mattData === 'object' ? (mattData.soh || 0) : (mattData || 0);
+        const mattressStandaloneVel = aggregatedShopifyVelocity[bom.mattress] || 0;
+        const mattressStandalonePreorders = aggregatedOpenDemand[bom.mattress] || 0;
         components[bom.mattress] = {
           soh: mattSoh,
-          standaloneDemand: 0, // Never sold standalone
+          standaloneDemand: mattressStandaloneVel,
           comboDemand: 0,
-          totalDemand: 0,
+          totalDemand: mattressStandaloneVel,
           incoming: componentIncoming[bom.mattress] || 0,
           shopifyInv: aggregatedShopifyInventory[bom.mattress] || 0,
-          standaloneOversold: 0,
+          standalonePreorders: mattressStandalonePreorders,
+          comboPreorders: 0,
+          totalPreorders: mattressStandalonePreorders,
+          standaloneOversold: -mattressStandalonePreorders,
           comboOversold: 0,
           combos: [],
           type: 'mattress',
@@ -1373,7 +1392,12 @@ function buildCKData(ckId) {
         };
       }
       components[bom.mattress].comboDemand += comboVel * bom.mattressQty;
-      components[bom.mattress].totalDemand = components[bom.mattress].comboDemand; // 100% combo
+      components[bom.mattress].totalDemand = components[bom.mattress].standaloneDemand + components[bom.mattress].comboDemand;
+      if (comboOpenDemand > 0) {
+        components[bom.mattress].comboPreorders += comboOpenDemand;
+        components[bom.mattress].comboOversold -= comboOpenDemand;
+      }
+      components[bom.mattress].totalPreorders = components[bom.mattress].standalonePreorders + components[bom.mattress].comboPreorders;
       components[bom.mattress].combos.push(comboSku);
     }
 
@@ -1413,6 +1437,7 @@ function buildCKData(ckId) {
     bomData._components = components;
     bomData._sizeData = sizeData;
     bomData._componentIncoming = componentIncoming;
+    bomData._componentPoRows = componentPoRows;
     bomData._sizeOrder = ['S', 'KS', 'D'];
     bomData._sizeLabels = { 'S': 'Single', 'KS': 'King Single', 'D': 'Double' };
     bomData._summary = {

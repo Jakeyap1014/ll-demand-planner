@@ -364,7 +364,38 @@ async function selectCK(ckId){
 function renderBOM() {
   if (!DATA.bomData || !DATA.bomData._components) return;
   const comps = DATA.bomData._components;
+  const componentPoRows = DATA.bomData._componentPoRows || {};
   const allEntries = Object.entries(comps);
+  const buildComponentCoverage = (sku, component) => {
+    const preorderUnits = Math.max(Number(component.totalPreorders || 0), 0);
+    const rows = (componentPoRows[sku] || []).map(row => ({
+      reference: row.reference || '—',
+      qty: Number(row.qty || 0),
+      etaRaw: row.eta || null,
+      eta: row.eta ? new Date(row.eta) : null
+    })).filter(row => row.qty > 0);
+    const datedRows = rows.filter(row => row.eta && !Number.isNaN(row.eta.getTime())).sort((a, b) => a.eta - b.eta || a.reference.localeCompare(b.reference));
+    const undatedIncoming = rows.filter(row => !row.eta || Number.isNaN(row.eta.getTime())).reduce((sum, row) => sum + row.qty, 0);
+    if (preorderUnits <= 0) return { preorderUnits: 0, nextPO: null, nextETA: null, nextQty: 0, coveragePO: null, coverageETA: null, status: 'In stock' };
+    if (!datedRows.length) return { preorderUnits, nextPO: null, nextETA: null, nextQty: 0, coveragePO: null, coverageETA: null, status: undatedIncoming > 0 ? 'ETA missing' : 'No incoming PO' };
+    const next = datedRows[0];
+    let running = 0;
+    let coverage = null;
+    for (const row of datedRows) {
+      running += row.qty;
+      if (running >= preorderUnits) {
+        coverage = row;
+        break;
+      }
+    }
+    if (next.qty >= preorderUnits) {
+      return { preorderUnits, nextPO: next.reference, nextETA: next.etaRaw, nextQty: next.qty, coveragePO: next.reference, coverageETA: next.etaRaw, status: 'Covered by next shipment' };
+    }
+    if (coverage) {
+      return { preorderUnits, nextPO: next.reference, nextETA: next.etaRaw, nextQty: next.qty, coveragePO: coverage.reference, coverageETA: coverage.etaRaw, status: 'Covered by later shipment' };
+    }
+    return { preorderUnits, nextPO: next.reference, nextETA: next.etaRaw, nextQty: next.qty, coveragePO: null, coverageETA: null, status: undatedIncoming > 0 ? 'ETA missing' : 'Not covered' };
+  };
   const sizeOrder = DATA.bomData._sizeOrder || ['S', 'KS', 'D'];
   const sizeLabels = DATA.bomData._sizeLabels || { 'S': 'Single', 'KS': 'King Single', 'D': 'Double' };
   const summary = DATA.bomData._summary || {
@@ -391,6 +422,20 @@ function renderBOM() {
     <div class="card blue"><div class="label">Incoming</div><div class="value">${Math.round(primaryIncoming).toLocaleString()}</div><div class="sub">${summary.incomingSub}</div></div>
     <div class="card red"><div class="label">Oversold</div><div class="value">${Math.round(primaryOversold).toLocaleString()}</div><div class="sub">${summary.oversoldSub}</div></div>
     <div class="card yellow"><div class="label">Avg Wks Stock</div><div class="value">${primaryWks}</div><div class="sub">${summary.weeksSub}</div></div>`;
+
+  const coverageStats = { next: 0, later: 0, notCovered: 0, noIncoming: 0 };
+  allEntries.forEach(([sku, component]) => {
+    const coverage = buildComponentCoverage(sku, component);
+    if (coverage.status === 'Covered by next shipment') coverageStats.next += 1;
+    else if (coverage.status === 'Covered by later shipment') coverageStats.later += 1;
+    else if (coverage.status === 'No incoming PO' || coverage.status === 'ETA missing') coverageStats.noIncoming += 1;
+    else if (coverage.status === 'Not covered') coverageStats.notCovered += 1;
+  });
+  document.getElementById('bomSummaryCards').innerHTML = `
+    <div class="card yellow"><div class="label">Covered Next</div><div class="value">${coverageStats.next}</div><div class="sub">component SKUs</div></div>
+    <div class="card" style="border-color:#f4b183"><div class="label">Covered Later</div><div class="value" style="color:#c96b12">${coverageStats.later}</div><div class="sub">component SKUs</div></div>
+    <div class="card red"><div class="label">Not Covered</div><div class="value">${coverageStats.notCovered}</div><div class="sub">component SKUs</div></div>
+    <div class="card blue"><div class="label">No Incoming / ETA</div><div class="value">${coverageStats.noIncoming}</div><div class="sub">component SKUs</div></div>`;
 
   const filterCodes = ['All', ...sizeOrder.filter(code => allEntries.some(([k,v]) => v.size === code))];
   if (!window._bomFilter || (window._bomFilter !== 'All' && !filterCodes.includes(window._bomFilter))) window._bomFilter = 'All';
@@ -436,7 +481,7 @@ function renderBOM() {
 
   let sorted = filteredAll.sort((a,b) => sizeRank(a[1].size) - sizeRank(b[1].size) || a[0].localeCompare(b[0]));
 
-  document.querySelector('#stockTable thead').innerHTML = '<tr><th>Component</th><th>Supplier</th><th>Type</th><th>Size</th><th data-tip>CBM<span class="tip">Cubic meters per unit from CIN7 product volume</span></th><th data-tip>CIN7 SOH<span class="tip">Physical stock in warehouse</span></th><th data-tip>Incoming<span class="tip">Units from open POs</span></th><th data-tip>Oversold<span class="tip">Pre-order commitments (standalone + combo)</span></th><th data-tip>Standalone/wk<span class="tip">Weekly velocity from standalone sales</span></th><th data-tip>Combo/wk<span class="tip">Weekly velocity consumed by combo sales</span></th><th data-tip>Total/wk<span class="tip">Combined demand: standalone + combo. Used for reorder calculations</span></th><th data-tip>Wks Left<span class="tip">SOH ÷ Total velocity</span></th><th>Status</th></tr>';
+  document.querySelector('#stockTable thead').innerHTML = '<tr><th>Component</th><th>Supplier</th><th>Type</th><th>Size</th><th data-tip>CBM<span class="tip">Cubic meters per unit from CIN7 product volume</span></th><th data-tip>CIN7 SOH<span class="tip">Physical stock in warehouse</span></th><th data-tip>Incoming<span class="tip">Units from open POs</span></th><th data-tip>Oversold<span class="tip">Pre-order commitments (standalone + combo)</span></th><th data-tip>Preorders<span class="tip">Open demand units to cover for this component. For beds: standalone + combo demand. For mattresses: standalone + combo mattress demand.</span></th><th data-tip>Next PO<span class="tip">First component PO by ETA, shown with incoming qty</span></th><th data-tip>Next ETA<span class="tip">ETA of the next component PO</span></th><th data-tip>Coverage PO<span class="tip">First PO that fully clears the component preorder backlog</span></th><th data-tip>Coverage ETA<span class="tip">ETA of the first PO that fully clears the component preorder backlog</span></th><th data-tip>Coverage Status<span class="tip">In stock, Covered by next shipment, Covered by later shipment, No incoming PO, ETA missing, or Not covered</span></th><th data-tip>Standalone/wk<span class="tip">Weekly velocity from standalone sales</span></th><th data-tip>Combo/wk<span class="tip">Weekly velocity consumed by combo sales</span></th><th data-tip>Total/wk<span class="tip">Combined demand: standalone + combo. Used for reorder calculations</span></th><th data-tip>Wks Left<span class="tip">SOH ÷ Total velocity</span></th><th>Status</th></tr>';
   document.querySelector('#stockTable tbody').innerHTML = sorted.map(([sku, c]) => {
     let wks = c.totalDemand > 0 ? Math.max(0, Math.round(c.soh / c.totalDemand)) : 99;
     let oversold = Math.round((c.standaloneOversold||0) + (c.comboOversold||0));
@@ -444,7 +489,13 @@ function renderBOM() {
     let typeLabel = c.type === 'bed' ? '🛏️ Bed' : '🛌 Mattress';
     let sizeLabel = sizeLabels[c.size] || c.size || '';
     const supplier=(DATA.suppliers||{})[sku]||'—'; const cbm=(DATA.cbmMap||{})[sku]||0;
-    return '<tr><td style="font-family:monospace;font-size:10px">'+sku+'</td><td style="font-size:10px">'+supplier+'</td><td>'+typeLabel+'</td><td>'+sizeLabel+'</td><td style="text-align:right">'+(cbm?cbm.toFixed(3):'—')+'</td><td>'+Math.round(c.soh)+'</td><td>'+c.incoming+'</td><td>'+(oversold<0?'<span class="neg">'+oversold+'</span>':'0')+'</td><td>'+c.standaloneDemand.toFixed(1)+'</td><td>'+c.comboDemand.toFixed(1)+'</td><td><b>'+c.totalDemand.toFixed(1)+'</b></td><td>'+wks+'</td><td>'+badge+(wks>=25?' <span style="color:var(--yellow);font-size:10px" title="Over 25 weeks — push this SKU">⚠️ OVERSTOCK</span>':'')+'</td></tr>';
+    const coverage = buildComponentCoverage(sku, c);
+    const coverageBadge = coverage.status === 'Covered by next shipment' ? 'yellow'
+      : coverage.status === 'Covered by later shipment' ? 'low'
+      : coverage.status === 'In stock' ? 'ok'
+      : coverage.status === 'No incoming PO' || coverage.status === 'Not covered' ? 'critical'
+      : 'blue';
+    return '<tr><td style="font-family:monospace;font-size:10px">'+sku+'</td><td style="font-size:10px">'+supplier+'</td><td>'+typeLabel+'</td><td>'+sizeLabel+'</td><td style="text-align:right">'+(cbm?cbm.toFixed(3):'—')+'</td><td>'+Math.round(c.soh)+'</td><td>'+c.incoming+'</td><td>'+(oversold<0?'<span class="neg">'+oversold+'</span>':'0')+'</td><td>'+Math.round(c.totalPreorders||0)+'</td><td style="font-size:10px">'+(coverage.nextPO?coverage.nextPO+' <span style="color:var(--text-dim)">('+Math.round(coverage.nextQty||0)+')</span>':'—')+'</td><td style="font-size:10px">'+fmtEtaShort(coverage.nextETA)+'</td><td style="font-size:10px">'+(coverage.coveragePO||'—')+'</td><td style="font-size:10px">'+fmtEtaShort(coverage.coverageETA)+'</td><td><span class="badge '+coverageBadge+'">'+coverage.status+'</span></td><td>'+c.standaloneDemand.toFixed(1)+'</td><td>'+c.comboDemand.toFixed(1)+'</td><td><b>'+c.totalDemand.toFixed(1)+'</b></td><td>'+wks+'</td><td>'+badge+(wks>=25?' <span style="color:var(--yellow);font-size:10px" title="Over 25 weeks — push this SKU">⚠️ OVERSTOCK</span>':'')+'</td></tr>';
   }).join('');
 }
 
