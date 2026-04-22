@@ -251,10 +251,10 @@ function buildPreorderCoverage(s){
     const rank={'In stock':0,'Covered by next shipment':1,'Covered by later shipment':2,'ETA missing':3,'No incoming PO':4,'Not covered':5,'Dropship':0};
     return (rank[a?.status]||0) >= (rank[b?.status]||0) ? a : b;
   };
-  const isLlna=currentCK==='llna';
+  const isLlnaFamily=currentCK==='llna'||currentCK==='llca';
   const isLlau=currentCK==='llau';
-  const isLlnaBed=isLlna&&s.startsWith('LLNA-CB-');
-  const isLlnaDropship=isLlna&&s.startsWith('LLNA-CFDS-');
+  const isLlnaBed=isLlnaFamily&&s.startsWith('LLNA-CB-');
+  const isLlnaDropship=isLlnaFamily&&s.startsWith('LLNA-CFDS-');
   if(isLlnaDropship){
     return {openSales:0,preorderUnits:null,nextPO:null,nextETA:null,nextQty:0,nextCovers:null,coveragePO:null,coverageETA:null,status:'Dropship',mattressPO:null,mattressETA:null,mattressStatus:'Dropship'};
   }

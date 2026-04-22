@@ -1263,9 +1263,9 @@ function buildCKData(ckId) {
     }
   }
 
-  // LLNA dashboard: absorb dropship combo demand into the matching stocked bed SKU.
+  // LLNA/LLCA dashboards: absorb dropship combo demand into the matching stocked bed SKU.
   // This affects the visible Shopify / Net / velocity metrics, not just coverage columns.
-  if (ckId === 'llna') {
+  if (ckId === 'llna' || ckId === 'llca') {
     for (const sku of Object.keys(cin7)) {
       if (!sku.startsWith('LLNA-CB-')) continue;
       const comboSku = sku.replace('LLNA-CB-', 'LLNA-CFDS-');
