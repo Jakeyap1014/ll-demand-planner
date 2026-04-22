@@ -138,6 +138,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
     <div id="loadingScreen" class="loading"><div class="spinner"></div><br>Loading data from CIN7 + Shopify...</div>
     <div id="dashboard" class="view">
       <div class="cards" id="summary-cards"></div>
+      <div id="auMarketingPanel" style="display:none;margin-bottom:24px"></div>
       <div id="auMattressPanel" style="display:none;margin-bottom:24px"></div>
       <div class="drilldown" id="inboundDrilldown"></div>
       <div class="filters" id="dash-filters"></div>
@@ -293,6 +294,7 @@ function buildPreorderCoverage(s){
       bedStatus: bedCoverage.status,
       bedCoveragePO: bedCoverage.coveragePO,
       bedCoverageETA: bedCoverage.coverageETA,
+      comboSku,
       mattressSku,
       mattressOpenSales: mattressTotalOpen,
       mattressPO: mattressCoverage.nextPO,
@@ -592,16 +594,44 @@ function renderDashboard(){
   };
   const coverageMeta=coverageCkMeta[currentCK]||null;
   const showCoverage=!!coverageMeta;
+  const auMarketingPanel=document.getElementById('auMarketingPanel');
   const auMattressPanel=document.getElementById('auMattressPanel');
   if(currentCK==='llau'){
+    const bedSkus=skus.filter(s=>/^LLAU-CB-(S|KS|D)-/.test(s) && !s.includes('-CV') && !s.includes('-CS-')).sort((a,b)=>a.localeCompare(b));
+    const statusRank={ 'In stock':0, 'Covered by next shipment':1, 'Covered by later shipment':2, 'ETA missing':3, 'No incoming PO':4, 'Not covered':5 };
+    const marketingBadgeClass=status=>status==='Covered by next shipment'?'cover-next':status==='Covered by later shipment'?'cover-later':status==='In stock'?'ok':status==='No incoming PO'||status==='Not covered'?'critical':'blue';
+    const singlesRows=bedSkus.map(sku=>({ sku, c:buildPreorderCoverage(sku) }));
+    const comboRows=singlesRows.map(({sku,c})=>({
+      comboSku:c.comboSku || sku.replace('LLAU-CB-','LLAU-CBCF-'),
+      openOrders:c.comboOpenSales||0,
+      bedStatus:c.bedStatus||'In stock',
+      mattressStatus:c.mattressStatus||'In stock',
+      limiting:(statusRank[c.bedStatus||'In stock'] >= statusRank[c.mattressStatus||'In stock']) ? 'Bed Frame' : 'Mattress',
+      coverageETA:c.coverageETA,
+      status:c.status||'In stock'
+    }));
+    auMarketingPanel.style.display='block';
+    auMarketingPanel.innerHTML=`
+      <div class="chart-container" style="margin-bottom:16px">
+        <h3>📣 AU Marketing View — Singles</h3>
+        <div class="table-wrap" style="max-height:none"><table><thead><tr><th>SKU</th><th>Open Orders</th><th>Combo Demand</th><th>Shared Demand</th><th>Frame Status</th><th>Next PO</th><th>Next ETA</th><th>Coverage ETA</th><th>Status</th></tr></thead><tbody>
+        ${singlesRows.map(({sku,c})=>`<tr><td style="font-family:monospace;font-size:10px">${sku}</td><td>${fmt(c.ownOpenSales||0)}</td><td>${fmt(c.comboOpenSales||0)}</td><td>${fmt((c.ownOpenSales||0)+(c.comboOpenSales||0))}</td><td><span class="badge ${marketingBadgeClass(c.bedStatus||'In stock')}">${c.bedStatus||'In stock'}</span></td><td style="font-size:10px">${c.nextPO?`${c.nextPO} <span style="color:var(--text-dim)">(${Math.round(c.nextQty||0)})</span>`:'—'}</td><td style="font-size:10px">${fmtEtaShort(c.nextETA)}</td><td style="font-size:10px">${fmtEtaShort(c.bedCoverageETA||c.coverageETA)}</td><td><span class="badge ${marketingBadgeClass(c.bedStatus||c.status)}">${c.bedStatus||c.status}</span></td></tr>`).join('')}
+        </tbody></table></div>
+      </div>
+      <div class="chart-container" style="margin-bottom:0">
+        <h3>📦 AU Marketing View — Combos</h3>
+        <div class="table-wrap" style="max-height:none"><table><thead><tr><th>Combo SKU</th><th>Open Orders</th><th>Bed Frame Status</th><th>Mattress Status</th><th>Limiting Component</th><th>Coverage ETA</th><th>Status</th></tr></thead><tbody>
+        ${comboRows.map(r=>`<tr><td style="font-family:monospace;font-size:10px">${r.comboSku}</td><td>${fmt(r.openOrders||0)}</td><td><span class="badge ${marketingBadgeClass(r.bedStatus)}">${r.bedStatus}</span></td><td><span class="badge ${marketingBadgeClass(r.mattressStatus)}">${r.mattressStatus}</span></td><td>${r.limiting}</td><td style="font-size:10px">${fmtEtaShort(r.coverageETA)}</td><td><span class="badge ${marketingBadgeClass(r.status)}">${r.status}</span></td></tr>`).join('')}
+        </tbody></table></div>
+      </div>`;
     const mattressSkus=['DD-21915CF','DD-21107CF','DD-21137CF'];
     const mattressLabels={'DD-21915CF':'Single Mattress','DD-21107CF':'King Single Mattress','DD-21137CF':'Double Mattress'};
     const badgeClass=status=>status==='Covered by next shipment'?'cover-next':status==='Covered by later shipment'?'cover-later':status==='In stock'?'ok':status==='No incoming PO'||status==='Not covered'?'critical':'blue';
     auMattressPanel.style.display='block';
     auMattressPanel.innerHTML=`<div class="chart-container" style="margin-bottom:0"><h3>🛌 AU Mattress Coverage</h3><div class="table-wrap" style="max-height:none"><table><thead><tr><th>Mattress SKU</th><th>Type</th><th>CIN7 SOH</th><th>Shopify Open Orders</th><th>Preorders</th><th>Next PO</th><th>Next ETA</th><th>Coverage ETA</th><th>Status</th></tr></thead><tbody>${mattressSkus.map(sku=>{const c=buildPreorderCoverage(sku);return `<tr><td style="font-family:monospace;font-size:10px">${sku}</td><td>${mattressLabels[sku]}</td><td>${fmt(DATA.cin7[sku]||0)}</td><td>${fmt(c.openSales||0)}</td><td>${fmt(c.preorderUnits||0)}</td><td style="font-size:10px">${c.nextPO?`${c.nextPO} <span style="color:var(--text-dim)">(${Math.round(c.nextQty||0)})</span>`:'—'}</td><td style="font-size:10px">${fmtEtaShort(c.nextETA)}</td><td style="font-size:10px">${fmtEtaShort(c.coverageETA)}</td><td><span class="badge ${badgeClass(c.status)}">${c.status}</span></td></tr>`}).join('')}</tbody></table></div></div>`;
-  }else if(auMattressPanel){
-    auMattressPanel.style.display='none';
-    auMattressPanel.innerHTML='';
+  }else {
+    if(auMarketingPanel){ auMarketingPanel.style.display='none'; auMarketingPanel.innerHTML=''; }
+    if(auMattressPanel){ auMattressPanel.style.display='none'; auMattressPanel.innerHTML=''; }
   }
   const coverageHeader=showCoverage
     ? `<th data-tip>Preorders<span class="tip">Units still waiting after using current ${coverageMeta.label} stock. For LLNA CB rows this includes matching CFDS dropship combo demand. For LLAU bed rows this includes matching combo demand.</span></th>${currentCK==='llau'?'<th data-tip>Frame Preorders<span class="tip">Bed-only preorder demand on this AU SKU</span></th><th data-tip>Combo Preorders<span class="tip">Open combo demand absorbed into this AU bed row</span></th><th data-tip>Bed Status<span class="tip">Coverage status for the bed frame component</span></th><th data-tip>Mattress Status<span class="tip">Coverage status for the matching AU mattress component</span></th>':''}<th data-tip>Next PO<span class="tip">First ${coverageMeta.place} PO for this SKU by ETA, shown with incoming qty</span></th><th data-tip>Next ETA<span class="tip">ETA of the next ${coverageMeta.place} PO for this SKU</span></th><th data-tip>Coverage ETA<span class="tip">ETA of the first PO that fully clears the preorder backlog using the limiting component</span></th><th data-tip>Coverage Status<span class="tip">In stock, Covered by next shipment, Covered by later shipment, No incoming PO, ETA missing, Not covered, or Dropship</span></th>`
