@@ -59,6 +59,7 @@ thead th{cursor:pointer;user-select:none}thead th:hover{background:var(--bg-acce
 .badge{padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;display:inline-block}
 .badge.stockout{background:rgba(195,50,82,0.2);color:var(--alert)}.badge.critical{background:rgba(195,50,82,0.15);color:#C33252}
 .badge.low{background:rgba(212,147,13,0.2);color:var(--yellow)}.badge.ok{background:rgba(91,171,49,0.15);color:var(--green)}.badge.healthy{background:rgba(91,171,49,0.2);color:#5BAB31}.badge.yellow{background:rgba(212,147,13,0.2);color:var(--yellow)}
+.badge.cover-next{background:rgba(212,147,13,0.2);color:#b77900}.badge.cover-later{background:rgba(242,153,74,0.22);color:#c96b12}
 .filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
 .filter-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;font-size:12px;transition:all 0.2s}
 .filter-btn.active,.filter-btn:hover{background:#E8EFEF;color:var(--blue);border-color:var(--blue)}
@@ -490,8 +491,8 @@ function renderBOM() {
     let sizeLabel = sizeLabels[c.size] || c.size || '';
     const supplier=(DATA.suppliers||{})[sku]||'—'; const cbm=(DATA.cbmMap||{})[sku]||0;
     const coverage = buildComponentCoverage(sku, c);
-    const coverageBadge = coverage.status === 'Covered by next shipment' ? 'yellow'
-      : coverage.status === 'Covered by later shipment' ? 'low'
+    const coverageBadge = coverage.status === 'Covered by next shipment' ? 'cover-next'
+      : coverage.status === 'Covered by later shipment' ? 'cover-later'
       : coverage.status === 'In stock' ? 'ok'
       : coverage.status === 'No incoming PO' || coverage.status === 'Not covered' ? 'critical'
       : 'blue';
@@ -533,8 +534,8 @@ function renderDashboard(){
     const lc=DATA.landedCosts[s];const fob=(DATA.costs||{})[s]||0;const isEst=lc&&lc.source==='estimated'; const supplier=(DATA.suppliers||{})[s]||'—'; const cbm=(DATA.cbmMap||{})[s]||0;
     const coverage=showCoverage?buildPreorderCoverage(s):null;
     const coverageBadgeClass=!coverage?''
-      : coverage.status==='Covered by next shipment'?'yellow'
-      : coverage.status==='Covered by later shipment'?'low'
+      : coverage.status==='Covered by next shipment'?'cover-next'
+      : coverage.status==='Covered by later shipment'?'cover-later'
       : coverage.status==='In stock'?'ok'
       : coverage.status==='Dropship'?'blue'
       : coverage.status==='No incoming PO'||coverage.status==='Not covered'?'critical'
