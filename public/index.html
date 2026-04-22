@@ -294,6 +294,29 @@ function buildPreorderCoverage(s){
       mattressStatus: mattressCoverage.status
     };
   }
+  if(isLlau && ['DD-21915CF','DD-21107CF','DD-21137CF'].includes(s)){
+    const base=computeFromRows(Math.max(getOpenSales(s)-Number(DATA.cin7[s]||0),0),(DATA.pos||[]).flatMap(po=>{
+      const qty=Number((po.analyticsItems||po.items)?.[s]||0);
+      return qty>0?[{reference:po.reference,qty,eta:po.arrival||po.estimatedArrivalDate||po.eta||null}]:[];
+    }));
+    return {
+      openSales: getOpenSales(s),
+      ownOpenSales: 0,
+      comboOpenSales: getOpenSales(s),
+      preorderUnits: base.preorderUnits,
+      nextPO: base.nextPO,
+      nextETA: base.nextETA,
+      nextQty: base.nextQty,
+      nextCovers: base.status==='Covered by next shipment',
+      coveragePO: base.coveragePO,
+      coverageETA: base.coverageETA,
+      status: base.status,
+      mattressSku: s,
+      mattressPO: base.nextPO,
+      mattressETA: base.nextETA,
+      mattressStatus: base.status
+    };
+  }
   const soh=Number(DATA.cin7[s]||0);
   const ownOpenSales=getOpenSales(s);
   const comboSku=isLlnaBed?s.replace('LLNA-CB-','LLNA-CFDS-'):null;

@@ -1132,6 +1132,7 @@ function buildCKData(ckId) {
   const relatedStores = getStoreKeysForCk(ckId, storeKey);
 
   let sizes = def.sizes;
+  if (ckId === 'llau') sizes = { ...sizes, 'DD-21915CF': 'Single Mattress', 'DD-21107CF': 'King Single Mattress', 'DD-21137CF': 'Double Mattress' };
   let costs = {};
   // CIN7 stock - first collect raw, then normalize
   const cin7Raw = {};
@@ -1162,7 +1163,24 @@ function buildCKData(ckId) {
   // Special handling per CK
   if (ckId.startsWith('rdnt')) cin7Normalized = normalizeRadiant(cin7Normalized, Object.keys(dataCache.shopifyInventory[storeKey] || {}));
   if (ckId.startsWith('cusb')) cin7Normalized = normalizeCushie(cin7Normalized);
-  if (ckId === 'llau') cin7Normalized = normalizeSwatchPack(cin7Normalized);
+  if (ckId === 'llau') {
+    cin7Normalized = normalizeSwatchPack(cin7Normalized);
+    const auMattressSkus = ['DD-21915CF', 'DD-21107CF', 'DD-21137CF'];
+    for (const sku of auMattressSkus) {
+      const data = dataCache.cin7Products?.[sku];
+      if (!data) continue;
+      const branchRows = dataCache.cin7StockByBranch?.[sku] || {};
+      const branchData = LL_AU_BRANCH_IDS.reduce((acc, branchId) => {
+        const row = branchRows[branchId];
+        if (!row) return acc;
+        acc.soh += Number(row.soh || 0);
+        acc.available += Number(row.available || 0);
+        acc.matched += 1;
+        return acc;
+      }, { soh: 0, available: 0, matched: 0 });
+      cin7Normalized[sku] = branchData.matched > 0 ? { ...data, soh: branchData.soh, available: branchData.available } : { ...data, soh: 0, available: 0 };
+    }
+  }
 
   const cin7 = {};
   const cin7Available = {};
@@ -1206,9 +1224,21 @@ function buildCKData(ckId) {
               ? 'SG'
               : 'US';
     for (const sku of Object.keys(cin7)) {
-      const totalOpenDemand = relatedStores.reduce((sum, sourceStore) => {
+      let totalOpenDemand = relatedStores.reduce((sum, sourceStore) => {
         return sum + Number(dataCache.shopifyOpenDemand?.[sourceStore]?.[demandCountry]?.[sku] || 0);
       }, 0);
+      if (ckId === 'llau' && sku.startsWith('DD-21')) {
+        const comboMap = { 'DD-21915CF': 'LLAU-CBCF-S-', 'DD-21107CF': 'LLAU-CBCF-KS-', 'DD-21137CF': 'LLAU-CBCF-D-' };
+        const comboPrefix = comboMap[sku];
+        if (comboPrefix) {
+          for (const sourceStore of relatedStores) {
+            const countryDemand = dataCache.shopifyOpenDemand?.[sourceStore]?.[demandCountry] || {};
+            for (const [demandSku, qty] of Object.entries(countryDemand)) {
+              if (demandSku.startsWith(comboPrefix)) totalOpenDemand += Number(qty || 0);
+            }
+          }
+        }
+      }
       shopify[sku] = -totalOpenDemand;
     }
   }
@@ -1251,6 +1281,15 @@ function buildCKData(ckId) {
     }
   }
 
+  if (ckId === 'llau') {
+    const mattressVelocityMap = { 'DD-21915CF': 'LLAU-CBCF-S-', 'DD-21107CF': 'LLAU-CBCF-KS-', 'DD-21137CF': 'LLAU-CBCF-D-' };
+    for (const [mattressSku, comboPrefix] of Object.entries(mattressVelocityMap)) {
+      for (const [sku, vel] of Object.entries({ ...velocity })) {
+        if (sku.startsWith(comboPrefix)) velocity[mattressSku] = (velocity[mattressSku] || 0) + vel;
+      }
+    }
+  }
+
   // Swatch pack: propagate PACK velocity to individual swatches
   if (ckId === 'llau' && velocity['LLAU-CB-CS-PACK']) {
     const packVel = velocity['LLAU-CB-CS-PACK'];
@@ -1269,7 +1308,7 @@ function buildCKData(ckId) {
     if (poDestination && resolvePoDestination(po) !== poDestination) continue;
     const relevantItems = {};
     for (const [sku, qty] of Object.entries(po.items)) {
-      if (skuMatchesDef(sku, def)) {
+      if (skuMatchesDef(sku, def) || (ckId === 'llau' && ['DD-21915CF','DD-21107CF','DD-21137CF'].includes(sku))) {
         relevantItems[sku] = qty;
       }
     }
@@ -1293,7 +1332,7 @@ function buildCKData(ckId) {
     const company = po.company || '';
     if (!company) continue;
     for (const sku of Object.keys(po.items || {})) {
-      if (skuMatchesDef(sku, def)) {
+      if (skuMatchesDef(sku, def) || (ckId === 'llau' && ['DD-21915CF','DD-21107CF','DD-21137CF'].includes(sku))) {
         if (!suppliers[sku]) suppliers[sku] = company;
       }
     }
