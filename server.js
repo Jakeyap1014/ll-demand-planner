@@ -20,7 +20,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const AIS_API_KEY = process.env.AIS_API_KEY || '';
 const CIN7_REQUEST_SPACING_MS = 1500;
 const CIN7_MIN_REFRESH_INTERVAL_MS = 8 * 60 * 60 * 1000;
-const CIN7_RATE_LIMIT_BACKOFF_MS = 15 * 60 * 1000;
+const CIN7_RATE_LIMIT_BACKOFF_MS = 60 * 60 * 1000;
 const LL_AU_BRANCH_IDS = [3, 60976];
 const LL_NZ_BRANCH_IDS = [48391];
 
@@ -149,6 +149,7 @@ function requireAuth(req, res, next) {
 let dataCache = {
   lastRefresh: null,
   lastCin7Refresh: null,
+  lastPoRefresh: null,
   lastShopifyRefresh: null,
   lastSnapshotWrite: null,
   cin7Products: {},   // sku -> {soh, available, costAUD, cbm}
@@ -162,11 +163,24 @@ let dataCache = {
 };
 const CACHE_SNAPSHOT_PATH = path.join(__dirname, 'data', 'cache-snapshot.json');
 const CACHE_SNAPSHOT_BACKUP_PATH = path.join(__dirname, 'data', 'cache-snapshot.last-good.json');
-const PO_SNAPSHOT_PATH = path.join(__dirname, 'data', 'po-snapshot.json');
-const PO_SNAPSHOT_BACKUP_PATH = path.join(__dirname, 'data', 'po-snapshot.last-good.json');
 const SNAPSHOT_PUSH_STATE_PATH = path.join(__dirname, 'data', 'snapshot-push-state.json');
-let snapshotPushInFlight = false;
 let cacheSnapshotPushInFlight = false;
+
+function cleanupLegacyPoSnapshots() {
+  for (const legacyPath of [
+    path.join(__dirname, 'data', 'po-snapshot.json'),
+    path.join(__dirname, 'data', 'po-snapshot.last-good.json')
+  ]) {
+    try {
+      if (fs.existsSync(legacyPath)) {
+        fs.unlinkSync(legacyPath);
+        console.log(`Removed legacy snapshot file ${path.basename(legacyPath)}`);
+      }
+    } catch (e) {
+      console.warn(`Could not remove legacy snapshot ${path.basename(legacyPath)}: ${e.message}`);
+    }
+  }
+}
 
 function getStoreKeysForCk(ckId, primaryStore) {
   const keys = new Set([primaryStore]);
@@ -262,25 +276,6 @@ function mergeCin7POsByReference(rows) {
   return merged;
 }
 
-function loadPoSnapshot() {
-  for (const snapPath of [PO_SNAPSHOT_PATH, PO_SNAPSHOT_BACKUP_PATH]) {
-    try {
-      const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
-      if (Array.isArray(snap?.cin7POs) && snap.cin7POs.length > 0) {
-        if (!Array.isArray(dataCache.cin7POs) || dataCache.cin7POs.length < snap.cin7POs.length) {
-          dataCache.cin7POs = mergeCin7POsByReference(snap.cin7POs);
-          if (snap.lastCin7Refresh) dataCache.lastCin7Refresh = snap.lastCin7Refresh;
-          if (snap.lastRefresh) dataCache.lastRefresh = snap.lastRefresh;
-          console.log(`Loaded full PO snapshot from ${path.basename(snapPath)}: ${dataCache.cin7POs.length} POs`);
-        }
-        return;
-      }
-    } catch (e) {
-      // try next path
-    }
-  }
-}
-
 function saveSnapshotPushState(state) {
   try {
     fs.mkdirSync(path.dirname(SNAPSHOT_PUSH_STATE_PATH), { recursive: true });
@@ -296,30 +291,6 @@ function loadSnapshotPushState() {
   } catch (_) {
     return {};
   }
-}
-
-function maybePushPoSnapshotToGit(reason = 'cin7-refresh') {
-  const today = new Date().toISOString().slice(0, 10);
-  const state = loadSnapshotPushState();
-  if (state.poLastSuccessDate === today || snapshotPushInFlight) return;
-  snapshotPushInFlight = true;
-  const command = [
-    'git add data/po-snapshot.json data/po-snapshot.last-good.json',
-    'git diff --cached --quiet && exit 0',
-    `git commit -m "Update PO snapshot (${reason})"`,
-    'git push'
-  ].join(' && ');
-  exec(command, { cwd: __dirname }, (error, stdout, stderr) => {
-    snapshotPushInFlight = false;
-    if (stdout) console.log(stdout.trim());
-    if (stderr) console.log(stderr.trim());
-    if (error) {
-      if (error.code !== 0) console.error('PO snapshot git push failed:', error.message);
-      return;
-    }
-    saveSnapshotPushState({ ...state, poLastSuccessDate: today, poLastReason: reason, poPushedAt: new Date().toISOString() });
-    console.log('PO snapshot pushed to GitHub');
-  });
 }
 
 function maybePushCacheSnapshotToGit(reason = 'cin7-refresh') {
@@ -346,27 +317,6 @@ function maybePushCacheSnapshotToGit(reason = 'cin7-refresh') {
   });
 }
 
-function savePoSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
-  try {
-    if (!Array.isArray(dataCache.cin7POs) || dataCache.cin7POs.length === 0) {
-      console.warn('Refusing to save empty PO snapshot - keeping last good PO cache on disk');
-      return;
-    }
-    fs.mkdirSync(path.dirname(PO_SNAPSHOT_PATH), { recursive: true });
-    const payload = JSON.stringify({
-      lastRefresh: dataCache.lastRefresh,
-      lastCin7Refresh: dataCache.lastCin7Refresh,
-      cin7POs: mergeCin7POsByReference(dataCache.cin7POs)
-    });
-    fs.writeFileSync(PO_SNAPSHOT_PATH, payload);
-    fs.writeFileSync(PO_SNAPSHOT_BACKUP_PATH, payload);
-    console.log(`Saved full PO snapshot (${dataCache.cin7POs.length} POs)`);
-    if (pushToGit) maybePushPoSnapshotToGit(pushReason);
-  } catch (e) {
-    console.error('PO snapshot save failed:', e.message);
-  }
-}
-
 function loadCacheSnapshot(silent = false) {
   let loaded = false;
   for (const snapPath of [CACHE_SNAPSHOT_PATH, CACHE_SNAPSHOT_BACKUP_PATH]) {
@@ -391,7 +341,6 @@ function loadCacheSnapshot(silent = false) {
       // try next path
     }
   }
-  loadPoSnapshot();
   if (!silent && !snapshotHasCin7Data(dataCache)) console.log('No usable cache snapshot found - starting cold');
   return loaded;
 }
@@ -410,10 +359,11 @@ function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
       lastSnapshotWrite: dataCache.lastSnapshotWrite,
       lastRefresh: dataCache.lastRefresh,
       lastCin7Refresh: dataCache.lastCin7Refresh,
+      lastPoRefresh: dataCache.lastPoRefresh,
       lastShopifyRefresh: dataCache.lastShopifyRefresh,
       cin7Products: dataCache.cin7Products,
       cin7StockByBranch: dataCache.cin7StockByBranch,
-      cin7POs: dataCache.cin7POs,
+      cin7POs: mergeCin7POsByReference(dataCache.cin7POs),
       shopifyVelocity: dataCache.shopifyVelocity,
       shopifyVelocityByCountry: dataCache.shopifyVelocityByCountry,
       shopifyInventory: dataCache.shopifyInventory,
@@ -439,6 +389,7 @@ function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
 }
 
 loadCacheSnapshot();
+cleanupLegacyPoSnapshots();
 
 // Load Excel-derived landed costs (SOH Stock Value ÷ SOH Stock Qty from CIN7 report)
 let excelLandedCosts = {};
@@ -481,12 +432,11 @@ function hasCin7Cache() {
 }
 
 function scheduleCin7Recovery(reason) {
-  if (hasCin7Cache() || cin7RecoveryTimer) return;
-  const delayMs = Math.max(5 * 60 * 1000, cin7BackoffUntil > Date.now() ? cin7BackoffUntil - Date.now() : CIN7_RATE_LIMIT_BACKOFF_MS);
+  if (cin7RecoveryTimer) return;
+  const delayMs = Math.max(CIN7_RATE_LIMIT_BACKOFF_MS, cin7BackoffUntil > Date.now() ? cin7BackoffUntil - Date.now() : CIN7_RATE_LIMIT_BACKOFF_MS);
   console.warn(`Scheduling delayed CIN7 recovery in ${Math.ceil(delayMs / 60000)} min (${reason})`);
   cin7RecoveryTimer = setTimeout(async () => {
     cin7RecoveryTimer = null;
-    if (hasCin7Cache()) return;
     console.log('Running scheduled CIN7 recovery refresh...');
     try {
       await refreshAllData();
@@ -979,6 +929,7 @@ async function refreshAllData(forceCin7 = false) {
       if (fetchedPoCount > 0) {
         nextCache.cin7POs = mergeCin7POsByReference(cin7POs);
         nextCache.lastCin7Refresh = nowIso;
+        nextCache.lastPoRefresh = nowIso;
         cin7Updated = true;
       } else if (dataCache.cin7POs.length > 0) {
         console.warn(`CIN7 POs returned empty - preserving existing cache (${dataCache.cin7POs.length} POs)`);
@@ -1010,7 +961,6 @@ async function refreshAllData(forceCin7 = false) {
         nextCache.error = Object.keys(nextCache.cin7Products || {}).length > 0 ? null : 'CIN7 data unavailable (likely rate limited)';
         dataCache = nextCache;
         saveCacheSnapshot(true, cin7Updated ? 'daily-cin7-refresh' : 'shopify-refresh');
-        if (fetchedPoCount > 0) savePoSnapshot(true, 'daily-cin7-refresh');
         loadCacheSnapshot(true);
         if (cin7Updated) refreshAIS();
       }
