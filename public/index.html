@@ -571,11 +571,15 @@ function renderBOM() {
 
 
 function renderDashboard(){
-  const skus=getSkus();let tSOH=0,tInc=0,tOver=0,tVel=0;
-  skus.forEach(s=>{tSOH+=(DATA.cin7[s]||0);tInc+=getIncoming(s);let sh=DATA.shopify[s]||0;if(sh<0)tOver+=sh;tVel+=getVel(s)});
+  const skus=getSkus();
+  const cardSkus = currentCK==='llau'
+    ? skus.filter(s=>/^LLAU-CB-(S|KS|D)-/.test(s) && !s.includes('-CV') && !s.includes('-CS-'))
+    : skus;
+  let tSOH=0,tInc=0,tOver=0,tVel=0;
+  cardSkus.forEach(s=>{tSOH+=(DATA.cin7[s]||0);tInc+=getIncoming(s);let sh=DATA.shopify[s]||0;if(sh<0)tOver+=sh;tVel+=getVel(s)});
   let wksT=tVel>0?Math.round((tSOH+Math.min(tOver,0))/tVel):99;
   let overstockVal=0,deadstockVal=0;
-  skus.forEach(s=>{let vel=getVel(s),soh=DATA.cin7[s]||0,cost=(DATA.costs||{})[s]||0;
+  cardSkus.forEach(s=>{let vel=getVel(s),soh=DATA.cin7[s]||0,cost=(DATA.costs||{})[s]||0;
     if(vel>0){
       let excess=Math.max(0, Math.round(soh-(vel*25)));
       if(excess>0) overstockVal+=excess*cost;
