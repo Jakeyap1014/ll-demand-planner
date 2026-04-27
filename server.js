@@ -59,7 +59,8 @@ const CK_DEFS = {
   'cusb-uk':  { name: 'Cushie UK',              prefix: 'MULTI',  logo: 'cushie.png',        store: 'lifely', salesCountry: 'GB', stockBranches: [62444], filter: sku => (sku.startsWith('CUSB') || sku.startsWith('LFSB')) && sku.includes('-UK'), excludeCV: true, sizes: {'-TW-':'Twin','-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King','-CHS-':'Chaise','-SOTM-':'Ottoman','-AMST-':'Armrest'} },
 
   'cmss':     { name: 'Cushie Modular Sleeper', prefix: 'CMSS',   logo: 'cushie.png',        store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {'-S-':'Single','-D-':'Double','-Q-':'Queen','-K-':'King'} },
-  'lifely-sofa': { name: 'Modular Sofa',        prefix: 'LIFELY', logo: 'lifely-sofa.png',   store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {} }
+  'lifely-sofa': { name: 'Modular Sofa',        prefix: 'LIFELY', logo: 'lifely-sofa.png',   store: 'lifely', stockBranches: LL_AU_BRANCH_IDS, sizes: {} },
+  'case-goods': { name: 'Case Goods',           prefix: 'MULTI',  logo: 'lifely-sofa.png',   store: 'lifely', filter: isCaseGoodsSku, sizes: {} }
 };
 
 // ===== COMBO BOM (Bill of Materials) =====
@@ -198,6 +199,25 @@ function skuMatchesDef(sku, def) {
     return false;
   }
   if (def.excludeCV && sku.includes('-CV')) return false;
+  return true;
+}
+
+function isCaseGoodsSku(sku) {
+  const s = String(sku || '').toUpperCase();
+  if (!s) return false;
+  const compact = s.replace(/[^A-Z0-9]/g, '');
+  if (['LIFELYCARE', 'CAREINSURANCE', 'INSURANCE', 'GIFTCARD'].some(x => compact.includes(x))) return false;
+
+  // Case Goods is the residual Lifely catalogue bucket. Keep this aligned with
+  // the weekly Category Killer dashboard: exclude named CKs, insurance, and gift cards.
+  if (s.startsWith('LLAU') || s.startsWith('LLUS') || s.startsWith('LLUK') || s.startsWith('LLNZ') || s.startsWith('LLSG') || s.startsWith('LLCA') || s.startsWith('LLNA') || s.startsWith('LL-')) return false;
+  if (s.startsWith('CUSB') || s.startsWith('V2-') || s.startsWith('V3-') || s.startsWith('CMSS') || s.startsWith('CLV2') || s.startsWith('CSV2') || s.startsWith('LFSB')) return false;
+  if (s.startsWith('LFSF') || s.startsWith('LIFELY-SOFA')) return false;
+  if (s.startsWith('CCN') || s.startsWith('COCOON')) return false;
+  if (s.startsWith('DD-') || s.startsWith('DDM') || s.startsWith('DDRM')) return false;
+  if (s.startsWith('RAD') || s.startsWith('RDNT')) return false;
+  if (s.startsWith('WFH')) return false;
+  if (['QB+ARMREST', 'TB+ARMREST', 'TB-ARMREST', 'DB+ARMREST', 'OB-', 'OS-'].some(p => s.includes(p))) return false;
   return true;
 }
 
@@ -2001,6 +2021,7 @@ app.use('/login', express.static(path.join(__dirname, 'public')));
 function getBrandGroup(id, def) {
   if (id.startsWith('cusb') || id === 'cmss') return { id: 'cushie', name: 'Cushie', logo: 'cushie.png' };
   if (id.startsWith('ll')) return { id: 'little-lifely', name: 'Little Lifely', logo: 'little-lifely.png' };
+  if (id === 'case-goods') return { id: 'case-goods', name: 'Case Goods', logo: def.logo };
   if (id === 'lifely-sofa' || id === 'dd' || id === 'cocoon' || id === 'rdnt' || id === 'wfhcr') return { id: 'lifely-home', name: 'Lifely', logo: def.logo };
   return { id: 'other', name: 'Other', logo: def.logo };
 }
