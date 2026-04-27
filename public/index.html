@@ -699,7 +699,8 @@ function renderHeatmap(){
 
 function renderReorder(){
   const reorderSource=DATA.reorderBomData;
-  const reorderSkus=reorderSource?Object.keys(reorderSource.cin7||{}):getSkus();
+  const shouldHideFromReorder=sku=>currentCK==='dd'&&/(PROTECTOR|DD-BM|BEDDING)/i.test(sku);
+  const reorderSkus=(reorderSource?Object.keys(reorderSource.cin7||{}):getSkus()).filter(sku=>!shouldHideFromReorder(sku));
   const getBomSize=sku=>{if(!reorderSource?.sizes)return getSize(sku);for(const[k,label] of Object.entries(reorderSource.sizes)){if(sku.includes(k))return label}return getSize(sku)};
   const getBomNet=sku=>reorderSource?((reorderSource.cin7?.[sku]||0)+Math.min(reorderSource.shopify?.[sku]||0,0)):getNet(sku);
   const getBomVel=sku=>reorderSource?(reorderSource.velocity?.[sku]||0):getVel(sku);
