@@ -440,6 +440,7 @@ let cin7LastRequestAt = 0;
 let cin7BackoffUntil = 0;
 let cin7RecoveryTimer = null;
 let refreshPromise = null;
+const DAILY_CIN7_REFRESH_UTC_HOUR = 8; // 4pm UTC+8
 
 async function throttleCin7Request() {
   const waitMs = Math.max(0, cin7LastRequestAt + CIN7_REQUEST_SPACING_MS - Date.now());
@@ -489,6 +490,30 @@ function markCin7Backoff(reason, retryAfterSeconds) {
   cin7BackoffUntil = Math.max(cin7BackoffUntil, Date.now() + retryAfterMs);
   console.warn(`CIN7 backoff enabled for ${Math.ceil(retryAfterMs / 60000)} min (${reason})`);
   scheduleCin7Recovery(reason);
+}
+
+function msUntilNextDailyRefresh(hourUtc) {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCHours(hourUtc, 0, 0, 0);
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+  return next.getTime() - now.getTime();
+}
+
+function scheduleDailyCin7Refresh() {
+  const delayMs = msUntilNextDailyRefresh(DAILY_CIN7_REFRESH_UTC_HOUR);
+  console.log(`Next daily CIN7 refresh scheduled in ${Math.ceil(delayMs / 60000)} min (08:00 UTC / 16:00 UTC+8)`);
+  const timer = setTimeout(async () => {
+    try {
+      console.log('Running daily scheduled CIN7 refresh (08:00 UTC / 16:00 UTC+8)...');
+      await refreshAllData(true);
+    } catch (e) {
+      console.error('Daily scheduled CIN7 refresh failed:', e.message);
+    } finally {
+      scheduleDailyCin7Refresh();
+    }
+  }, delayMs);
+  if (typeof timer.unref === 'function') timer.unref();
 }
 
 function apiRequest(options, postData, attempt = 0) {
@@ -2590,7 +2615,7 @@ app.get('/api/health', (req, res) => {
   reloadSnapshotIfNewer();
   const cin7Count = Object.keys(dataCache.cin7Products).length;
   const poCount = dataCache.cin7POs.length;
-  res.json({ ok: cin7Count > 0, cin7: cin7Count, pos: poCount, lastRefresh: dataCache.lastRefresh, error: dataCache.error || null, uptime: Math.round(process.uptime()) });
+  res.json({ ok: cin7Count > 0, cin7: cin7Count, pos: poCount, lastRefresh: dataCache.lastRefresh, lastCin7Refresh: dataCache.lastCin7Refresh, lastPoRefresh: dataCache.lastPoRefresh, lastShopifyRefresh: dataCache.lastShopifyRefresh, error: dataCache.error || null, uptime: Math.round(process.uptime()) });
 });
 
 // Main app
@@ -2600,8 +2625,8 @@ app.use(requireAuth, express.static(path.join(__dirname, 'public')));
 // ===== START =====
 app.listen(PORT, () => {
   console.log(`Demand Planner running on port ${PORT}`);
-  refreshAllData(); // Initial fetch
-  setInterval(refreshAllData, 8 * 60 * 60 * 1000); // Refresh every 8 hours
+  refreshAllData(true); // Initial fetch, forced so deploy/restart gets the latest possible CIN7 data
+  scheduleDailyCin7Refresh(); // Daily at 08:00 UTC / 16:00 UTC+8
 
   // Keep-alive: ping self every 10 min to prevent Render free tier spin-down
   setInterval(() => {
