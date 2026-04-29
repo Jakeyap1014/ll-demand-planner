@@ -1981,6 +1981,7 @@ function buildCKData(ckId) {
     suppliers,
     landedCosts,
     coverageAux,
+    fx: { USDAUD: fxRate.USDAUD, lastFetch: fxRate.lastFetch },
     trendData: (() => {
       const vel = dataCache.shopifyVelocity?.[storeKey] || {};
       const d7 = vel._7d || {};

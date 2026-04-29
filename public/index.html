@@ -178,6 +178,7 @@ th[data-tip]{position:relative;cursor:help}th[data-tip]:after{content:' ⓘ';fon
           <button class="btn btn-primary" onclick="exportCSV()">📥 Export CSV</button>
         </div>
       </div>
+      <div id="caRestockPlan" style="display:none;margin-bottom:18px"></div>
       <div class="table-wrap"><table id="reorderTable"><thead></thead><tbody></tbody></table></div>
     </div>
   </div>
@@ -422,7 +423,7 @@ async function selectCK(ckId){
   const activeItem=document.querySelector(`.sidebar-item[data-ck="${ckId}"]`);const groupEl=activeItem?.closest('.sidebar-brand-group');if(groupEl){groupEl.classList.remove('collapsed');brandOpenState[groupEl.dataset.brandGroup]=true;const caret=groupEl.querySelector('.sidebar-brand-caret');if(caret)caret.textContent='▾';}const subgroupEl=activeItem?.closest('.sidebar-subgroup');if(subgroupEl){subgroupEl.classList.remove('collapsed');subgroupOpenState[subgroupEl.dataset.subgroup]=true;const subCaret=subgroupEl.querySelector('.sidebar-subgroup-caret');if(subCaret)subCaret.textContent='▾';}
   document.getElementById('loadingScreen').style.display='block';document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   try{const r=await fetch(`/api/ck/${ckId}`,{headers:H()});if(r.status===401)return window.location.href='/login';const d=await r.json();
-  DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],allPos:d.allPos||d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,reorderBomData:d.reorderBomData||null,costs:d.costs||{},trendData:d.trendData||{},weeklyData:d.weeklyData||null,cbmMap:d.cbmMap||{},suppliers:d.suppliers||{},landedCosts:d.landedCosts||{},coverageAux:d.coverageAux||null};
+  DATA={cin7:d.cin7||{},shopify:d.shopify||{},velocity:d.velocity||{},pos:d.pos||[],allPos:d.allPos||d.pos||[],names:d.names||{},sizes:d.sizes||{},bomData:d.bomData||null,reorderBomData:d.reorderBomData||null,costs:d.costs||{},trendData:d.trendData||{},weeklyData:d.weeklyData||null,cbmMap:d.cbmMap||{},suppliers:d.suppliers||{},landedCosts:d.landedCosts||{},coverageAux:d.coverageAux||null,fx:d.fx||null};
   document.getElementById('headerTitle').innerHTML=`<img src="/logos/${d.ck.logo}" style="height:32px;filter:brightness(0) invert(1)"> ${d.ck.name}`;
   document.getElementById('headerSub').textContent=`${Object.keys(DATA.cin7).length} CIN7 SKUs · ${Object.keys(DATA.velocity).length} with velocity · ${uniquePoCount(DATA.pos)} open POs`;
   document.getElementById('headerMeta').textContent=d.lastRefresh?'Last refresh: '+new Date(d.lastRefresh).toLocaleString():'';
@@ -697,6 +698,52 @@ function renderHeatmap(){
     let c=st<=0?'hm-stockout':wl<=2?'hm-critical':wl<=4?'hm-low':wl<=8?'hm-ok':'hm-healthy';h+=`<td class="${c}" title="${Math.round(wl)}wk">${st}</td>`});h+='</tr>'});
   h+='</tbody></table>';document.getElementById('heatmapContainer').innerHTML=h}
 
+function calcContainerPlan(cbm){
+  cbm=Number(cbm||0); if(cbm<=0)return [];
+  let best=null;
+  for(let hq=0;hq<=Math.ceil(cbm/64)+1;hq++){
+    for(let gp=0;gp<=Math.ceil(cbm/24)+1;gp++){
+      const capacity=hq*64+gp*24, count=hq+gp;
+      if(count<=0||capacity<cbm)continue;
+      const extra=capacity-cbm;
+      if(!best||count<best.count||(count===best.count&&extra<best.extra)||(count===best.count&&extra===best.extra&&hq>best.hq))best={hq,gp,count,extra,capacity};
+    }
+  }
+  const out=[]; if(best?.hq)out.push({type:'64CBM 40HQ',qty:best.hq}); if(best?.gp)out.push({type:'24CBM 20GP',qty:best.gp}); return out;
+}
+function containerLabel(plan){return plan.length?plan.map(c=>`${c.qty}× ${c.type}`).join(' + '):'—'}
+function renderCaRestockPlan(rows){
+  const panel=document.getElementById('caRestockPlan'); if(!panel)return;
+  if(currentCK!=='llca'){panel.style.display='none';panel.innerHTML='';return;}
+  const fx=DATA.fx?.USDAUD||_poFxRate||1.45;
+  const shippingPerContainer=4000;
+  const months=[{key:'aug',label:'August',budget:40000},{key:'sep',label:'September',budget:75000}];
+  const remaining=Object.fromEntries(rows.filter(r=>r.rq>0&&r.vel>0).sort((a,b)=>a.wl-b.wl||b.vel-a.vel).map(r=>[r.sku,r.rq]));
+  const sourceRows=rows.filter(r=>remaining[r.sku]>0).sort((a,b)=>a.wl-b.wl||b.vel-a.vel);
+  const plans=months.map(m=>({ ...m, lines:[], productCost:0, cbm:0, missingCost:false }));
+  const estUnitUsd=(sku)=>{const fobAud=(DATA.costs||{})[sku]||DATA.landedCosts?.[sku]?.fob||0;return fobAud>0?fobAud/fx:0};
+  const fits=(plan,addCost,addCbm)=>plan.productCost+addCost+(calcContainerPlan(plan.cbm+addCbm).reduce((t,c)=>t+c.qty,0)*shippingPerContainer)<=plan.budget;
+  for(const plan of plans){
+    for(const r of sourceRows){
+      let left=remaining[r.sku]||0; if(left<=0)continue;
+      const unitUsd=estUnitUsd(r.sku), unitCbm=(DATA.cbmMap||{})[r.sku]||0;
+      if(unitUsd<=0){plan.missingCost=true;continue;}
+      let lo=0,hi=left;
+      while(lo<hi){const mid=Math.ceil((lo+hi)/2); if(fits(plan,unitUsd*mid,unitCbm*mid))lo=mid;else hi=mid-1;}
+      if(lo>0){plan.lines.push({sku:r.sku,qty:lo,unitUsd,cbm:unitCbm*lo,lineCost:unitUsd*lo,wl:r.wl,vel:r.vel});plan.productCost+=unitUsd*lo;plan.cbm+=unitCbm*lo;remaining[r.sku]-=lo;}
+    }
+  }
+  const summaryCards=plans.map(p=>{const containers=calcContainerPlan(p.cbm),shipping=containers.reduce((t,c)=>t+c.qty,0)*shippingPerContainer,total=p.productCost+shipping,rem=p.budget-total;return `<div class="card ${rem<0?'red':'blue'}"><div class="label">${p.label} CA Plan</div><div class="value">US$${Math.round(total).toLocaleString()}</div><div class="sub">Budget US$${p.budget.toLocaleString()} · ${containerLabel(containers)} · ${p.lines.reduce((t,l)=>t+l.qty,0)} units · ${p.cbm.toFixed(1)} CBM · ${rem>=0?'Remaining':'Over'} US$${Math.abs(Math.round(rem)).toLocaleString()}</div></div>`}).join('');
+  const lineRows=plans.flatMap(p=>{const containers=calcContainerPlan(p.cbm),shipping=containers.reduce((t,c)=>t+c.qty,0)*shippingPerContainer;return [
+    ...p.lines.map(l=>`<tr><td>${p.label}</td><td style="font-family:monospace;font-size:10px">${l.sku}${skuLabel(l.sku)}</td><td>${l.qty}</td><td>${l.wl>=99?'99+':l.wl}</td><td>${l.vel.toFixed(1)}</td><td>US$${l.unitUsd?l.unitUsd.toFixed(2):'—'}</td><td>${l.cbm.toFixed(2)}</td><td>US$${Math.round(l.lineCost).toLocaleString()}</td></tr>`),
+    `<tr style="background:#F6F8F4;font-weight:700"><td>${p.label} total</td><td>${containerLabel(containers)}</td><td>${p.lines.reduce((t,l)=>t+l.qty,0)}</td><td colspan="2">Shipping: US$${shipping.toLocaleString()}</td><td colspan="2">Product: US$${Math.round(p.productCost).toLocaleString()}</td><td>US$${Math.round(p.productCost+shipping).toLocaleString()}</td></tr>`
+  ];}).join('');
+  const unplanned=Object.entries(remaining).filter(([,q])=>q>0).reduce((t,[,q])=>t+q,0);
+  const missingCost=sourceRows.filter(r=>remaining[r.sku]>0&&estUnitUsd(r.sku)<=0).length;
+  panel.style.display='block';
+  panel.innerHTML=`<div class="chart-container"><h3>🇨🇦 CA Restock Plan — August / September Budget</h3><p style="font-size:12px;color:var(--text-dim);margin-bottom:12px">Uses the same reorder logic as the US/AU planner: 12 weeks demand + 4 weeks safety stock − net stock − incoming POs. Budgets include product FOB estimated in USD plus US$${shippingPerContainer.toLocaleString()} shipping per container. Container options: 64CBM 40HQ or 24CBM 20GP.</p><div class="cards">${summaryCards}</div>${unplanned?`<div class="card yellow" style="margin-bottom:12px"><div class="label">Not allocated</div><div class="value">${unplanned.toLocaleString()}</div><div class="sub">recommended units left after the Aug/Sep budgets fill${missingCost?` · ${missingCost} SKU(s) missing cost and skipped`:''}</div></div>`:''}<div class="table-wrap" style="max-height:360px"><table><thead><tr><th>Month</th><th>SKU</th><th>Qty</th><th>Wks Left</th><th>Units/wk</th><th>FOB/unit</th><th>CBM</th><th>Line Cost</th></tr></thead><tbody>${lineRows||'<tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:24px">No CA reorder quantity currently fits the plan.</td></tr>'}</tbody></table></div></div>`;
+}
+
 function renderReorder(){
   const reorderSource=DATA.reorderBomData;
   const shouldHideFromReorder=sku=>currentCK==='dd'&&/(PROTECTOR|DD-BM|BEDDING)/i.test(sku);
@@ -727,6 +774,7 @@ function renderReorder(){
   let su=Math.round(vel*sw),rop=Math.round(vel*lw+su),rq=Math.max(0,Math.round(vel*12+su-net-inc));
   let obw=Math.max(0,displayWl-lw-sw),obDate=new Date(TODAY.getTime()+obw*7*86400000),ob=displayWl>=99?'Not urgent':(obw<=0?'ASAP':obDate.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}));
   return{sku,net:displayNet,rawNet:getBomNet(sku),vel,inc,wl:displayWl,sd,su,rop,rq,ob,size:getBomSize(sku),trendSd,trendWl,isAccel,isDecel,trendPct}}).sort((a,b)=>a.sku.localeCompare(b.sku));
+  renderCaRestockPlan(rows);
   document.querySelector('#reorderTable thead').innerHTML='<tr><th>SKU</th><th>Size</th><th data-tip>Net SOH<span class="tip">Effective stock after pre-order commitments. CIN7 SOH + min(Shopify, 0)</span></th><th data-tip>Units/wk<span class="tip">Average weekly sales velocity over last 30 days</span></th><th data-tip>Incoming<span class="tip">Units arriving from open Purchase Orders</span></th><th data-tip>Wks Left<span class="tip">Weeks until stockout. Simulated week-by-week with PO arrivals factored in</span></th><th data-tip>Stockout<span class="tip">Projected date when this SKU runs out of stock</span></th><th data-tip>Safety<span class="tip">Safety stock buffer in units. Velocity × 4 weeks. Minimum stock to keep as buffer against demand spikes or supply delays</span></th><th data-tip>Reorder Pt<span class="tip">Reorder Point — place an order when stock drops to this level. (Velocity × 8wk lead time) + Safety units. Covers demand during lead time + safety buffer</span></th><th data-tip>Order Qty<span class="tip">Recommended order quantity. (Velocity × 12 weeks) + Safety − Net SOH − Incoming. Covers 12 weeks of demand plus safety, minus what you have and what\'s coming</span></th><th data-tip>Order By<span class="tip">Latest date to place order to avoid stockout. Today + max(0, Wks Left − 8wk lead − 4wk safety) × 7 days</span></th><th data-tip>Status<span class="tip">STOCKOUT: 0wk | CRITICAL: 1-2wk | LOW: 3-4wk | OK: 5-8wk | HEALTHY: 8+wk</span></th><th data-tip>STR%<span class="tip">Sell-Through Rate (30-day). Units sold in 30d ÷ (Units sold + SOH). Green >70% | Yellow 41-69% | Red <40%</span></th></tr>';
   document.querySelector('#reorderTable tbody').innerHTML=rows.map(r=>
     `<tr><td style="font-family:monospace;font-size:10px">${r.sku}${skuLabel(r.sku)}</td><td>${r.size}</td><td>${fmt(r.net)}</td><td>${r.vel.toFixed(1)}${isEstVel(r.sku)?' <span style="color:var(--yellow);font-size:9px" title="Estimated: using last in-stock velocity">(est)</span>':''}${trendIndicator(r.sku)}</td><td>${window._incPO?'<span style="color:var(--green);font-size:10px">Added to Net ✓</span>':r.inc}</td><td>${r.wl>=99?'99+':r.wl}</td><td>${r.sd}</td><td>${r.su}</td><td>${r.rop}</td><td>${r.rq>0?`<b>${r.rq}</b>`:'—'}</td><td>${r.ob}</td><td>${statusBadge(r.wl,r.sku)}</td><td style="background:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'rgba(91,171,49,0.1)':s>=41?'rgba(212,147,13,0.1)':'rgba(195,50,82,0.1)'})()};color:${(()=>{let s=r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0;return s>=70?'var(--green)':s>=41?'var(--yellow)':'var(--alert)'})()};font-weight:700;text-align:center">${r.vel>0?Math.round((r.vel*4.3)/((r.vel*4.3)+Math.max(r.net,0))*100):0}%${r.vel===0&&!isEstVel(r.sku)&&r.net>0?' 💀':''}</td></tr>`).join('')}
