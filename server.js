@@ -681,6 +681,7 @@ async function fetchCin7POs() {
         }
         if (Object.keys(items).length > 0) {
           results.push({
+            id: po.id || po.ID || po.purchaseOrderId || po.orderId || null,
             reference: cleanPoReference(po.reference),
             status: po.status,
             stage: po.stage || '',
@@ -2196,6 +2197,7 @@ app.get('/api/all-pos', requireAuth, (req, res) => {
     const landed = estimateLandedCost(po, destination);
     const quality = scorePO(po);
     return {
+      id: po.id || po.orderId || po.purchaseOrderId || null,
       reference: po.reference,
       stage: po.stage || '',
       company: po.company || '',

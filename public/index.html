@@ -836,6 +836,11 @@ async function loadAllPOs() {
 
 function cleanPoRef(ref){return(ref||'').replace(/-cover$/i,'')}
 function uniquePoCount(pos){return new Set((pos||[]).map(po=>cleanPoRef(po.reference)).filter(Boolean)).size}
+function poCin7Url(po) {
+  const orderId = po.id || po.orderId || po.purchaseOrderId;
+  if (orderId) return `https://go.cin7.com/Cloud/TransactionEntry/TransactionEntry.aspx?idCustomerAppsLink=1243307&OrderId=${encodeURIComponent(orderId)}`;
+  return `https://go.cin7.com/Cloud/PurchaseOrders?search=${encodeURIComponent(cleanPoRef(po.reference || ''))}`;
+}
 function parsePoDate(raw) {
   if (!raw) return null;
   const parsedDdMmYyyy = new Date(String(raw).replace(/(\d+)-(\d+)-(\d+)/, (m, d, mo, y) => `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`));
@@ -995,7 +1000,7 @@ function renderPurchaseOrders(allPOs) {
     const delayBadge = etaDelay ? ` <span class="badge" style="background:#DC2626;color:#fff;font-size:9px;margin-left:4px" title="${etaDelay.title}">DELAYED +${etaDelay.diff}d</span>` : '';
     return `<div style="${delayCardStyle};border-radius:12px;margin-bottom:8px;overflow:hidden" title="${etaDelay ? etaDelay.title : ''}">
       <div onclick="this.parentElement.querySelector('.po-items').classList.toggle('open')" style="display:grid;grid-template-columns:minmax(100px,1.2fr) 85px 55px minmax(120px,2fr) minmax(80px,1fr) minmax(90px,1fr) minmax(100px,1.2fr) minmax(90px,1fr) minmax(100px,1fr) minmax(80px,0.95fr) minmax(75px,0.9fr) minmax(75px,0.9fr) 60px minmax(75px,0.9fr) 24px;align-items:center;padding:12px 18px;cursor:pointer;user-select:none;font-size:11px;gap:6px">
-        <span style="font-family:monospace;font-weight:700;font-size:12px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cleanPoRef(po.reference)}</span>
+        <span style="font-family:monospace;font-weight:700;font-size:12px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px" title="${po.id ? 'Cin7 Order ID ' + po.id : 'Open PO in Cin7'}"><span style="overflow:hidden;text-overflow:ellipsis">${cleanPoRef(po.reference)}</span><a href="${poCin7Url(po)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="font-family:system-ui;text-decoration:none;color:#2563EB;font-size:12px;line-height:1" title="Open PO in Cin7">↗</a></span>
         <span style="text-align:center">${stageBadge(po)}</span>
         <span style="text-align:center">${qualityBadge(po)}</span>
         <span style="color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${po.company || ''}</span>

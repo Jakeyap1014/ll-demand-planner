@@ -181,6 +181,7 @@ def build_purchase_orders(cur):
         custom_fields = raw.get("customFields") or {}
         rows.append(
             {
+                "id": row.get("purchase_order_id") or raw.get("id"),
                 "reference": clean_reference(row.get("reference")),
                 "status": row.get("status") or raw.get("status"),
                 "stage": row.get("stage") or raw.get("stage") or "",
