@@ -22,6 +22,8 @@ CACHE_PATH = ROOT / "data" / "cache-snapshot.json"
 CACHE_BACKUP_PATH = ROOT / "data" / "cache-snapshot.last-good.json"
 PO_PATH = ROOT / "data" / "po-snapshot.json"
 PO_BACKUP_PATH = ROOT / "data" / "po-snapshot.last-good.json"
+PO_ETA_HISTORY_PATH = ROOT / "data" / "po-eta-history.json"
+PO_ETA_HISTORY_BACKUP_PATH = ROOT / "data" / "po-eta-history.last-good.json"
 PG_CRED_PATH = Path("/home/lifely-agent/.openclaw/credentials/cin7-mirror-postgres.json")
 
 
@@ -209,6 +211,129 @@ def build_purchase_orders(cur):
     return rows
 
 
+
+def parse_date_key(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc).date().isoformat()
+    text = str(value).strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(text[:10], fmt).date().isoformat()
+        except ValueError:
+            pass
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).date().isoformat()
+    except ValueError:
+        return text
+
+
+def days_between(from_date, to_date):
+    if not from_date or not to_date:
+        return None
+    try:
+        a = datetime.fromisoformat(str(from_date)).date()
+        b = datetime.fromisoformat(str(to_date)).date()
+        return (b - a).days
+    except ValueError:
+        return None
+
+
+def po_history_key(po):
+    if po.get("id"):
+        return f"id:{po['id']}"
+    return f"ref:{clean_reference(po.get('reference') or '')}"
+
+
+def load_po_eta_history():
+    for path in (PO_ETA_HISTORY_PATH, PO_ETA_HISTORY_BACKUP_PATH):
+        try:
+            parsed = json.loads(path.read_text())
+            if isinstance(parsed, dict):
+                parsed.setdefault("pos", {})
+                return parsed
+        except Exception:
+            pass
+    return {"version": 1, "generatedAt": None, "pos": {}}
+
+
+def update_po_eta_history(purchase_orders, detected_at):
+    history = load_po_eta_history()
+    history["version"] = 1
+    history["generatedAt"] = detected_at
+    history.setdefault("pos", {})
+    for po in purchase_orders:
+        key = po_history_key(po)
+        if not key or key == "ref:":
+            continue
+        current_eta = parse_date_key(po.get("estimatedArrivalDate") or po.get("arrival"))
+        original_eta = parse_date_key((po.get("customFields") or {}).get("orders_1000"))
+        received_date = parse_date_key(po.get("fullyReceivedDate"))
+        record = history["pos"].get(key) or {
+            "key": key,
+            "id": po.get("id"),
+            "reference": clean_reference(po.get("reference") or ""),
+            "firstSeenAt": detected_at,
+            "events": [],
+        }
+
+        def add_event(event_type, from_value, to_value, **extra):
+            last = record["events"][-1] if record.get("events") else None
+            if last and last.get("type") == event_type and last.get("from") == from_value and last.get("to") == to_value:
+                return
+            event = {"detectedAt": detected_at, "type": event_type, "from": from_value, "to": to_value}
+            event.update(extra)
+            record.setdefault("events", []).append(event)
+
+        if key not in history["pos"]:
+            if original_eta or current_eta:
+                add_event(
+                    "first_seen",
+                    None,
+                    current_eta or original_eta,
+                    originalEta=original_eta,
+                    currentEta=current_eta,
+                    deltaDaysFromOriginal=days_between(original_eta, current_eta),
+                )
+        else:
+            if record.get("currentEta") != current_eta:
+                add_event(
+                    "eta_changed",
+                    record.get("currentEta"),
+                    current_eta,
+                    deltaDays=days_between(record.get("currentEta"), current_eta),
+                    deltaDaysFromOriginal=days_between(original_eta or record.get("originalEta"), current_eta),
+                )
+            if record.get("originalEta") != original_eta:
+                add_event("original_eta_changed", record.get("originalEta"), original_eta)
+            if record.get("receivedDate") != received_date and received_date:
+                add_event(
+                    "received",
+                    record.get("receivedDate"),
+                    received_date,
+                    deltaDaysFromOriginal=days_between(original_eta or record.get("originalEta"), received_date),
+                )
+
+        record.update({
+            "id": po.get("id"),
+            "reference": clean_reference(po.get("reference") or ""),
+            "supplier": po.get("company") or record.get("supplier") or "",
+            "stage": po.get("stage") or "",
+            "status": po.get("status") or "",
+            "deliveryCountry": po.get("deliveryCountry") or record.get("deliveryCountry") or "",
+            "originalEta": original_eta,
+            "currentEta": current_eta,
+            "receivedDate": received_date,
+            "lastSeenAt": detected_at,
+        })
+        history["pos"][key] = record
+    PO_ETA_HISTORY_PATH.write_text(json.dumps(history, default=json_default, indent=2))
+    PO_ETA_HISTORY_BACKUP_PATH.write_text(json.dumps(history, default=json_default, indent=2))
+    return history
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
@@ -282,6 +407,9 @@ def main():
     print(f"Mirror snapshot ready: {len(products):,} SKUs, {len(purchase_orders):,} POs, mirror_ts={mirror_ts}")
     if args.dry_run:
         return
+
+    eta_history = update_po_eta_history(purchase_orders, snapshot_ts)
+    print(f"Updated PO ETA history for {len(eta_history.get('pos', {})):,} POs")
 
     CACHE_PATH.write_text(json.dumps(snapshot, default=json_default, separators=(",", ":")))
     CACHE_BACKUP_PATH.write_text(json.dumps(snapshot, default=json_default, separators=(",", ":")))

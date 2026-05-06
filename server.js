@@ -301,6 +301,134 @@ function mergeCin7POsByReference(rows) {
   return merged;
 }
 
+
+const PO_ETA_HISTORY_PATH = path.join(__dirname, 'data', 'po-eta-history.json');
+const PO_ETA_HISTORY_BACKUP_PATH = path.join(__dirname, 'data', 'po-eta-history.last-good.json');
+
+function parsePoDateKey(raw) {
+  if (!raw) return null;
+  const str = String(raw).trim();
+  if (!str) return null;
+  const dmy = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
+  let d;
+  if (dmy) {
+    const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    d = new Date(`${year}-${String(dmy[2]).padStart(2, '0')}-${String(dmy[1]).padStart(2, '0')}T00:00:00Z`);
+  } else {
+    d = new Date(str);
+  }
+  if (Number.isNaN(d.getTime())) return str;
+  return d.toISOString().slice(0, 10);
+}
+
+function daysBetweenDateKeys(from, to) {
+  if (!from || !to) return null;
+  const a = new Date(`${from}T00:00:00Z`).getTime();
+  const b = new Date(`${to}T00:00:00Z`).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
+  return Math.round((b - a) / 86400000);
+}
+
+function poHistoryKey(po) {
+  const id = po.id || po.orderId || po.purchaseOrderId;
+  if (id) return `id:${id}`;
+  return `ref:${cleanPoReference(po.reference || '')}`;
+}
+
+function loadPoEtaHistory() {
+  for (const historyPath of [PO_ETA_HISTORY_PATH, PO_ETA_HISTORY_BACKUP_PATH]) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(historyPath, 'utf8'));
+      if (parsed && typeof parsed === 'object') return { ...parsed, pos: parsed.pos || {} };
+    } catch (_) {}
+  }
+  return { version: 1, generatedAt: null, pos: {} };
+}
+
+function savePoEtaHistory(history) {
+  fs.mkdirSync(path.dirname(PO_ETA_HISTORY_PATH), { recursive: true });
+  const payload = JSON.stringify(history, null, 2);
+  fs.writeFileSync(PO_ETA_HISTORY_PATH, payload);
+  fs.writeFileSync(PO_ETA_HISTORY_BACKUP_PATH, payload);
+}
+
+function updatePoEtaHistory(pos, detectedAt = new Date().toISOString()) {
+  if (!Array.isArray(pos) || pos.length === 0) return loadPoEtaHistory();
+  const history = loadPoEtaHistory();
+  history.version = 1;
+  history.generatedAt = detectedAt;
+  history.pos = history.pos || {};
+
+  for (const po of pos) {
+    const key = poHistoryKey(po);
+    if (!key || key === 'ref:') continue;
+    const reference = cleanPoReference(po.reference || '');
+    const currentEta = parsePoDateKey(po.estimatedArrivalDate || po.arrival);
+    const originalEta = parsePoDateKey(po.customFields?.orders_1000);
+    const receivedDate = parsePoDateKey(po.fullyReceivedDate);
+    const id = po.id || po.orderId || po.purchaseOrderId || null;
+    const record = history.pos[key] || {
+      key,
+      id,
+      reference,
+      firstSeenAt: detectedAt,
+      events: []
+    };
+
+    const addEvent = (type, from, to, extra = {}) => {
+      const last = record.events[record.events.length - 1];
+      if (last && last.type === type && last.from === from && last.to === to) return;
+      record.events.push({ detectedAt, type, from: from || null, to: to || null, ...extra });
+    };
+
+    if (!history.pos[key]) {
+      if (originalEta || currentEta) {
+        addEvent('first_seen', null, currentEta || originalEta, {
+          originalEta: originalEta || null,
+          currentEta: currentEta || null,
+          deltaDaysFromOriginal: daysBetweenDateKeys(originalEta, currentEta)
+        });
+      }
+    } else {
+      if (record.currentEta !== currentEta) {
+        addEvent('eta_changed', record.currentEta || null, currentEta || null, {
+          deltaDays: daysBetweenDateKeys(record.currentEta, currentEta),
+          deltaDaysFromOriginal: daysBetweenDateKeys(originalEta || record.originalEta, currentEta)
+        });
+      }
+      if (record.originalEta !== originalEta) {
+        addEvent('original_eta_changed', record.originalEta || null, originalEta || null);
+      }
+      if (record.receivedDate !== receivedDate && receivedDate) {
+        addEvent('received', record.receivedDate || null, receivedDate, {
+          deltaDaysFromOriginal: daysBetweenDateKeys(originalEta || record.originalEta, receivedDate)
+        });
+      }
+    }
+
+    record.id = id;
+    record.reference = reference;
+    record.supplier = po.company || record.supplier || '';
+    record.stage = po.stage || '';
+    record.status = po.status || '';
+    record.deliveryCountry = po.deliveryCountry || record.deliveryCountry || '';
+    record.originalEta = originalEta || null;
+    record.currentEta = currentEta || null;
+    record.receivedDate = receivedDate || null;
+    record.lastSeenAt = detectedAt;
+    history.pos[key] = record;
+  }
+
+  try { savePoEtaHistory(history); }
+  catch (e) { console.warn('PO ETA history save failed:', e.message); }
+  return history;
+}
+
+function getPoEtaHistoryRecord(po) {
+  const history = loadPoEtaHistory();
+  return history.pos?.[poHistoryKey(po)] || null;
+}
+
 function saveSnapshotPushState(state) {
   try {
     fs.mkdirSync(path.dirname(SNAPSHOT_PUSH_STATE_PATH), { recursive: true });
@@ -324,7 +452,7 @@ function maybePushCacheSnapshotToGit(reason = 'cin7-refresh') {
   if (state.cacheLastSuccessDate === today || cacheSnapshotPushInFlight) return;
   cacheSnapshotPushInFlight = true;
   const command = [
-    'git add data/cache-snapshot.json data/cache-snapshot.last-good.json',
+    'git add data/cache-snapshot.json data/cache-snapshot.last-good.json data/po-eta-history.json data/po-eta-history.last-good.json',
     'git diff --cached --quiet && exit 0',
     `git commit -m "Update cache snapshot (${reason})"`,
     'git push'
@@ -402,6 +530,7 @@ function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
       return;
     }
 
+    updatePoEtaHistory(snapshot.cin7POs || [], snapshotTs);
     fs.mkdirSync(path.dirname(CACHE_SNAPSHOT_PATH), { recursive: true });
     const payload = JSON.stringify(snapshot);
     fs.writeFileSync(CACHE_SNAPSHOT_PATH, payload);
@@ -2223,6 +2352,7 @@ app.get('/api/all-pos', requireAuth, (req, res) => {
       port: po.port || '',
       freightTotal: po.freightTotal || 0,
       quality,
+      etaHistory: getPoEtaHistoryRecord(po),
       items: po.items || {}
     };
   });

@@ -783,7 +783,7 @@ function exportCSV(){let rows=[['SKU','Size','Net SOH','Vel/wk','Incoming','Wks 
 
 let chatOpen=false,chatHistory=[];
 function toggleChat(){chatOpen=!chatOpen;document.getElementById('chatPanel').classList.toggle('open',chatOpen);document.getElementById('chatToggle').textContent=chatOpen?'✕':'💬'}
-function escapeHtml(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function escapeHtml(t){return String(t ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 async function sendChat(){const i=document.getElementById('chatInput'),m=i.value.trim();if(!m)return;i.value='';const ms=document.getElementById('chatMessages');
 ms.innerHTML+=`<div class="chat-msg user">${escapeHtml(m)}</div><div class="chat-msg bot" id="typing"><span style="opacity:0.6">Thinking...</span></div>`;ms.scrollTop=ms.scrollHeight;chatHistory.push({role:'user',text:m});
 try{const r=await fetch('/api/chat',{method:'POST',headers:H(),body:JSON.stringify({message:m,history:chatHistory.slice(-10),ckId:currentCK})});const d=await r.json();document.getElementById('typing')?.remove();
@@ -876,6 +876,65 @@ function poEtaDelayInfo(po) {
   const diff = Math.round((eta - original) / (24 * 60 * 60 * 1000));
   return { diff, title: `ETA is ${diff} day${diff===1?'':'s'} after Original ETA` };
 }
+
+function poEtaHistoryEvents(po) {
+  return (po.etaHistory?.events || []).filter(e => e.type === 'eta_changed' || e.type === 'first_seen' || e.type === 'received' || e.type === 'original_eta_changed');
+}
+function poEtaHistoryBadge(po, idx) {
+  const events = poEtaHistoryEvents(po);
+  const changes = events.filter(e => e.type === 'eta_changed').length;
+  if (!events.length) return '';
+  const label = changes ? `🕘 ${changes}` : '🕘';
+  const title = changes ? `${changes} ETA change${changes===1?'':'s'} recorded` : 'ETA baseline recorded';
+  return `<button onclick="event.stopPropagation();showPoEtaHistory(${idx})" title="${title}" style="border:1px solid #D8E2E3;background:#fff;color:#2C474B;border-radius:999px;padding:2px 7px;font-size:10px;font-weight:800;cursor:pointer;margin-left:4px">${label}</button>`;
+}
+function fmtEtaHistoryDate(d) {
+  if (!d) return '—';
+  try { return new Date(d + (String(d).length === 10 ? 'T00:00:00Z' : '')).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}); }
+  catch(e) { return d; }
+}
+function etaHistoryEventLabel(e) {
+  if (e.type === 'first_seen') return 'Baseline recorded';
+  if (e.type === 'eta_changed') {
+    const days = e.deltaDays == null ? '' : ` (${e.deltaDays > 0 ? '+' : ''}${e.deltaDays}d move)`;
+    return `ETA changed${days}`;
+  }
+  if (e.type === 'original_eta_changed') return 'Original ETA changed';
+  if (e.type === 'received') return 'Received / ATA recorded';
+  return e.type;
+}
+function showPoEtaHistory(idx) {
+  const po = (window._poRendered || [])[idx];
+  if (!po) return;
+  const events = poEtaHistoryEvents(po);
+  const rows = events.length ? events.map(e => {
+    const delay = e.deltaDaysFromOriginal == null ? '' : `<span style="font-size:10px;color:${e.deltaDaysFromOriginal>0?'#991B1B':'#5BAB31'};font-weight:700">${e.deltaDaysFromOriginal>0?'+':''}${e.deltaDaysFromOriginal}d vs original</span>`;
+    return `<div style="display:grid;grid-template-columns:100px 1fr 130px;gap:10px;padding:10px 0;border-top:1px solid var(--border);align-items:start">
+      <div style="font-size:10px;color:var(--text-dim)">${fmtEtaHistoryDate(String(e.detectedAt||'').slice(0,10))}</div>
+      <div><div style="font-weight:800;color:var(--text)">${etaHistoryEventLabel(e)}</div><div style="font-size:11px;color:var(--text-dim);margin-top:2px">${fmtEtaHistoryDate(e.from)} → ${fmtEtaHistoryDate(e.to)}</div></div>
+      <div style="text-align:right">${delay}</div>
+    </div>`;
+  }).join('') : '<p style="color:var(--text-dim)">No ETA history recorded yet. The next snapshot will keep tracking this PO.</p>';
+  const overlay = document.createElement('div');
+  overlay.id = 'etaHistoryModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `<div style="background:var(--bg-card);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.25);max-width:720px;width:100%;max-height:80vh;overflow:auto;padding:22px">
+    <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px">
+      <div><h2 style="font-size:20px;margin:0 0 4px;color:var(--text)">🕘 ETA History — ${escapeHtml(cleanPoRef(po.reference))}</h2><div style="font-size:12px;color:var(--text-dim)">${escapeHtml(po.company||'')} ${po.deliveryCountry ? '· ' + escapeHtml(po.deliveryCountry) : ''}</div></div>
+      <button onclick="document.getElementById('etaHistoryModal')?.remove()" style="border:none;background:var(--bg-body);border-radius:999px;width:34px;height:34px;cursor:pointer;font-weight:900">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div class="card"><div class="label">Original ETA</div><div class="value" style="font-size:16px">${fmtEtaHistoryDate(po.etaHistory?.originalEta || po.customFields?.orders_1000)}</div></div>
+      <div class="card"><div class="label">Current ETA</div><div class="value" style="font-size:16px">${fmtEtaHistoryDate(po.etaHistory?.currentEta || po.estimatedArrivalDate || po.arrival)}</div></div>
+      <div class="card"><div class="label">Changes Logged</div><div class="value" style="font-size:16px">${events.filter(e=>e.type==='eta_changed').length}</div></div>
+    </div>
+    ${rows}
+    <div style="font-size:11px;color:var(--text-dim);margin-top:14px">History starts from the first Demand Planner snapshot after this feature was added. Cin7 does not expose older ETA changes.</div>
+  </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function poHasShipped(po) {
   if (po.stage === 'Received') return false;
   const now = new Date();
@@ -987,6 +1046,7 @@ function renderPurchaseOrders(allPOs) {
     <div class="card"><div class="label">✅ Received</div><div class="value">${receivedCount}</div><div class="sub">Completed</div></div>
     <div class="card" style="border-left:3px solid ${avgQuality>=90?'#5BAB31':avgQuality>=70?'#D4930D':avgQuality>=50?'#EA580C':'#991B1B'}"><div class="label">${qIcon} Data Quality</div><div class="value">${avgQuality}%</div><div class="sub">${activePOsWithScore.length} active POs${criticalPOs > 0 ? ' · <span style="color:#991B1B;font-weight:600">' + criticalPOs + ' critical</span>' : ''}</div></div>
   `;
+  window._poRendered = pos;
   container.innerHTML = pos.map((po, i) => {
     const items = Object.entries(po.items || {}).sort(([a],[b]) => a.localeCompare(b));
     const eta = po.arrival ? fmt(po.arrival) : '—';
@@ -1007,7 +1067,7 @@ function renderPurchaseOrders(allPOs) {
         <span style="font-size:10px;color:var(--text-dim)">${po.deliveryCountry || ''}</span>
         <span style="color:var(--text-dim)" title="ETD (Departure)">🚢 ${etd}</span>
         <span style="${etaStyle}" title="ETA (Updated Arrival)${etaDelay ? ' — ' + etaDelay.title : ''}">📅 ${eta}${delayBadge}</span>
-        <span style="color:${etaDelay ? '#991B1B' : 'var(--text-dim)'};font-size:10px;font-weight:${etaDelay ? '700' : '400'}" title="Original ETA">📌 ${originalEta}</span>
+        <span style="color:${etaDelay ? '#991B1B' : 'var(--text-dim)'};font-size:10px;font-weight:${etaDelay ? '700' : '400'}" title="Original ETA">📌 ${originalEta}${poEtaHistoryBadge(po, i)}</span>
         <span style="color:var(--text-dim);font-size:10px" title="Actual Received Date">✅ ${actualReceived}</span>
         <span style="text-align:center" title="Original ETA vs ATA (actual arrival)">${etaAtaComparison}</span>
         <span style="font-weight:700;color:var(--text);text-align:right">${po.total ? fmtVal(cx(po.total, 'AUD')) : '—'}</span>
