@@ -164,23 +164,27 @@ let dataCache = {
 };
 const CACHE_SNAPSHOT_PATH = path.join(__dirname, 'data', 'cache-snapshot.json');
 const CACHE_SNAPSHOT_BACKUP_PATH = path.join(__dirname, 'data', 'cache-snapshot.last-good.json');
+const PO_SNAPSHOT_PATH = path.join(__dirname, 'data', 'po-snapshot.json');
+const PO_SNAPSHOT_BACKUP_PATH = path.join(__dirname, 'data', 'po-snapshot.last-good.json');
 const SNAPSHOT_PUSH_STATE_PATH = path.join(__dirname, 'data', 'snapshot-push-state.json');
 let cacheSnapshotPushInFlight = false;
 
-function cleanupLegacyPoSnapshots() {
-  for (const legacyPath of [
-    path.join(__dirname, 'data', 'po-snapshot.json'),
-    path.join(__dirname, 'data', 'po-snapshot.last-good.json')
-  ]) {
+function loadPoMirrorSnapshot() {
+  for (const snapPath of [PO_SNAPSHOT_PATH, PO_SNAPSHOT_BACKUP_PATH]) {
     try {
-      if (fs.existsSync(legacyPath)) {
-        fs.unlinkSync(legacyPath);
-        console.log(`Removed legacy snapshot file ${path.basename(legacyPath)}`);
+      const snap = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
+      const pos = Array.isArray(snap.cin7POs) ? mergeCin7POsByReference(snap.cin7POs) : [];
+      if (pos.length > 0) {
+        return {
+          pos,
+          lastRefresh: snap.lastPoRefresh || snap.lastRefresh || snap.cin7MirrorExportedAt || null,
+          source: snap.cin7Source || 'po-mirror-snapshot',
+          exportedAt: snap.cin7MirrorExportedAt || null
+        };
       }
-    } catch (e) {
-      console.warn(`Could not remove legacy snapshot ${path.basename(legacyPath)}: ${e.message}`);
-    }
+    } catch (_) {}
   }
+  return null;
 }
 
 function getStoreKeysForCk(ckId, primaryStore) {
@@ -538,7 +542,6 @@ function saveCacheSnapshot(pushToGit = false, pushReason = 'cin7-refresh') {
 }
 
 loadCacheSnapshot();
-cleanupLegacyPoSnapshots();
 
 // Load Excel-derived landed costs (SOH Stock Value ÷ SOH Stock Qty from CIN7 report)
 let excelLandedCosts = {};
@@ -2312,8 +2315,10 @@ function scorePO(po) {
 }
 
 app.get('/api/all-pos', requireAuth, (req, res) => {
-  reloadSnapshotIfNewer();
-  const pos = dataCache.cin7POs.map(po => {
+  const poSnapshot = loadPoMirrorSnapshot();
+  if (!poSnapshot) reloadSnapshotIfNewer();
+  const sourcePos = poSnapshot?.pos || dataCache.cin7POs || [];
+  const pos = sourcePos.map(po => {
     const destination = inferDestination(po);
     const landed = estimateLandedCost(po, destination);
     const quality = scorePO(po);
@@ -2348,7 +2353,7 @@ app.get('/api/all-pos', requireAuth, (req, res) => {
       items: po.items || {}
     };
   });
-  res.json({ pos, lastRefresh: dataCache.lastRefresh, fx: { USDAUD: fxRate.USDAUD, lastFetch: fxRate.lastFetch } });
+  res.json({ pos, lastRefresh: poSnapshot?.lastRefresh || dataCache.lastRefresh, poSource: poSnapshot?.source || 'planner-cache', poSnapshotExportedAt: poSnapshot?.exportedAt || null, fx: { USDAUD: fxRate.USDAUD, lastFetch: fxRate.lastFetch } });
 });
 
 app.get('/api/ck/:id', requireAuth, (req, res) => {
