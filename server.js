@@ -21,11 +21,6 @@ const AIS_API_KEY = process.env.AIS_API_KEY || '';
 const CIN7_REQUEST_SPACING_MS = 1500;
 const CIN7_MIN_REFRESH_INTERVAL_MS = 8 * 60 * 60 * 1000;
 const CIN7_RATE_LIMIT_BACKOFF_MS = 60 * 60 * 1000;
-// The Render app cannot reach Caesar's local Cin7 mirror database directly.
-// Keep Cin7 data deterministic by loading the mirror-exported repo snapshot instead of
-// calling the live Cin7 API from Render. Set USE_CIN7_MIRROR_SNAPSHOT=false to restore
-// the old live-API path for debugging.
-const USE_CIN7_MIRROR_SNAPSHOT = (process.env.USE_CIN7_MIRROR_SNAPSHOT || 'true') !== 'false';
 const LL_AU_BRANCH_IDS = [3, 60976];
 const LL_NZ_BRANCH_IDS = [48391];
 
@@ -1068,12 +1063,9 @@ async function refreshAllData(forceCin7 = false) {
       let cin7POs = [];
       let fetchedCin7Count = 0;
       let fetchedPoCount = 0;
-      const cin7SkipReason = USE_CIN7_MIRROR_SNAPSHOT
-        ? 'using mirror-exported repo snapshot for CIN7 data'
-        : getCin7SkipReason(forceCin7);
+      const cin7SkipReason = getCin7SkipReason(forceCin7);
 
       if (cin7SkipReason) {
-        if (USE_CIN7_MIRROR_SNAPSHOT) loadCacheSnapshot(true);
         console.log(`Skipping CIN7 refresh, ${cin7SkipReason}. Reusing cached CIN7 data.`);
       } else {
         const cin7Data = await fetchCin7AllProducts();
@@ -2756,7 +2748,7 @@ app.get('/api/health', (req, res) => {
   reloadSnapshotIfNewer();
   const cin7Count = Object.keys(dataCache.cin7Products).length;
   const poCount = dataCache.cin7POs.length;
-  res.json({ ok: cin7Count > 0, cin7: cin7Count, pos: poCount, cin7Source: dataCache.cin7Source || (USE_CIN7_MIRROR_SNAPSHOT ? 'mirror-snapshot' : 'live-api'), cin7MirrorExportedAt: dataCache.cin7MirrorExportedAt || null, lastRefresh: dataCache.lastRefresh, lastCin7Refresh: dataCache.lastCin7Refresh, lastPoRefresh: dataCache.lastPoRefresh, lastShopifyRefresh: dataCache.lastShopifyRefresh, error: dataCache.error || null, uptime: Math.round(process.uptime()) });
+  res.json({ ok: cin7Count > 0, cin7: cin7Count, pos: poCount, lastRefresh: dataCache.lastRefresh, lastCin7Refresh: dataCache.lastCin7Refresh, lastPoRefresh: dataCache.lastPoRefresh, lastShopifyRefresh: dataCache.lastShopifyRefresh, error: dataCache.error || null, uptime: Math.round(process.uptime()) });
 });
 
 // Main app
